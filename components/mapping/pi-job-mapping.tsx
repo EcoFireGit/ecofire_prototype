@@ -19,7 +19,7 @@ export default function PiJobMappingPage() {
   const fetchPIs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/MappingJP');
+      const response = await fetch('/api/pi-job-mappings');
       const result = await response.json();
       
       if (result.success) {
@@ -42,7 +42,7 @@ export default function PiJobMappingPage() {
 
   const handleCreate = async (PIData: Partial<MappingJP>) => {
     try {
-      const response = await fetch('/api/MappingJP', {
+      const response = await fetch('/api/pi-job-mappings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ export default function PiJobMappingPage() {
     if (!editingPI) return;
 
     try {
-      const response = await fetch(`/api/MappingJP/${editingPI.id}`, {
+      const response = await fetch(`/api/pi-job-mappings/${editingPI.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ export default function PiJobMappingPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/MappingJP/${id}`, {
+      const response = await fetch(`/api/pi-job-mappings/${id}`, {
         method: 'DELETE',
       });
 
