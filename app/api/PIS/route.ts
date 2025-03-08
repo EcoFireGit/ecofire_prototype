@@ -27,7 +27,7 @@ export async function GET() {
       data: PIs
     });
   } catch (error) {
-    console.error('Error in GET /api/PIS:', error);
+    console.error('Error in GET /api/pis:', error);
     return NextResponse.json(
       {
         success: false,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       data: PI
     }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/PIS:', error);
+    console.error('Error in POST /api/pis:', error);
     return NextResponse.json(
       {
         success: false,

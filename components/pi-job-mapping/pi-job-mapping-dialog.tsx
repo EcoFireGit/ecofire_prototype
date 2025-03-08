@@ -48,7 +48,7 @@ useEffect(() => {
   async function fetchData() {
     try {
       const jobsResponse = await fetch('/api/jobs');
-      const pisResponse = await fetch('/api/PIS');
+      const pisResponse = await fetch('/api/pis');
       const jobsData = await jobsResponse.json();
       const pisData = await pisResponse.json();
 

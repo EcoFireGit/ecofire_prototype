@@ -27,7 +27,7 @@ export async function GET() {
       data: getMapping
     });
   } catch (error) {
-    console.error('Error in GET /api/MappingJP:', error);
+    console.error('Error in GET /api/pi-job-mappings:', error);
     return NextResponse.json(
       {
         success: false,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       data: JP
     }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/MappingJP:', error);
+    console.error('Error in POST /api/pi-job-mappings:', error);
     return NextResponse.json(
       {
         success: false,

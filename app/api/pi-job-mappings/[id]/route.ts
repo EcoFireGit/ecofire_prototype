@@ -37,7 +37,7 @@ export async function GET(
       data: JP
     });
   } catch (error) {
-    console.error(`Error in GET /api/MappingJP/${params.id}:`, error);
+    console.error(`Error in GET /api/pi-job-mappings/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -82,7 +82,7 @@ export async function PUT(
       data: updatedMapping
     });
   } catch (error) {
-    console.error(`Error in PUT /api/MappingJP/${params.id}:`, error);
+    console.error(`Error in PUT /api/pi-job-mappings/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -126,7 +126,7 @@ export async function DELETE(
       message: 'Mapping deleted successfully'
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/MappingJP/${params.id}:`, error);
+    console.error(`Error in DELETE /api/pi-job-mappings/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,

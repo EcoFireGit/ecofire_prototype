@@ -32,7 +32,7 @@ export default function PIQBOMappingsPage() {
     try {
       // Fetch data from API endpoints
       const [pisResponse, qbosResponse, mappingsResponse] = await Promise.all([
-        fetch('/api/PIS'),
+        fetch('/api/pis'),
         fetch('/api/qbos'),
         fetch('/api/pi-qbo-mappings')
       ]);

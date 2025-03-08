@@ -37,7 +37,7 @@ export async function GET(
       data: pi
     });
   } catch (error) {
-    console.error(`Error in GET /api/PIS/${params.id}:`, error);
+    console.error(`Error in GET /api/pis/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -82,7 +82,7 @@ export async function PUT(
       data: updatedPI
     });
   } catch (error) {
-    console.error(`Error in PUT /api/PIS/${params.id}:`, error);
+    console.error(`Error in PUT /api/pis/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -126,7 +126,7 @@ export async function DELETE(
       message: 'PI deleted successfully'
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/PIS/${params.id}:`, error);
+    console.error(`Error in DELETE /api/pis/${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
