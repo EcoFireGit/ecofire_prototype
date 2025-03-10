@@ -1,5 +1,3 @@
-// components/pis/pi-dialog.tsx
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,75 +13,85 @@ import { useState, useEffect } from "react";
 import { PI } from "./table/columns";
 
 interface PIDialogProps {
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (pi: Partial<PI>) => void;
   initialData?: PI;
 }
 
-export function PIDialog({ 
-  mode, 
-  open, 
-  onOpenChange, 
-  onSubmit, 
-  initialData 
+const emptyFormState = {
+  name: "",
+  unit: "",
+  beginningValue: 0,
+  targetValue: 0,
+  deadline: "",
+  notes: "",
+};
+
+export function PIDialog({
+  mode,
+  open,
+  onOpenChange,
+  onSubmit,
+  initialData,
 }: PIDialogProps) {
   const [formData, setFormData] = useState<Partial<PI>>(() => {
-    
-    return {
-      name: '',
-      unit: '',
-      beginningValue: 0,
-      targetValue: 0,
-      deadline: '',
-      notes: ''
-    };
+    if (initialData) {
+      return {
+        ...initialData,
+        deadline: initialData.deadline
+          ? new Date(initialData.deadline).toISOString().split("T")[0]
+          : "",
+      };
+    }
+    return emptyFormState;
   });
 
-  // Reset the form when the dialog opens or the initialData changes
+  // Reset or populate the form when the dialog opens or the initialData changes
   useEffect(() => {
-     {
+    if (mode === "create") {
+      setFormData(emptyFormState);
+    } else if (initialData) {
       setFormData({
-        name: '',
-        unit: '',   
-        beginningValue: 0,     
-        targetValue: 0,  
-        deadline: '',      
-        notes: ''
+        name: initialData.name || "",
+        unit: initialData.unit || "",
+        beginningValue: initialData.beginningValue || 0,
+        targetValue: initialData.targetValue || 0,
+        deadline: initialData.deadline
+          ? new Date(initialData.deadline).toISOString().split("T")[0]
+          : "",
+        notes: initialData.notes || "",
       });
     }
-  }, [initialData, open]);
+  }, [mode, initialData, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Create a copy of the form data for submission
     const submissionData = { ...formData };
-    
-    // Format the deadline for API submission
-   
-    
+
+    if (submissionData.deadline) {
+      // Add time to the date to ensure consistent timezone handling
+      submissionData.deadline = `${submissionData.deadline}T00:00:00.000Z`;
+    }
+
     // Submit the data to the parent component
     onSubmit(submissionData);
-  
+
     // Close the dialog
     onOpenChange(false);
-    
-    // Reset the form data
-    setFormData({
-      name: '',
-      unit: '',
-      beginningValue: 0,
-      targetValue: 0,
-      deadline: '',
-      notes: ''
-    });
+
+    // Reset the form data if in create mode
+    if (mode === "create") {
+      setFormData(emptyFormState);
+    }
   };
 
   const handleNumberChange = (field: keyof PI, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
-    setFormData({...formData, [field]: numValue});
+    const numValue = value === "" ? 0 : Number(value);
+    setFormData({ ...formData, [field]: numValue });
   };
 
   return (
@@ -92,7 +100,7 @@ export function PIDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Add PI' : 'Edit PI'}
+              {mode === "create" ? "Add PI" : "Edit PI"}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -102,25 +110,29 @@ export function PIDialog({
               </Label>
               <Input
                 id="name"
-                value={formData.name || ''}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                value={formData.name || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Enter value"
                 required
               />
             </div>
-            
+
             <div className="grid items-center gap-2">
               <Label htmlFor="unit" className="text-left">
                 PI unit
               </Label>
               <Input
                 id="unit"
-                value={formData.unit || ''}
-                onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                value={formData.unit || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, unit: e.target.value })
+                }
                 placeholder="Enter value"
               />
             </div>
-            
+
             <div className="grid items-center gap-2">
               <Label htmlFor="beginningValue" className="text-left">
                 Beginning value
@@ -129,7 +141,9 @@ export function PIDialog({
                 id="beginningValue"
                 type="number"
                 value={formData.beginningValue}
-                onChange={(e) => handleNumberChange('beginningValue', e.target.value)}
+                onChange={(e) =>
+                  handleNumberChange("beginningValue", e.target.value)
+                }
                 placeholder="0"
               />
             </div>
@@ -142,12 +156,14 @@ export function PIDialog({
                 id="targetValue"
                 type="number"
                 value={formData.targetValue}
-                onChange={(e) => handleNumberChange('targetValue', e.target.value)}
+                onChange={(e) =>
+                  handleNumberChange("targetValue", e.target.value)
+                }
                 placeholder="0"
                 required
               />
             </div>
-            
+
             <div className="grid items-center gap-2">
               <Label htmlFor="deadline" className="text-left">
                 PI Deadline <span className="text-red-500">*</span>
@@ -155,20 +171,24 @@ export function PIDialog({
               <Input
                 id="deadline"
                 type="date"
-                value={formData.deadline || ''}
-                onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                value={formData.deadline || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, deadline: e.target.value })
+                }
                 required
               />
             </div>
-           
+
             <div className="grid items-center gap-2">
               <Label htmlFor="notes" className="text-left">
                 PI notes
               </Label>
               <Textarea
                 id="notes"
-                value={formData.notes || ''}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                value={formData.notes || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 placeholder="Enter value"
                 rows={3}
               />
@@ -176,7 +196,7 @@ export function PIDialog({
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Add PI' : 'Save Changes'}
+              {mode === "create" ? "Add PI" : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>
