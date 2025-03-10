@@ -1,33 +1,33 @@
 // lib/services/pi.service.ts
-import MappingJobToPI from '../models/pi-job-mapping.model';
-import { JobPiMapping } from '../models/pi-job-mapping.model';
+import JobPiMapping from '../models/pi-job-mapping.model';
+import { JobPiMapping as JobPiMappingType} from '../models/pi-job-mapping.model';
 import dbConnect from '../mongodb';
 
 export class MappingService {
-  async getAllMappingJP(userId: string): Promise<JobPiMapping[]> {
+  async getAllMappingJP(userId: string): Promise<JobPiMappingType[]> {
     try {
       await dbConnect();
-      const MappingJobPi = await MappingJobToPI.find({ userId }).lean();
+      const MappingJobPi = await JobPiMapping.find({ userId }).lean();
       return JSON.parse(JSON.stringify(MappingJobPi));
     } catch (error) {
       throw new Error('Error fetching MappingJobToPI from database');
     }
   }
 
-  async getMappingById(id: string, userId: string): Promise<JobPiMapping | null> {
+  async getMappingById(id: string, userId: string): Promise<JobPiMappingType | null> {
     try {
       await dbConnect();
-      const mapping = await MappingJobToPI.findOne({ _id: id, userId }).lean();
+      const mapping = await JobPiMapping.findOne({ _id: id, userId }).lean();
       return mapping ? JSON.parse(JSON.stringify(mapping)) : null;
     } catch (error) {
       throw new Error('Error fetching MappingJobToPI from database');
     }
   }
 
-  async CreateMapping(mappingData: Partial<JobPiMapping>, userId: string): Promise<JobPiMapping> {
+  async CreateMapping(mappingData: Partial<JobPiMappingType>, userId: string): Promise<JobPiMappingType> {
     try {
       await dbConnect();
-      const MappingData = new MappingJobToPI({
+      const MappingData = new JobPiMapping({
         ...mappingData,
         userId
       });
@@ -38,10 +38,10 @@ export class MappingService {
     }
   }
 
-  async updateMappingJP(id: string, userId: string, updateData: Partial<JobPiMapping>): Promise<JobPiMapping | null> {
+  async updateMappingJP(id: string, userId: string, updateData: Partial<JobPiMappingType>): Promise<JobPiMappingType | null> {
     try {
       await dbConnect();
-      const updatedMapping = await MappingJobToPI.findOneAndUpdate(
+      const updatedMapping = await JobPiMapping.findOneAndUpdate(
         { _id: id, userId },
         { $set: updateData },
         { new: true, runValidators: true }
@@ -56,7 +56,7 @@ export class MappingService {
   async deleteMappingJP(id: string, userId: string): Promise<boolean> {
     try {
       await dbConnect();
-      const result = await MappingJobToPI.findOneAndDelete({ _id: id, userId });
+      const result = await JobPiMapping.findOneAndDelete({ _id: id, userId });
       return !!result;
     } catch (error) {
       throw new Error('Error deleting MappingJobToPI from database');

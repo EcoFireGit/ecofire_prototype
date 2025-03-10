@@ -54,4 +54,4 @@ const MappingJobToPISchema = new mongoose.Schema<JobPiMapping>({
   }
 });
 
-export default mongoose.models.MappingJobToPI || mongoose.model<JobPiMapping>("MappingJobToPI", MappingJobToPISchema);
+export default mongoose.models.JobPiMapping || mongoose.model<JobPiMapping>("MappingJobToPI", MappingJobToPISchema);
