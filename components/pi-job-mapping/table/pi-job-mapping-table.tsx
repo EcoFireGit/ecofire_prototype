@@ -23,12 +23,12 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
 }
 
-export function MappingJPTable<TData, TValue>({
+export function PIJobMappingTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "piImpactValue", desc: false }, // Sort alphabetically by name
+    { id: "piName", desc: false }, // Default sort by PI name ascending
   ]);
 
   const table = useReactTable({
@@ -42,8 +42,9 @@ export function MappingJPTable<TData, TValue>({
     onSortingChange: setSorting,
   });
 
+  
   return (
-    
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -84,18 +85,29 @@ export function MappingJPTable<TData, TValue>({
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No Mapping found.
+                No PI-Job mappings found.
               </TableCell>
+            </TableRow>
+          )}
+          
+          {/* Summary row with properly aligned columns */}
+          {table.getRowModel().rows?.length > 0 && (
+            <TableRow className="bg-gray-50">
+              {/* First 4 cells - leave empty */}
+              <TableCell colSpan={4} className="text-right font-medium">
+                Total Impact:
+              </TableCell>
+              
+              
+              {/* Notes - empty */}
+              <TableCell></TableCell>
+              
+              {/* Actions column - empty */}
+              <TableCell></TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
-
-       
-
-        
-
-      
-
+    </div>
   );
 }

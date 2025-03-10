@@ -8,7 +8,7 @@ export default function PiQboMappingPage() {
   return (
     <Tabs defaultValue="pi-job" className="w-auto ml-5">
       <TabsList>
-        <TabsTrigger value="pi-job">PI to job mapping</TabsTrigger>
+        <TabsTrigger value="pi-job">PI to Job mapping</TabsTrigger>
         <TabsTrigger value="pi-qbo">PI to QBO mapping</TabsTrigger>
       </TabsList>
       <TabsContent value="pi-job">

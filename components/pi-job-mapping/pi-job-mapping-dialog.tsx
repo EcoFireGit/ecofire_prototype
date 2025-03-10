@@ -1,10 +1,5 @@
-// components/pis/pi-dialog.tsx
-
+// components/pi-job-mapping/pi-job-mapping-dialog.tsx
 import { Button } from "@/components/ui/button";
-
-import Autocomplete from "@mui/material/Autocomplete";
-import TextField from "@mui/material/TextField";
-
 import {
   Dialog,
   DialogContent,
@@ -12,100 +7,120 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
-import { MappingJP } from "./table/columns";
-import { Job } from "@/components/jobs/table/columns";
-import { PI } from "@/components/pis/table/columns";
+import { JobPiMapping } from "@/lib/models/pi-job-mapping.model";
+import { Jobs } from "@/lib/models/job.model";
+import { PIs } from "@/lib/models/pi.model";
 
+export type MappingFormData = {
+  id?: string;
+  jobId: string;
+  piId: string;
+ // jobName: string;
+  //piName: string;
+  piTarget: number;
+  piImpactValue: number;
+  notes?: string;
+  
+};
 
-
-interface MappingDialogProps {
+interface PIJOBMappingDialogProps {
   mode: 'create' | 'edit';
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (mapping: Partial<MappingJP>) => void;
-  initialData?: MappingJP;
+  onSubmit: (mapping: MappingFormData) => void;
+  initialData?: JobPiMapping;
+  pisList: PIs[];
+  jobsList: Jobs[];
 }
 
-export function MappingDialog({ 
+export function PIJobMappingDialog({ 
   mode, 
   open, 
   onOpenChange, 
   onSubmit, 
-  initialData 
-}: MappingDialogProps) {
-    
-
- 
-  
-  const [jobs, setJobs] = useState<any[]>([]);
-const [pis, setPIs] = useState<any[]>([]);
-
-useEffect(() => {
-  async function fetchData() {
-    try {
-      const jobsResponse = await fetch('/api/jobs');
-      const pisResponse = await fetch('/api/pis');
-      const jobsData = await jobsResponse.json();
-      const pisData = await pisResponse.json();
-
-      console.log('Fetched jobs:', jobsData.data);
-      console.log('Fetched PIs:', pisData.data);
-
-      setJobs(jobsData.data);
-      setPIs(pisData.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+  initialData,
+  pisList,
+  jobsList
+}: PIJOBMappingDialogProps) {
+  const [formData, setFormData] = useState<MappingFormData>(() => {
+    if (initialData) {
+      return {
+        id: initialData._id,
+        piId: initialData.piId,
+        jobId: initialData.jobId,
+        piTarget: initialData.piTarget,
+        piImpactValue: initialData.piImpactValue,
+        notes: initialData.notes
+      };
     }
-  }
-  fetchData();
-}, []);
-
-
-const [formData, setFormData] = useState<Partial<MappingJP>>(() => {
     return {
-      jobId: '',
-      jobName: '',
       piId: '',
-      piName: '',
+      jobId: '',
+      piTarget: 0,
       piImpactValue: 0,
       notes: ''
     };
   });
+
   // Reset the form when the dialog opens or the initialData changes
   useEffect(() => {
-     {
+    if (initialData) {
       setFormData({
-        jobId: '',
-        jobName: '',
+        id: initialData._id,
+        piId: initialData.piId,
+        jobId: initialData.jobId,
+        piTarget: initialData.piTarget,
+        piImpactValue: initialData.piImpactValue,
+        notes: initialData.notes
+      });
+    } else {
+      setFormData({
         piId: '',
-       piName: '',
-       piImpactValue: 0,
+        jobId: '',
+        piTarget: 0,
+        piImpactValue: 0,
         notes: ''
       });
     }
   }, [initialData, open]);
-  useEffect(() => {
-    console.log('formData updated:', formData);
-  }, [formData]);
-  
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Create a copy of the form data for submission
-    const submissionData = { ...formData };
-    
-    // Format the deadline for API submission
-   
-    
-    // Submit the data to the parent component
-    onSubmit(submissionData);
+    onSubmit(formData);
+    onOpenChange(false);
   };
 
-  const handleNumberChange = (field: keyof MappingJP, value: string) => {
+  const handlePIChange = (piId: string) => {
+    const selectedPI = pisList.find(pi => pi._id === piId);
+    
+    setFormData({
+      ...formData,
+      piId,
+      piTarget: selectedPI ? selectedPI.targetValue : 0
+    });
+  };
+
+  const handleJobChange = (jobId: string) => {
+    const selectedJob = jobsList.find(job => job._id === jobId);
+    
+    setFormData({
+      ...formData,
+      jobId
+    });
+  };
+
+  const handleNumberChange = (field: keyof MappingFormData, value: string) => {
     const numValue = value === '' ? 0 : Number(value);
     setFormData({...formData, [field]: numValue});
   };
@@ -116,81 +131,74 @@ const [formData, setFormData] = useState<Partial<MappingJP>>(() => {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Add Mapping' : 'Edit Mapping'}
+              {mode === 'create' ? 'Map PI to Job' : 'Edit PI-Job Mapping'}
             </DialogTitle>
           </DialogHeader>
-          
-          
           <div className="grid gap-4 py-4">
-          
-        
-        
-            {/* <div className="grid items-center gap-2">
-              <Label htmlFor="name" className="text-left">
-                PI Id <span className="text-red-500">*</span>
+            <div className="grid items-center gap-2">
+              <Label htmlFor="piId" className="text-left">
+                PI name <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                value={formData.piId} 
+                onValueChange={handlePIChange}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an option" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pisList.map(pi => (
+                    <SelectItem key={pi._id} value={pi._id}>
+                      {pi.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid items-center gap-2">
+              <Label htmlFor="piTarget" className="text-left">
+                PI Target
               </Label>
               <Input
-                id="piId"
-                value={formData.piId || ''}
-                onChange={(e) => setFormData({...formData, piId: e.target.value})}
-                placeholder="Enter value"
-                required
+                id="piTarget"
+                type="number"
+                value={formData.piTarget}
+                onChange={(e) => handleNumberChange('piTarget', e.target.value)}
+                placeholder="0"
+                readOnly
+                className="bg-gray-100"
               />
+              <span className="text-xs text-gray-500">Automatically computed</span>
             </div>
             
             <div className="grid items-center gap-2">
               <Label htmlFor="jobId" className="text-left">
-                Job Id <span className="text-red-500">*</span>
+                Job name <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="jobId"
-                value={formData.jobId || ''}
-                onChange={(e) => setFormData({...formData, jobId: e.target.value})}
-                placeholder="Enter value"
+              <Select 
+                value={formData.jobId} 
+                onValueChange={handleJobChange}
                 required
-              />
-            </div> */}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an option" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobsList.map(job => (
+                    <SelectItem key={job._id} value={job._id}>
+                      {job.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
-            <Autocomplete
-  id="job-select"
-  options={jobs}
-  getOptionLabel={(option) => option.title || ''}
-  value={jobs.find(job => job._id === formData.jobId) || null}
-  onChange={(event, newValue) => {
-    console.log('Job selected:', newValue);
-    setFormData(prev => ({
-      ...prev,
-      jobId: newValue ? newValue._id : '',
-      jobName: newValue ? newValue.title : ''
-    }));
-  }}
-  renderInput={(params) => <TextField {...params} label="Job" required />}
-  isOptionEqualToValue={(option, value) => option._id === value._id}
-/>
-
-
-
-<Autocomplete
-  id="pi-select"
-  options={pis}
-  getOptionLabel={(option) => option.name || ''}
-  value={pis.find(pi => pi._id === formData.piId) || null}
-  onChange={(event, newValue) => {
-    console.log('PI selected:', newValue);
-    setFormData(prev => ({
-      ...prev,
-      piId: newValue ? newValue._id : '',
-      piName: newValue ? newValue.name : ''
-    }));
-  }}
-  renderInput={(params) => <TextField {...params} label="PI" required />}
-/>
-
-
-
+           
             <div className="grid items-center gap-2">
-              <Label htmlFor="PiImpactValue" className="text-left">
-                PI Impact Value <span className="text-red-500">*</span>
+              <Label htmlFor="piImpactValue" className="text-left">
+                PI Impact <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="piImpactValue"
@@ -204,7 +212,7 @@ const [formData, setFormData] = useState<Partial<MappingJP>>(() => {
             
             <div className="grid items-center gap-2">
               <Label htmlFor="notes" className="text-left">
-                PI notes
+                Notes
               </Label>
               <Textarea
                 id="notes"
@@ -217,7 +225,7 @@ const [formData, setFormData] = useState<Partial<MappingJP>>(() => {
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Map' : 'Save Changes'}
+              {mode === 'create' ? 'Map PI to Job' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

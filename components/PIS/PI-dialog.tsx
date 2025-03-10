@@ -66,6 +66,19 @@ export function PIDialog({
     
     // Submit the data to the parent component
     onSubmit(submissionData);
+  
+    // Close the dialog
+    onOpenChange(false);
+    
+    // Reset the form data
+    setFormData({
+      name: '',
+      unit: '',
+      beginningValue: 0,
+      targetValue: 0,
+      deadline: '',
+      notes: ''
+    });
   };
 
   const handleNumberChange = (field: keyof PI, value: string) => {

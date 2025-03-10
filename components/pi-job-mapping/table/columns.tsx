@@ -1,4 +1,4 @@
-// components/PIS/table/columns.tsx
+// components/pi-job-mapping/table/columns.tsx
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,51 +14,65 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Import the database model type
+// Import the database model types
 import { JobPiMapping } from "@/lib/models/pi-job-mapping.model";
+import { PIs } from "@/lib/models/pi.model";
+import { Jobs } from "@/lib/models/job.model";
 
 // Table-specific type that converts from the database model
-export type MappingJP = {
-  id: string
+export type MappingTableData = {
+  id: string;
+  piId: string;
+  piName: string;
   jobId: string;
   jobName: string;
-  piName: string;
-  piId: string;
+  piTarget: number;
   piImpactValue: number;
   notes?: string;
- 
 };
 
-// Function to convert from database model to table data
-export function convertJPMappingToTableData(JPMap: JobPiMapping[]): MappingJP[] {
-  return JPMap.map(JobPiMapping => ({
-    id: JobPiMapping._id,
-    jobId: JobPiMapping.jobId,
-    piId: JobPiMapping.piId || '',
-    piImpactValue: JobPiMapping.piImpactValue || 0,
-    jobName: JobPiMapping.jobName,
-    piName: JobPiMapping.piName || '',
-    //points: PI.points || 0,
-    //deadline: JobPiMapping.deadline ? 
-    // Handle both string and Date objects
-  //  (typeof JobPiMapping.deadline === 'string' ? JobPiMapping.deadline : JobPiMapping.deadline.toISOString()) 
- //   : '',
-    notes: JobPiMapping.notes || ''
-   
-  }));
+// Function to convert from database models to table data
+export function convertMappingsToTableData(
+  mappings: JobPiMapping[], 
+  pisList: PIs[], 
+  jobsList: Jobs[]
+): MappingTableData[] {
+  return mappings.map(mapping => {
+    const pi = pisList.find(pi => pi._id === mapping.piId);
+    const job = jobsList.find(job => job._id === mapping.jobId);
+    
+    return {
+      id: mapping._id,
+      piId: mapping.piId,
+      piName: pi?.name || 'Unknown PI',
+      jobId: mapping.jobId,
+      jobName: job?.title || 'Unknown Job',
+      piTarget: mapping.piTarget,
+      piImpactValue: mapping.piImpactValue,
+      notes: mapping.notes
+    };
+  });
 }
 
 export const columns = (
-  onEdit: (JP: MappingJP) => void,
+  onEdit: (mapping: MappingTableData) => void,
   onDelete: (id: string) => void
-): ColumnDef<MappingJP>[] => [
-  {
-    accessorKey: "jobName",
-    header: "Job name",
-  },
+): ColumnDef<MappingTableData>[] => [
   {
     accessorKey: "piName",
     header: "PI Name",
+  },
+  {
+    accessorKey: "piTarget",
+    header: "PI Target",
+    cell: ({ row }) => {
+      const value = row.getValue("piTarget") as number;
+      return value.toString();
+    }
+  },
+  {
+    accessorKey: "jobName",
+    header: "Job Title",
   },
   {
     accessorKey: "piImpactValue",
@@ -79,13 +93,13 @@ export const columns = (
   {
     id: "actions",
     cell: ({ row }) => {
-      const JP = row.original;
+      const mapping = row.original;
       return (
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onEdit(JP)}
+            onClick={() => onEdit(mapping)}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -100,13 +114,13 @@ export const columns = (
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the Mapping between
-                  "{JP.jobId}" and "{JP.piId}" and remove it from our servers.
+                  This action cannot be undone. This will permanently delete the mapping between
+                  "{mapping.piName}" and "{mapping.jobName}" and remove it from our servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onDelete(JP.id)}>
+                <AlertDialogAction onClick={() => onDelete(mapping.id)}>
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
