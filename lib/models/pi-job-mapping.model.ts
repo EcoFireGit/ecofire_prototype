@@ -30,13 +30,11 @@ const MappingJobToPISchema = new mongoose.Schema<JobPiMapping>({
   },
 
     piName: {
-    type: String,
-    required: true,
+    type: String
     },
 
     jobName: {
-    type: String,
-    required: true,
+    type: String
     },
     piTarget: {
       type: Number,
