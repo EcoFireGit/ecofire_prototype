@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { useState } from 'react';
 
 export default function useCalendar() {
@@ -10,10 +11,15 @@ export default function useCalendar() {
     setIsAuthorizing(true);
     try {
       const response = await fetch('/api/gcal/auth');
+      
       if (response.ok) {
-        const calendarsResponse = await fetch('/api/gcal/calendars');
-        const calendarsData = await calendarsResponse.json();
-        setCalendars(calendarsData);
+        const data = await response.json();
+        console.log("console: " + data.authUrl);
+        window.open(data.authUrl);
+        //console.log("Console: use-calendar" + response.json().authUrl);
+        // const calendarsResponse = await fetch('/api/gcal/calendars');
+        // const calendarsData = await calendarsResponse.json();
+     //  setCalendars(calendarsData);
       }
     } catch (error) {
       console.error('Authorization failed:', error);

@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    await generateAuthUrl();
-    return NextResponse.json({ success: true });
+    const authUrl =  await generateAuthUrl();
+   //  console.log("Console: route" + authUrl);
+    return NextResponse.json({ success: true, authUrl: authUrl});
   } catch (error) {
     return NextResponse.json(
       { error: 'Authorization failed' },
