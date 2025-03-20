@@ -1,24 +1,10 @@
-// /dashboard/backstage/gcal/page
+import CalendarAuth from '@/components/gcal/calendar-auth';
 
-import GoogleAuthButton from '../../../../components/gcal/googleauth-button';
-
-
-
-
-export default function HomePage() {
-
+export default function CalendarPage() {
   return (
-
-    <div>
-
-      <h1>Welcome to My App</h1>
-
-      <GoogleAuthButton />
-
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
+      <CalendarAuth />
     </div>
-
   );
-
 }
-
-
