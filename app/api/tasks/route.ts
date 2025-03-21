@@ -19,6 +19,7 @@ export async function GET(request: Request) {
       );
     }
 
+
     const url = new URL(request.url);
     const jobId = url.searchParams.get('jobId');
 
