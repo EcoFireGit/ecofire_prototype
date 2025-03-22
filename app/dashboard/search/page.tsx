@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input"
+import { SearchResultCard } from "@/app/dashboard/search/search-card";
 
 
 const SearchPage = () => {
@@ -69,18 +70,9 @@ const SearchPage = () => {
 
       <div className="search-results">
         {results.length > 0 ? (
-          <ul>
-            {results.map((result, index) => (
-              <li key={index} className="result-item">
-                <div>
-                  <h3>{result.title}</h3>
-                  <p>{result.description}</p>
-                  {/* Display additional fields as per your data model */}
-                  <small>Type: {result.type}</small>
-                </div>
-              </li>
-            ))}
-          </ul>
+          results.map((result) => (
+            <SearchResultCard key={result.uid} result={result} />
+          ))
         ) : (
           <p>No results found</p>
         )}

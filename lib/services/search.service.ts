@@ -27,7 +27,7 @@ export class SearchService {
       
       console.log(query);
       const searchCriteria: any = {
-        // userId,
+        userId,
         $text: { $search: query }
       };
       
@@ -67,10 +67,16 @@ export class SearchService {
       ]);
       
       // Combine and sort results by relevance score
+      // Combine results and assign a unique numerical ID (uid)
+      let counter = 1; // Initialize a counter
       const combinedResults = [...taskResults, ...jobResults]
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .slice(0, limit);
-      
+        .sort((a, b) => (b.score || 0) - (a.score || 0)) // Sort by relevance score
+        .slice(0, limit)
+        .map(result => ({
+          ...result,
+          uid: counter++, // Assign a unique incremental ID
+        }));
+        
       return JSON.parse(JSON.stringify(combinedResults));
     } catch (error) {
       console.log(error);
