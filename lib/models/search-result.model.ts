@@ -8,7 +8,7 @@ export interface SearchResult{
     id: string;              // Unique identifier for the search result
     userId: string;          // ID of the user who owns this item
     title: string;           // Title or name of the result item
-    description?: string;    // Optional description
+    notes?: string;    // Optional description
     content?: string;        // Optional content text that was matched
     
     // Search metadata
