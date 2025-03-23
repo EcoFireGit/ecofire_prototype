@@ -71,6 +71,14 @@ export default function OnboardingPage() {
       return;
     }
     
+    // Log to ensure data is correctly formed
+    console.log("Submitting form data:", {
+      businessName,
+      businessIndustry,
+      businessDescription
+    });
+    
+    // Handle form submission - this triggers the API call via useChat
     handleSubmit(e);
   };
 
