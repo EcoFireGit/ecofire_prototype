@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { openai } from "@ai-sdk/openai";
@@ -7,11 +6,11 @@ import { ChatService } from "@/lib/services/chat.service";
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
-    
+
     const data = await req.json();
     const { businessName, businessIndustry, businessDescription } = data;
     const chatId = crypto.randomUUID(); // Generate a new chat ID for this session
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
         // Store chat history
         const messages = [
           { role: "user", content: outcomePrompt },
-          { role: "assistant", content: text }
+          { role: "assistant", content: text },
         ];
         await chatService.saveChatHistory(userId, chatId, messages);
         console.log("Chat saved with ID:", chatId);
@@ -53,7 +52,6 @@ export async function POST(req: NextRequest) {
 
     // Respond with the stream
     return result.toDataStreamResponse();
-    
   } catch (error) {
     console.error("Error in onboarding API:", error);
     return new Response("Internal Server Error", { status: 500 });
