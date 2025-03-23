@@ -1,30 +1,36 @@
-'use client';
 
-import { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
+"use client";
 
-export default function Onboarding() {
-  const [businessDescription, setBusinessDescription] = useState('');
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
 
-  const {
-    error,
-    input,
-    status,
-    handleInputChange,
-    handleSubmit,
-    messages,
-    reload,
-    stop,
-  } = useChat({
-    api: '/api/onboarding-outcomes',
-    body: { businessDescription },
-  });
+export default function OnboardingPage() {
+  const [businessDescription, setBusinessDescription] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [businessIndustry, setBusinessIndustry] = useState("");
+  const [step, setStep] = useState(1);
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission behavior
-    if (businessDescription.trim()) {
-      handleSubmit(e as unknown as React.FormEvent);
-    }
+  const handleNextStep = () => {
+    setStep(step + 1);
+  };
+
+  const handlePreviousStep = () => {
+    setStep(step - 1);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Submit logic here
+    console.log({ businessName, businessDescription, businessIndustry });
   };
 
   return (
@@ -32,63 +38,58 @@ export default function Onboarding() {
       <h1 className="text-2xl font-bold mb-6">Business Onboarding</h1>
 
       {/* Input for business description */}
-      <div className="mb-6">
-        <label htmlFor="business-description" className="block text-lg font-medium mb-2">
-          Tell us about your business
-        </label>
-        <form onSubmit={onSubmit}> {/* Wrap the input and button in a form */}
-          <textarea
-            id="business-description"
-            className="w-full p-3 border border-gray-300 rounded-lg min-h-32 shadow-sm"
-            placeholder="Tell me about your business"
-            value={businessDescription}
-            onChange={(e) => setBusinessDescription(e.target.value)}
-          />
-          <button
-            type="submit" {/* Add type="submit" to the button */}
-            disabled={status !== 'ready' || !businessDescription.trim()}
-            className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-300"
-          >
-            Submit
-          </button>
-        </form>
-      </div>
-
-      {/* Chat messages */}
-      <div className="flex flex-col w-full stretch">
-        {messages.map(m => (
-          <div key={m.id} className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50">
-            <span className="font-medium">{m.role === 'user' ? 'You: ' : 'Assistant: '}</span>
-            {m.content}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="businessName">Business Name</Label>
+            <Input
+              id="businessName"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Enter your business name"
+              className="mt-1"
+            />
           </div>
-        ))}
-
-        {(status === 'submitted' || status === 'streaming') && (
-          <div className="mt-4 text-gray-500">
-            {status === 'submitted' && <div>Loading...</div>}
-            <button
-              type="button"
-              className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
-              onClick={stop}
-            >
-              Stop
-            </button>
+          
+          <div>
+            <Label htmlFor="businessIndustry">Business Industry</Label>
+            <Input
+              id="businessIndustry"
+              value={businessIndustry}
+              onChange={(e) => setBusinessIndustry(e.target.value)}
+              placeholder="Enter your business industry"
+              className="mt-1"
+            />
           </div>
-        )}
 
-        {error && (
-          <div className="mt-4">
-            <div className="text-red-500">An error occurred.</div>
-            <button
-              type="button"
-              className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
-              onClick={() => reload()}
-            >
-              Retry
-            </button>
+          <div className="mt-8 flex justify-end">
+            <Button onClick={handleNextStep}>Next</Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Business description */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="businessDescription">Business Description</Label>
+            <Textarea
+              id="businessDescription"
+              value={businessDescription}
+              onChange={(e) => setBusinessDescription(e.target.value)}
+              placeholder="Describe your business in detail..."
+              className="mt-1 h-40"
+            />
+          </div>
+
+          <div className="mt-8 flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              Back
+            </Button>
+            <Button onClick={handleSubmit}>Submit</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
