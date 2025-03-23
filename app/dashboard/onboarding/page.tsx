@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,7 +5,7 @@ import { useChat } from '@ai-sdk/react';
 
 export default function Onboarding() {
   const [businessDescription, setBusinessDescription] = useState('');
-  
+
   const {
     error,
     input,
@@ -21,33 +20,38 @@ export default function Onboarding() {
     body: { businessDescription },
   });
 
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault(); // Prevent default form submission behavior
+    if (businessDescription.trim()) {
+      handleSubmit(e as unknown as React.FormEvent);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Business Onboarding</h1>
-      
+
       {/* Input for business description */}
       <div className="mb-6">
         <label htmlFor="business-description" className="block text-lg font-medium mb-2">
           Tell us about your business
         </label>
-        <textarea
-          id="business-description"
-          className="w-full p-3 border border-gray-300 rounded-lg min-h-32 shadow-sm"
-          placeholder="Tell me about your business"
-          value={businessDescription}
-          onChange={(e) => setBusinessDescription(e.target.value)}
-        />
-        <button
-          onClick={() => {
-            if (businessDescription.trim()) {
-              handleSubmit(new Event('submit') as unknown as React.FormEvent);
-            }
-          }}
-          disabled={status !== 'ready' || !businessDescription.trim()}
-          className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-300"
-        >
-          Submit
-        </button>
+        <form onSubmit={onSubmit}> {/* Wrap the input and button in a form */}
+          <textarea
+            id="business-description"
+            className="w-full p-3 border border-gray-300 rounded-lg min-h-32 shadow-sm"
+            placeholder="Tell me about your business"
+            value={businessDescription}
+            onChange={(e) => setBusinessDescription(e.target.value)}
+          />
+          <button
+            type="submit" {/* Add type="submit" to the button */}
+            disabled={status !== 'ready' || !businessDescription.trim()}
+            className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-300"
+          >
+            Submit
+          </button>
+        </form>
       </div>
 
       {/* Chat messages */}
