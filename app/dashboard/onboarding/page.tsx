@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,12 +13,16 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 
 export default function OnboardingPage() {
   const [businessDescription, setBusinessDescription] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businessIndustry, setBusinessIndustry] = useState("");
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
 
   const handleNextStep = () => {
     setStep(step + 1);
@@ -29,8 +34,57 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Submit logic here
-    console.log({ businessName, businessDescription, businessIndustry });
+    
+    if (!businessName || !businessIndustry || !businessDescription) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          businessName,
+          businessIndustry,
+          businessDescription
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Submission Successful",
+          description: "Your business information has been saved",
+          variant: "default"
+        });
+        
+        // Redirect to dashboard or next step after successful submission
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
+      } else {
+        throw new Error(data.error || "Something went wrong");
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast({
+        title: "Submission Failed",
+        description: error instanceof Error ? error.message : "Please try again later",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -83,10 +137,15 @@ export default function OnboardingPage() {
           </div>
 
           <div className="mt-8 flex justify-between">
-            <Button variant="outline" onClick={handlePreviousStep}>
+            <Button variant="outline" onClick={handlePreviousStep} disabled={isSubmitting}>
               Back
             </Button>
-            <Button onClick={handleSubmit}>Submit</Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isSubmitting || !businessDescription.trim()}
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </Button>
           </div>
         </div>
       )}
