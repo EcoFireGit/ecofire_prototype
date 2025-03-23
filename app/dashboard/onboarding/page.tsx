@@ -36,11 +36,24 @@ export default function OnboardingPage() {
       businessDescription
     },
     api: '/api/onboarding',
+    onResponse(response) {
+      console.log('Response received:', response.status);
+      // If status is not OK, we'll handle in onError
+    },
     onFinish(message, { usage, finishReason }) {
       console.log('Usage', usage);
       console.log('FinishReason', finishReason);
+      console.log('Message content length:', message.content.length);
       setStep(3); // Show results after completion
     },
+    onError(error) {
+      console.error('Chat error:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while processing your business information. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
   const handleNextStep = () => {
@@ -77,6 +90,9 @@ export default function OnboardingPage() {
       businessIndustry,
       businessDescription
     });
+    
+    // Set step to indicate processing is happening
+    setStep(2.5); // Use a fractional step to indicate "processing"
     
     // Handle form submission - this triggers the API call via useChat
     handleSubmit(e);
@@ -144,6 +160,15 @@ export default function OnboardingPage() {
               {status === 'streaming' ? "Analyzing..." : "Submit"}
             </Button>
           </div>
+        </div>
+      )}
+      
+      {/* Processing indicator */}
+      {step === 2.5 && (
+        <div className="flex flex-col items-center justify-center space-y-4 py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+          <p className="text-lg font-medium">Analyzing your business...</p>
+          <p className="text-sm text-gray-500">This may take a moment. We're generating strategic recommendations based on your input.</p>
         </div>
       )}
 
