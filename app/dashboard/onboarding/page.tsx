@@ -1,41 +1,50 @@
 
 "use client";
 
+import { useChat } from '@ai-sdk/react';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
-  const [businessDescription, setBusinessDescription] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businessIndustry, setBusinessIndustry] = useState("");
+  const [businessDescription, setBusinessDescription] = useState("");
   const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
+  const {
+    error,
+    input,
+    status,
+    handleInputChange,
+    handleSubmit,
+    messages,
+    reload,
+    stop,
+    setMessages,
+  } = useChat({
+    body: { 
+      businessName,
+      businessIndustry,
+      businessDescription
+    },
+    api: '/api/onboarding',
+    onFinish(message, { usage, finishReason }) {
+      console.log('Usage', usage);
+      console.log('FinishReason', finishReason);
+      setStep(3); // Show results after completion
+    },
+  });
+
   const handleNextStep = () => {
-    setStep(step + 1);
-  };
-
-  const handlePreviousStep = () => {
-    setStep(step - 1);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!businessName || !businessIndustry || !businessDescription) {
+    if (step === 1 && (!businessName.trim() || !businessIndustry.trim())) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -43,55 +52,33 @@ export default function OnboardingPage() {
       });
       return;
     }
+    setStep(step + 1);
+  };
+
+  const handlePreviousStep = () => {
+    setStep(step - 1);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setIsSubmitting(true);
-    
-    try {
-      const response = await fetch("/api/onboarding", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          businessName,
-          businessIndustry,
-          businessDescription
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Submission Successful",
-          description: "Your business information has been saved",
-          variant: "default"
-        });
-        
-        // Redirect to dashboard or next step after successful submission
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 1500);
-      } else {
-        throw new Error(data.error || "Something went wrong");
-      }
-    } catch (error) {
-      console.error("Submission error:", error);
+    if (!businessDescription.trim()) {
       toast({
-        title: "Submission Failed",
-        description: error instanceof Error ? error.message : "Please try again later",
+        title: "Missing Information",
+        description: "Please provide a description of your business",
         variant: "destructive"
       });
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+    
+    handleSubmit(e);
   };
 
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Business Onboarding</h1>
 
-      {/* Input for business description */}
+      {/* Step 1: Business Information */}
       {step === 1 && (
         <div className="space-y-4">
           <div>
@@ -122,7 +109,7 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {/* Business description */}
+      {/* Step 2: Business Description */}
       {step === 2 && (
         <div className="space-y-4">
           <div>
@@ -137,14 +124,69 @@ export default function OnboardingPage() {
           </div>
 
           <div className="mt-8 flex justify-between">
-            <Button variant="outline" onClick={handlePreviousStep} disabled={isSubmitting}>
+            <Button variant="outline" onClick={handlePreviousStep} disabled={status === 'streaming'}>
               Back
             </Button>
             <Button 
-              onClick={handleSubmit} 
-              disabled={isSubmitting || !businessDescription.trim()}
+              onClick={handleFormSubmit} 
+              disabled={status === 'streaming' || !businessDescription.trim()}
+              className="flex items-center gap-2"
             >
-              {isSubmitting ? "Submitting..." : "Submit"}
+              {status === 'streaming' && <Loader2 className="h-4 w-4 animate-spin" />}
+              {status === 'streaming' ? "Analyzing..." : "Submit"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: AI Response */}
+      {step === 3 && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Strategic Recommendations</h2>
+            
+            {/* Display AI response */}
+            <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
+              {messages.map(m => (
+                <div key={m.id} className="whitespace-pre-wrap mb-4">
+                  {m.role === 'assistant' && m.content}
+                </div>
+              ))}
+              
+              {status === 'streaming' && (
+                <div className="flex items-center justify-center h-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {error && (
+            <div className="mt-4">
+              <div className="text-red-500">An error occurred.</div>
+              <Button
+                type="button"
+                className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
+                onClick={() => reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => setStep(2)}>
+              Edit Information
+            </Button>
+            
+            {status === 'streaming' && (
+              <Button onClick={stop} variant="destructive">
+                Stop Generation
+              </Button>
+            )}
+            
+            <Button onClick={() => router.push("/dashboard")}>
+              Return to Dashboard
             </Button>
           </div>
         </div>
