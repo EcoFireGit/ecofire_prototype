@@ -45,15 +45,24 @@ export async function POST(req: NextRequest) {
           { role: "user", content: outcomePrompt },
           { role: "assistant", content: text },
         ];
-        await chatService.saveChatHistory(userId, chatId, messages);
-        console.log("Chat saved with ID:", chatId);
+        try {
+          await chatService.saveChatHistory(userId, chatId, messages);
+          console.log("Chat saved with ID:", chatId);
+        } catch (saveError) {
+          console.error("Error saving chat history:", saveError);
+          // We'll continue even if saving fails
+        }
       },
     });
 
+    console.log("Stream response generated, sending back to client");
     // Respond with the stream
     return result.toDataStreamResponse();
   } catch (error) {
     console.error("Error in onboarding API:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    return new Response(JSON.stringify({ error: "Internal Server Error", message: error.message }), { 
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 }

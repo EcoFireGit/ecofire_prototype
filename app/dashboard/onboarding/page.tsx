@@ -2,7 +2,7 @@
 "use client";
 
 import { useChat } from '@ai-sdk/react';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,10 @@ export default function OnboardingPage() {
     api: '/api/onboarding',
     onResponse(response) {
       console.log('Response received:', response.status);
-      // If status is not OK, we'll handle in onError
+      if (!response.ok) {
+        console.error('API response not OK:', response.status);
+        // We'll let onError handle this
+      }
     },
     onFinish(message, { usage, finishReason }) {
       console.log('Usage', usage);
@@ -48,6 +51,8 @@ export default function OnboardingPage() {
     },
     onError(error) {
       console.error('Chat error:', error);
+      // Return to step 2 so the user can try again
+      setStep(2);
       toast({
         title: "Error",
         description: "An error occurred while processing your business information. Please try again.",
@@ -71,6 +76,29 @@ export default function OnboardingPage() {
   const handlePreviousStep = () => {
     setStep(step - 1);
   };
+
+  // Add timeout handling to prevent infinite loading state
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (step === 2.5) {
+      // Set a 30-second timeout to revert back to step 2 if no response
+      timeoutId = setTimeout(() => {
+        console.log("Timeout reached, reverting to step 2");
+        setStep(2);
+        stop(); // Stop any ongoing streaming
+        toast({
+          title: "Request Timeout",
+          description: "The analysis is taking longer than expected. Please try again.",
+          variant: "destructive"
+        });
+      }, 30000); // 30 seconds timeout
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [step, toast, stop]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +197,23 @@ export default function OnboardingPage() {
           <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
           <p className="text-lg font-medium">Analyzing your business...</p>
           <p className="text-sm text-gray-500">This may take a moment. We're generating strategic recommendations based on your input.</p>
+          
+          {/* Timeout recovery option */}
+          <div className="mt-8">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setStep(2);
+                stop();
+                toast({
+                  title: "Process cancelled",
+                  description: "You can try submitting again with more details.",
+                });
+              }}
+            >
+              Cancel and try again
+            </Button>
+          </div>
         </div>
       )}
 
