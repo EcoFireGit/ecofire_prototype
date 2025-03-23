@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, Clipboard2Check } from "lucide-react"
+import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -23,7 +23,7 @@ const items = [
   {
     title: "Onboarding",
     url: "/dashboard/onboarding",
-    icon: Clipboard2Check,
+    icon: ClipboardCheck,
   },
   {
     title: "Quick Guide",
