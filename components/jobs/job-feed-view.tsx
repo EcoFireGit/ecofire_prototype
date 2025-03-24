@@ -12,7 +12,8 @@ import { completedColumns } from "@/components/jobs/table/completedColumns";
 import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
 import { Task } from "@/components/tasks/types";
 import { JobsGrid } from "@/components/jobs/jobs-grid";
-import FilterComponent from "@/components/filters/filter-component"; // Import the FilterComponent
+import FilterComponent from "@/components/filters/filter-component";
+import SortingComponent from "@/components/sorting/sorting-component";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -44,8 +45,10 @@ function convertJobsToTableData(
 export default function JobsPage() {
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
   const [filteredActiveJobs, setFilteredActiveJobs] = useState<Job[]>([]);
+  const [sortedActiveJobs, setSortedActiveJobs] = useState<Job[]>([]);
   const [completedJobs, setCompletedJobs] = useState<Job[]>([]);
   const [filteredCompletedJobs, setFilteredCompletedJobs] = useState<Job[]>([]);
+  const [sortedCompletedJobs, setSortedCompletedJobs] = useState<Job[]>([]);
   const [businessFunctions, setBusinessFunctions] = useState<
     BusinessFunctionForDropdown[]
   >([]);
@@ -70,6 +73,12 @@ export default function JobsPage() {
 
   const { toast } = useToast();
 
+  // Effect to update sorted jobs when filtered jobs change
+  useEffect(() => {
+    setSortedActiveJobs(filteredActiveJobs);
+    setSortedCompletedJobs(filteredCompletedJobs);
+  }, [filteredActiveJobs, filteredCompletedJobs]);
+
   // Fetch business functions
   const fetchBusinessFunctions = async () => {
     try {
@@ -91,7 +100,7 @@ export default function JobsPage() {
     }
   };
 
-  // New function to fetch all owners
+  // Function to fetch all owners
   const fetchOwners = async () => {
     try {
       const response = await fetch('/api/owners');
@@ -187,17 +196,6 @@ export default function JobsPage() {
     } catch (error) {
       console.error('Error creating task owner mapping:', error);
     }
-  };
-
-  // Function to calculate the percentage of completed tasks for a job
-  const calculateJobProgress = (job: Job) => {
-    // This is a placeholder implementation - you'll need to adjust based on your data structure
-    if (!job.tasks || job.tasks.length === 0) return 0;
-    
-    // Ideally, you would fetch task completion status from your API
-    // For now, we'll use a random value between 0 and 100 for display purposes
-    // In production, you should replace this with actual data
-    return Math.floor(Math.random() * 101); // Random value between 0 and 100
   };
 
   // Function to handle active job selection
@@ -378,8 +376,10 @@ export default function JobsPage() {
         
         setActiveJobs(activeJobs);
         setFilteredActiveJobs(activeJobs);
+        setSortedActiveJobs(activeJobs);
         setCompletedJobs(completedJobs);
         setFilteredCompletedJobs(completedJobs);
+        setSortedCompletedJobs(completedJobs);
       } else {
         setError(jobsResult.error);
       }
@@ -395,7 +395,7 @@ export default function JobsPage() {
     fetchJobs();
   }, []);
 
-  // New function to handle filter changes
+  // Function to handle filter changes
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
     
@@ -472,6 +472,16 @@ export default function JobsPage() {
     });
     
     return matches;
+  };
+
+  // Handler for sort changes
+  const handleActiveSortChange = (sortedJobs: Job[]) => {
+    setSortedActiveJobs(sortedJobs);
+  };
+
+  // Handler for completed jobs sort changes
+  const handleCompletedSortChange = (sortedJobs: Job[]) => {
+    setSortedCompletedJobs(sortedJobs);
   };
 
   const handleCreate = async (jobData: Partial<Job>) => {
@@ -675,17 +685,25 @@ export default function JobsPage() {
           </div>
         </div>
 
-        {/* Add the FilterComponent here */}
-        <FilterComponent
-          onFilterChange={handleFilterChange}
-          businessFunctions={businessFunctions}
-          owners={owners}
-          initialFilters={activeFilters}
-        />
+        {/* Filter and Sort controls */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+          <FilterComponent
+            onFilterChange={handleFilterChange}
+            businessFunctions={businessFunctions}
+            owners={owners}
+            initialFilters={activeFilters}
+          />
+          
+          <SortingComponent
+            onSortChange={handleActiveSortChange}
+            jobs={filteredActiveJobs}
+            taskDetails={taskDetails}
+          />
+        </div>
 
         {viewMode === "grid" ? (
           <JobsGrid 
-            data={filteredActiveJobs} // Use filtered jobs instead of all active jobs
+            data={sortedActiveJobs} // Use sorted jobs instead of filtered
             onEdit={handleOpenEdit}
             onDelete={handleDelete}
             onSelect={handleActiveSelect}
@@ -696,7 +714,7 @@ export default function JobsPage() {
         ) : (
           <DataTable
             columns={columns(handleOpenEdit, handleDelete, handleActiveSelect, handleOpenTasksSidebar, taskOwnerMap)}
-            data={filteredActiveJobs} // Use filtered jobs instead of all active jobs
+            data={sortedActiveJobs} // Use sorted jobs instead of filtered
           />
         )}
 
@@ -705,11 +723,16 @@ export default function JobsPage() {
           <>
             <div className="mt-16 mb-6 flex justify-between items-center">
               <h2 className="text-2xl font-bold">Completed Jobs</h2>
+              <SortingComponent
+                onSortChange={handleCompletedSortChange}
+                jobs={filteredCompletedJobs}
+                taskDetails={taskDetails}
+              />
             </div>
 
             {viewMode === "grid" ? (
               <JobsGrid
-                data={filteredCompletedJobs} // Use filtered jobs instead of all completed jobs
+                data={sortedCompletedJobs} // Use sorted jobs instead of filtered
                 onEdit={handleOpenEdit}
                 onDelete={handleDelete}
                 onSelect={handleCompletedSelect}
@@ -726,7 +749,7 @@ export default function JobsPage() {
                   handleOpenTasksSidebar,
                   taskOwnerMap
                 )}
-                data={filteredCompletedJobs} // Use filtered jobs instead of all completed jobs
+                data={sortedCompletedJobs} // Use sorted jobs instead of filtered
               />
             )}
           </>
