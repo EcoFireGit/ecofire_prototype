@@ -82,17 +82,27 @@ export default function OnboardingPage() {
     let timeoutId: NodeJS.Timeout;
     
     if (step === 2.5) {
-      // Set a 30-second timeout to revert back to step 2 if no response
+      // Set a 35-second timeout to revert back to step 2 if no response
       timeoutId = setTimeout(() => {
         console.log("Timeout reached, reverting to step 2");
         setStep(2);
         stop(); // Stop any ongoing streaming
         toast({
           title: "Request Timeout",
-          description: "The analysis is taking longer than expected. Please try again.",
+          description: "The analysis is taking longer than expected. Please try again with a more concise description.",
           variant: "destructive"
         });
-      }, 30000); // 30 seconds timeout
+      }, 35000); // 35 seconds timeout - slightly longer than the backend timeout
+      
+      // Also set a notification after 15 seconds to let user know it's still processing
+      setTimeout(() => {
+        if (step === 2.5) {
+          toast({
+            title: "Still Processing",
+            description: "The AI is working on your business analysis. This might take a moment.",
+          });
+        }
+      }, 15000);
     }
     
     return () => {
@@ -112,18 +122,43 @@ export default function OnboardingPage() {
       return;
     }
     
+    // Check if the business description is too long, which might cause timeouts
+    if (businessDescription.length > 3000) {
+      toast({
+        title: "Description Too Long",
+        description: "Please keep your business description under 3000 characters to avoid timeouts.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Log to ensure data is correctly formed
     console.log("Submitting form data:", {
-      businessName,
-      businessIndustry,
-      businessDescription
+      businessName: businessName.trim(),
+      businessIndustry: businessIndustry.trim(),
+      businessDescription: businessDescription.substring(0, 100) + "..." // Log truncated for readability
     });
+    
+    // Reset any previous errors
+    if (error) {
+      reload(); // Reset error state in useChat
+    }
     
     // Set step to indicate processing is happening
     setStep(2.5); // Use a fractional step to indicate "processing"
     
-    // Handle form submission - this triggers the API call via useChat
-    handleSubmit(e);
+    try {
+      // Handle form submission - this triggers the API call via useChat
+      handleSubmit(e);
+    } catch (err) {
+      console.error("Error during form submission:", err);
+      setStep(2);
+      toast({
+        title: "Submission Error",
+        description: "There was a problem submitting your data. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
