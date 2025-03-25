@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { TaskDialog } from "@/components/tasks/tasks-dialog";
-import FilterComponent from "@/components/filters/filter-component"; // Import the FilterComponent
+import FilterComponent from "@/components/filters/filter-component";
 import {
   Dialog,
   DialogContent,
@@ -43,9 +43,11 @@ export default function TaskFeedView() {
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [taskNotes, setTaskNotes] = useState<{title: string, notes: string} | null>(null);
 
-  const fetchTasks = async () => {
+  // Function to fetch all tasks and jobs
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      // First get all jobs to identify next tasks
+      // First get all jobs
       const jobsResponse = await fetch("/api/jobs");
       const jobsResult = await jobsResponse.json();
       
@@ -56,21 +58,13 @@ export default function TaskFeedView() {
       // Create a job map for lookup
       const jobsMap: Record<string, any> = {};
       
-      // Collect all task IDs marked as next tasks in jobs
-      const nextTaskIds: string[] = [];
-      
-      // Also collect all business function ids to fetch their names
+      // Collect all business function ids to fetch their names
       const businessFunctionIds: string[] = [];
       
       jobsResult.data.forEach((job: any) => {
         // Store the job in our map
         if (job._id) {
           jobsMap[job._id] = job;
-        }
-        
-        // Check if this job has a next task
-        if (job.nextTaskId) {
-          nextTaskIds.push(job.nextTaskId);
         }
         
         // Collect business function ids
@@ -107,40 +101,125 @@ export default function TaskFeedView() {
         }
       }
       
-      console.log("Next task IDs from jobs:", nextTaskIds);
-      
-      // If we have next task IDs, fetch those specific tasks
-      if (nextTaskIds.length > 0) {
-        // Fetch tasks one by one to avoid issues with the /api/tasks endpoint
-        const nextTasks = [];
+      // Try to fetch tasks using the next-steps endpoint first (which we know works)
+      let allTasks = [];
+      try {
+        // First try to get all tasks
+        const allTasksResponse = await fetch("/api/tasks");
+        const allTasksResult = await allTasksResponse.json();
         
-        for (const taskId of nextTaskIds) {
+        if (allTasksResult.success && Array.isArray(allTasksResult.data)) {
+          allTasks = allTasksResult.data;
+        } else {
+          // Fallback to fetching next tasks only
+          console.log("Falling back to next-steps endpoint");
+          const nextTasksResponse = await fetch("/api/tasks/next-steps");
+          const nextTasksResult = await nextTasksResponse.json();
+          
+          if (nextTasksResult.success && Array.isArray(nextTasksResult.data)) {
+            allTasks = nextTasksResult.data;
+          } else {
+            throw new Error("Failed to fetch tasks from either endpoint");
+          }
+        }
+      } catch (taskError) {
+        console.error("Error fetching tasks:", taskError);
+        // Try another approach - fetch tasks by job IDs
+        
+        // Get all job IDs
+        const jobIds = Object.keys(jobsMap);
+        let jobTasks: any[] = [];
+        
+        // Fetch tasks for each job
+        for (const jobId of jobIds) {
           try {
-            const taskResponse = await fetch(`/api/tasks/${taskId}`);
-            const taskResult = await taskResponse.json();
+            const jobTasksResponse = await fetch(`/api/tasks/job/${jobId}`);
+            const jobTasksResult = await jobTasksResponse.json();
             
-            if (taskResult.success && taskResult.data) {
-              nextTasks.push(taskResult.data);
+            if (jobTasksResult.success && Array.isArray(jobTasksResult.data)) {
+              jobTasks = [...jobTasks, ...jobTasksResult.data];
             }
-          } catch (taskError) {
-            console.error(`Error fetching task ${taskId}:`, taskError);
+          } catch (jobTaskError) {
+            console.error(`Error fetching tasks for job ${jobId}:`, jobTaskError);
           }
         }
         
-        console.log("Fetched next tasks:", nextTasks);
-        return nextTasks;
+        if (jobTasks.length > 0) {
+          allTasks = jobTasks;
+        } else {
+          // Final fallback - construct a list from job.nextTaskId values
+          const nextTaskIds = Object.values(jobsMap)
+            .filter((job: any) => job.nextTaskId)
+            .map((job: any) => job.nextTaskId);
+            
+          for (const taskId of nextTaskIds) {
+            try {
+              const taskResponse = await fetch(`/api/tasks/${taskId}`);
+              const taskResult = await taskResponse.json();
+              
+              if (taskResult.success && taskResult.data) {
+                allTasks.push(taskResult.data);
+              }
+            } catch (taskError) {
+              console.error(`Error fetching task ${taskId}:`, taskError);
+            }
+          }
+        }
       }
       
-      return [];
+      // Fetch owners for mapping and filters
+      await fetchOwners();
+      
+      console.log("Fetched tasks:", allTasks);
+      
+      // Remove any duplicate tasks and filter out completed tasks
+      const uniqueTasks = Array.from(new Map(
+        allTasks.map((task: any) => [task._id, task])
+      ).values()).filter((task: any) => task.completed !== true);
+      
+      const sortedTasks = sortTasks(uniqueTasks, jobsMap);
+      
+      setTasks(sortedTasks);
+      setFilteredTasks(sortedTasks);
+      
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      console.error("Error fetching data:", error);
       toast({
         title: "Error",
         description: "Failed to load tasks",
         variant: "destructive",
       });
-      return [];
+    } finally {
+      setLoading(false);
     }
+  };
+  
+  // Function to sort tasks - next tasks first, ordered by job impact score
+  const sortTasks = (tasks: any[], jobsMap: Record<string, any>) => {
+    return [...tasks].sort((a, b) => {
+      // Check if task is a next task
+      const aIsNextTask = a.jobId && jobsMap[a.jobId]?.nextTaskId === a._id;
+      const bIsNextTask = b.jobId && jobsMap[b.jobId]?.nextTaskId === b._id;
+      
+      // First sort by next task status
+      if (aIsNextTask && !bIsNextTask) return -1;
+      if (!aIsNextTask && bIsNextTask) return 1;
+      
+      // If both are next tasks, sort by job impact score (higher first)
+      if (aIsNextTask && bIsNextTask) {
+        const aImpact = jobsMap[a.jobId]?.impact || 0;
+        const bImpact = jobsMap[b.jobId]?.impact || 0;
+        return bImpact - aImpact;
+      }
+      
+      // If neither are next tasks, sort by date
+      if (a.date && b.date) {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      }
+      
+      // Default fallback for sorting
+      return 0;
+    });
   };
 
   // Function to fetch owners for filters
@@ -239,39 +318,15 @@ export default function TaskFeedView() {
       return matches;
     });
     
-    setFilteredTasks(filtered);
+    // Re-sort the filtered tasks
+    const sortedFiltered = sortTasks(filtered, jobs);
+    setFilteredTasks(sortedFiltered);
   };
 
-  // Fetch all necessary data: next tasks, jobs, and owners
+  // Fetch all necessary data when component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch owners for mapping and filters
-        await fetchOwners();
-
-        // Fetch next tasks
-        const nextStepTasks = await fetchTasks();
-        
-        // Log for debugging
-        console.log("Next step tasks:", nextStepTasks);
-        
-        setTasks(nextStepTasks);
-        setFilteredTasks(nextStepTasks);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load next steps",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [toast]);
+  }, []);
 
   // Function to complete a task
   const completeTask = async (id: string) => {
@@ -313,8 +368,7 @@ export default function TaskFeedView() {
           )
         );
 
-        // Also update the job to remove the next task reference
-        // Find which job has this task as its next task
+        // If this task is a next task for a job, update the job
         const jobsWithThisNextTask = Object.values(jobs).filter(
           (job: any) => job.nextTaskId === id
         );
@@ -481,11 +535,13 @@ export default function TaskFeedView() {
           )
         );
         
-        setFilteredTasks(prevTasks => 
-          prevTasks.map(task => 
-            task._id === editingTask._id ? updatedTask : task
-          )
-        );
+        // Re-sort tasks after update
+        const updatedTasks = [...tasks.map(task => 
+          task._id === editingTask._id ? updatedTask : task
+        )];
+        
+        const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
+        setTasks(sortedUpdatedTasks);
         
         // Apply filters again to ensure the updated task still matches the current filters
         handleFilterChange(activeFilters);
@@ -555,27 +611,10 @@ export default function TaskFeedView() {
     }
   };
 
-  // Function to refresh tasks
-  const refreshTasks = async () => {
-    setLoading(true);
-    try {
-      // Fetch next tasks based on job.nextTaskId
-      const nextStepTasks = await fetchTasks();
-      setTasks(nextStepTasks);
-      setFilteredTasks(nextStepTasks);
-      
-      // Re-apply current filters to the refreshed tasks
-      handleFilterChange(activeFilters);
-    } catch (error) {
-      console.error("Error refreshing next tasks:", error);
-      toast({
-        title: "Error",
-        description: "Failed to refresh next steps",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+  // Function to check if task is a next task
+  const isNextTask = (task: any) => {
+    if (!task.jobId || !jobs[task.jobId]) return false;
+    return jobs[task.jobId].nextTaskId === task._id;
   };
 
   return (
@@ -591,7 +630,7 @@ export default function TaskFeedView() {
       <div className="grid gap-6 mt-4">
         <div className="w-full">
           <NextTasks
-            tasks={filteredTasks} // Use filtered tasks instead of all tasks
+            tasks={filteredTasks}
             jobs={jobs}
             onComplete={handleCompleteTask}
             onViewTask={handleViewNotes}
@@ -601,6 +640,7 @@ export default function TaskFeedView() {
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
             businessFunctionMap={businessFunctionMap}
+            isNextTask={isNextTask}
           />
         </div>
       </div>

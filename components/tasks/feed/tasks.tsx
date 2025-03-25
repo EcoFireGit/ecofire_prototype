@@ -27,6 +27,7 @@ interface NextTasksProps {
   loading?: boolean;
   onEditTask?: (task: any) => void;
   onDeleteTask?: (id: string) => void;
+  isNextTask: (task: any) => boolean;
 }
 
 export function NextTasks({
@@ -40,6 +41,7 @@ export function NextTasks({
   loading = false,
   onEditTask,
   onDeleteTask,
+  isNextTask,
 }: NextTasksProps) {
   // Format date
   const formatDate = (dateString?: Date | string) => {
@@ -115,13 +117,10 @@ export function NextTasks({
     }
   };
 
-  // Check if this task is marked as a next task in jobs
-  const isNextTask = (task: any, jobsData: Record<string, any>) => {
-    // Find the job this task belongs to
-    const job = jobsData[task.jobId];
-
-    // Check if this job has marked this task as next
-    return job && job.nextTaskId === task._id;
+  // Get job impact score (for debugging)
+  const getJobImpact = (jobId?: string) => {
+    if (!jobId || !jobs[jobId]) return 0;
+    return jobs[jobId].impact || 0;
   };
 
   if (loading) {
@@ -133,7 +132,7 @@ export function NextTasks({
       <Card className="w-full">
         <CardContent className="p-6 flex flex-col items-center justify-center min-h-40">
           <p className="text-muted-foreground">
-            No tasks assigned as next actionable step
+            No tasks found
           </p>
         </CardContent>
       </Card>
@@ -142,193 +141,208 @@ export function NextTasks({
 
   return (
     <div className="space-y-4 w-full">
-      {tasks.map((task) => (
-        <Card
-          key={task._id}
-          className="overflow-hidden hover:shadow-md transition-shadow w-full"
-        >
-          <CardContent className="p-4">
-            <div className="flex flex-col">
-              {/* Top row with checkbox, title, and action buttons */}
-              <div className="flex items-start gap-3 mb-5">
-                {/* Checkbox */}
-                <div className="pt-1">
-                  <Checkbox
-                    checked={task.completed === true}
-                    onCheckedChange={(value) => onComplete(task._id, !!value)}
-                    aria-label="Mark as completed"
-                  />
-                </div>
-
-                {/* Content - title and job */}
-                <div
-                  className="flex-1 cursor-pointer group"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewTask(task);
-                  }}
-                >
-                  {/* Task title */}
-                  <div className="mb-3 flex justify-between items-start">
-                    <div className="flex items-center">
-                      <h3 className="text-base font-semibold group-hover:text-primary transition-colors">
-                        {task.title}
-                      </h3>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      {tasks.map((task) => {
+        const taskIsNext = isNextTask(task);
+        return (
+          <Card
+            key={task._id}
+            className={`overflow-hidden hover:shadow-md transition-shadow w-full ${
+              taskIsNext ? "border-orange-500 border-2" : ""
+            }`}
+          >
+            <CardContent className="p-4">
+              <div className="flex flex-col">
+                {/* Top row with checkbox, title, and action buttons */}
+                <div className="flex items-start gap-3 mb-5">
+                  {/* Checkbox */}
+                  <div className="pt-1">
+                    <Checkbox
+                      checked={task.completed === true}
+                      onCheckedChange={(value) => onComplete(task._id, !!value)}
+                      aria-label="Mark as completed"
+                    />
                   </div>
 
-                  {/* Parent job info */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Briefcase className="h-3 w-3 mr-1" />
-                      <span>{getJobTitle(task.jobId)}</span>
+                  {/* Content - title and job */}
+                  <div
+                    className="flex-1 cursor-pointer group"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewTask(task);
+                    }}
+                  >
+                    {/* Task title */}
+                    <div className="mb-3 flex justify-between items-start">
+                      <div className="flex items-center">
+                        <h3 className="text-base font-semibold group-hover:text-primary transition-colors">
+                          {task.title}
+                          {taskIsNext && (
+                            <Badge className="ml-2 bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
+                              Next
+                            </Badge>
+                          )}
+                        </h3>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+
+                    {/* Parent job info */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Briefcase className="h-3 w-3 mr-1" />
+                        <span>{getJobTitle(task.jobId)}</span>
+                        {/* {taskIsNext && task.jobId && jobs[task.jobId]?.impact !== undefined && (
+                          <span className="ml-2 text-xs text-gray-500">
+                            (Impact: {jobs[task.jobId].impact})
+                          </span>
+                        )} */}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Action buttons */}
-                <div className="flex">
-                  {onAddToCalendar && (
-                    <Button
-                      variant="ghost"
-                      size="default"
-                      className="h-8 mr-2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAddToCalendar(task);
-                      }}
-                      title="Add to calendar"
-                    >
-                      <Calendar className="h-4 w-4" /> Add to Calender
-                    </Button>
-                  )}
-                  <div className="flex flex-col gap-2">
-                    {/* Notes button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewTask(task);
-                      }}
-                      title="View notes"
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-
-                    {onEditTask && (
+                  {/* Action buttons */}
+                  <div className="flex">
+                    {onAddToCalendar && (
+                      <Button
+                        variant="ghost"
+                        size="default"
+                        className="h-8 mr-2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddToCalendar(task);
+                        }}
+                        title="Add to calendar"
+                      >
+                        <Calendar className="h-4 w-4" /> Add to Calender
+                      </Button>
+                    )}
+                    <div className="flex flex-col gap-2">
+                      {/* Notes button */}
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEditTask(task);
+                          onViewTask(task);
                         }}
-                        title="Edit task"
+                        title="View notes"
                       >
-                        <Edit className="h-4 w-4" />
+                        <FileText className="h-4 w-4" />
                       </Button>
+
+                      {onEditTask && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditTask(task);
+                          }}
+                          title="Edit task"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+
+                      {onDeleteTask && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              window.confirm(
+                                "Are you sure you want to delete this task?"
+                              )
+                            ) {
+                              onDeleteTask(task._id);
+                            }
+                          }}
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom row with business function and task details */}
+                <div className="flex justify-between items-center gap-16 pl-4">
+                  {/* Business function badge on left */}
+                  <div>
+                    {getBusinessFunctionName(task.jobId) && (
+                      <Badge variant="secondary">
+                        {getBusinessFunctionName(task.jobId)}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Task details on right */}
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    {/* Focus Level */}
+                    {task.focusLevel && (
+                      <div className="flex items-center">
+                        <Circle
+                          className={`h-4 w-4 mr-1 ${getFocusLevelColor(
+                            task.focusLevel
+                          )}`}
+                          fill="currentColor"
+                        />
+                        <span className="text-sm">
+                          Focus: {task.focusLevel}
+                        </span>
+                      </div>
                     )}
 
-                    {onDeleteTask && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            window.confirm(
-                              "Are you sure you want to delete this task?"
-                            )
-                          ) {
-                            onDeleteTask(task._id);
-                          }
-                        }}
-                        title="Delete task"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    {/* Joy Level */}
+                    {task.joyLevel && (
+                      <div className="flex items-center">
+                        <Smile
+                          className={`h-4 w-4 mr-1 ${getJoyLevelColor(
+                            task.joyLevel
+                          )}`}
+                        />
+                        <span className="text-sm">Joy: {task.joyLevel}</span>
+                      </div>
                     )}
+
+                    {/* Date */}
+                    {task.date && (
+                      <div className="flex items-center text-muted-foreground">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        <span className="text-sm">{formatDate(task.date)}</span>
+                      </div>
+                    )}
+
+                    {/* Hours */}
+                    {task.requiredHours !== undefined && (
+                      <div className="flex items-center text-muted-foreground">
+                        <Clock className="h-4 w-4 mr-1" />
+                        <span className="text-sm">
+                          {task.requiredHours} hrs
+                        </span>
+                      </div>
+                    )}
+                    {/* Owner */}
+                    <div className="flex items-center">
+                      <div className="h-6 w-6 rounded-full bg-secondary overflow-hidden flex items-center justify-center text-xs font-medium mr-2">
+                        {getOwnerName(task.owner).charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm">
+                        {getOwnerName(task.owner)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Bottom row with business function and task details */}
-              <div className="flex justify-between items-center gap-16 pl-4">
-                {/* Business function badge on left */}
-                <div>
-                  {getBusinessFunctionName(task.jobId) && (
-                    <Badge variant="secondary">
-                      {getBusinessFunctionName(task.jobId)}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Task details on right */}
-                <div className="flex flex-wrap gap-4 text-sm">
-                  {/* Focus Level */}
-                  {task.focusLevel && (
-                    <div className="flex items-center">
-                      <Circle
-                        className={`h-4 w-4 mr-1 ${getFocusLevelColor(
-                          task.focusLevel
-                        )}`}
-                        fill="currentColor"
-                      />
-                      <span className="text-sm">
-                        Focus: {task.focusLevel}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Joy Level */}
-                  {task.joyLevel && (
-                    <div className="flex items-center">
-                      <Smile
-                        className={`h-4 w-4 mr-1 ${getJoyLevelColor(
-                          task.joyLevel
-                        )}`}
-                      />
-                      <span className="text-sm">Joy: {task.joyLevel}</span>
-                    </div>
-                  )}
-
-                  {/* Date */}
-                  {task.date && (
-                    <div className="flex items-center text-muted-foreground">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      <span className="text-sm">{formatDate(task.date)}</span>
-                    </div>
-                  )}
-
-                  {/* Hours */}
-                  {task.requiredHours !== undefined && (
-                    <div className="flex items-center text-muted-foreground">
-                      <Clock className="h-4 w-4 mr-1" />
-                      <span className="text-sm">
-                        {task.requiredHours} hrs
-                      </span>
-                    </div>
-                  )}
-                  {/* Owner */}
-                  <div className="flex items-center">
-                    <div className="h-6 w-6 rounded-full bg-secondary overflow-hidden flex items-center justify-center text-xs font-medium mr-2">
-                      {getOwnerName(task.owner).charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm">
-                      {getOwnerName(task.owner)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
