@@ -10,11 +10,11 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
-    console.log("inside onboarding route");
+    //console.log("inside onboarding route");
     const data = await req.json();
     
     const { businessName, businessIndustry, businessDescription } = data.data;
-    console.log(businessName, businessIndustry, businessDescription);
+    // console.log(businessName, businessIndustry, businessDescription);
     if (!businessName || !businessIndustry || !businessDescription) {
       return new Response(JSON.stringify({ 
         error: "Bad Request", 
@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
     
     const chatId = crypto.randomUUID(); // Generate a new chat ID for this session
 
-    console.log("Processing onboarding request for:", businessName);
-    console.log("Industry:", businessIndustry);
-    console.log("Description:", businessDescription.substring(0, 100) + "...");
+    // console.log("Processing onboarding request for:", businessName);
+    // console.log("Industry:", businessIndustry);
+    // console.log("Description:", businessDescription.substring(0, 100) + "...");
     
     const systemPrompt =
       "You are an elite business strategy consultant specializing in guiding startups and small businesses. " +
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
           const messages = [
             { role: "user", content: outcomePrompt },
             { role: "assistant", content: text },
+            { role: "system", content: systemPrompt }
           ];
           try {
             await chatService.saveChatHistory(userId, chatId, messages);
