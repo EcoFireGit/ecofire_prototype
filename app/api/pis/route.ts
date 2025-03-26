@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { PIService } from '@/lib/services/pi.service';
 import { auth } from '@clerk/nextjs/server';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const PIsService = new PIService();
 
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     }
     const PIData = await request.json();
     const PI = await PIsService.createPI(PIData, userId);
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       data: PI

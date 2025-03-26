@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { QBOService } from '@/lib/services/qbo.service';
 import { auth } from '@clerk/nextjs/server';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const qboService = new QBOService();
 
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     }
     const qboData = await request.json();
     const qbo = await qboService.createQBO(qboData, userId);
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       data: qbo

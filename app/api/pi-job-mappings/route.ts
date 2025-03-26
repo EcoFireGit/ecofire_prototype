@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { MappingService } from '@/lib/services/pi-job-mapping.service';
 import { auth } from '@clerk/nextjs/server';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const JPMappingService = new MappingService();
 
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     }
     const MappingData = await request.json();
     const JP = await JPMappingService.CreateMapping(MappingData, userId);
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       data: JP

@@ -74,7 +74,6 @@ export function JobDialog({
       setFormData({
         title: initialData.title || "",
         notes: initialData.notes || "",
-        owner: initialData.owner || "",
         businessFunctionId: initialData.businessFunctionId || "",
         dueDate: initialData.dueDate
           ? new Date(initialData.dueDate).toISOString().split("T")[0]
@@ -170,19 +169,6 @@ export function JobDialog({
                 }
                 className="col-span-3 min-h-[100px]"
                 placeholder="Add any notes or description for this job..."
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="owner" className="text-right">
-                Owner
-              </Label>
-              <Input
-                id="owner"
-                value={formData.owner}
-                onChange={(e) =>
-                  setFormData({ ...formData, owner: e.target.value })
-                }
-                className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

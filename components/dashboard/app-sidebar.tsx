@@ -42,7 +42,7 @@ const items = [
   },
   {
     title: "Jija",
-    url: "#",
+    url: "/dashboard/jija",
     icon: Dog,
   },
   {

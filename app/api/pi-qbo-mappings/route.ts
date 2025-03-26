@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIQBOMappingService } from "@/lib/services/pi-qbo-mapping.service";
 import { auth } from '@clerk/nextjs/server';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const mappingService = new PIQBOMappingService();
 
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
     
     // Create mapping
     const mapping = await mappingService.createMapping(data, userId);
-    
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       data: mapping

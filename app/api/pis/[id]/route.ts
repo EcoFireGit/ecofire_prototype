@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { PIService } from '@/lib/services/pi.service';
 import { auth } from '@clerk/nextjs/server';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const piService = new PIService();
 
@@ -76,7 +77,7 @@ export async function PUT(
         { status: 404 }
       );
     }
-
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       data: updatedPI
@@ -120,7 +121,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
-
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       message: 'PI deleted successfully'

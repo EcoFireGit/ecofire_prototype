@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIQBOMappingService } from "@/lib/services/pi-qbo-mapping.service";
 import { auth } from '@clerk/nextjs/server';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const mappingService = new PIQBOMappingService();
 
@@ -78,7 +79,7 @@ export async function PUT(
         { status: 404 }
       );
     }
-    
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       data: updatedMapping
@@ -123,7 +124,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       message: 'Mapping deleted successfully'

@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { QBOService } from '@/lib/services/qbo.service';
 import { auth } from '@clerk/nextjs/server';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const qboService = new QBOService();
 
@@ -75,6 +76,7 @@ export async function PUT(
         { status: 404 }
       );
     }
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       data: updatedQBO
@@ -116,6 +118,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
+    await updateJobImpactValues(userId);
     return NextResponse.json({
       success: true,
       message: 'QBO deleted successfully'

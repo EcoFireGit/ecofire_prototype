@@ -3,15 +3,16 @@ import {
   SignInButton,
   SignedIn,
   SignedOut,
-  UserButton
-} from '@clerk/nextjs'
-import './globals.css'
-import Navbar from '@/components/landing_page/navbar'
-import { Toaster } from "@/components/ui/toaster"
+  UserButton,
+} from "@clerk/nextjs";
+import "./globals.css";
+import Navbar from "@/components/landing_page/navbar";
+import { Toaster } from "@/components/ui/toaster";
+import { TaskProvider } from "@/hooks/task-context";
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <ClerkProvider>
@@ -21,12 +22,12 @@ export default function RootLayout({
             <SignInButton />
           </SignedOut>
           <SignedIn>
-            <Navbar/>
-            {children}
+            <Navbar />
+            <TaskProvider>{children}</TaskProvider>
           </SignedIn>
-          <Toaster/>
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>
-  )
+  );
 }
