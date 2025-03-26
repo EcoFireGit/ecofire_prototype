@@ -6,7 +6,7 @@ const businessFunctionService = new BusinessFunctionService();
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -19,12 +19,15 @@ export async function DELETE(
         { status: 401 }
       );
     }
+   
+    // Use the Stack Overflow solution to correctly await the ID
+    const id = (await params).id;
     
     const deleted = await businessFunctionService.deleteBusinessFunction(
-      params.id,
+      id,
       userId
     );
-    
+   
     if (!deleted) {
       return NextResponse.json(
         {
@@ -34,13 +37,13 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
+   
     return NextResponse.json({
       success: true,
       message: 'Business function deleted successfully'
     });
   } catch (error: any) {
-    console.error(`Error in DELETE /api/business-functions/${params.id}:`, error);
+    console.error('Error in DELETE business function:', error);
    
     return NextResponse.json(
       {
@@ -54,7 +57,7 @@ export async function DELETE(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -67,9 +70,12 @@ export async function PATCH(
         { status: 401 }
       );
     }
+   
+    // Use the Stack Overflow solution to correctly await the ID
+    const id = (await params).id;
     
     const { name } = await request.json();
-    
+   
     if (!name || typeof name !== 'string' || name.trim() === '') {
       return NextResponse.json(
         {
@@ -79,13 +85,13 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    
+   
     const updatedFunction = await businessFunctionService.updateBusinessFunction(
-      params.id,
+      id,
       name,
       userId
     );
-    
+   
     if (!updatedFunction) {
       return NextResponse.json(
         {
@@ -95,14 +101,14 @@ export async function PATCH(
         { status: 404 }
       );
     }
-    
+   
     return NextResponse.json({
       success: true,
       data: updatedFunction
     });
   } catch (error) {
-    console.error(`Error in PATCH /api/business-functions/${params.id}:`, error);
-    
+    console.error('Error in PATCH business function:', error);
+   
     return NextResponse.json(
       {
         success: false,

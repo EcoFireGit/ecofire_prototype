@@ -1,16 +1,14 @@
 // app/api/qbos/[id]/route.ts
 // description: Get, update, delete QBO by id
-
 import { NextResponse } from 'next/server';
 import { QBOService } from '@/lib/services/qbo.service';
 import { auth } from '@clerk/nextjs/server';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
-
 const qboService = new QBOService();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -23,7 +21,9 @@ export async function GET(
         { status: 401 }
       );
     }
-    const qbo = await qboService.getQBOById(params.id, userId);
+    
+    const id = (await params).id;
+    const qbo = await qboService.getQBOById(id, userId);
  
     if (!qbo) {
       return NextResponse.json(
@@ -39,7 +39,7 @@ export async function GET(
       data: qbo
     });
   } catch (error) {
-    console.error(`Error in GET /api/qbos/${params.id}:`, error);
+    console.error('Error in GET /api/qbos:', error);
     return NextResponse.json(
       {
         success: false,
@@ -52,7 +52,7 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -65,8 +65,11 @@ export async function PUT(
         { status: 401 }
       );
     }
+    
+    const id = (await params).id;
     const updateData = await request.json();
-    const updatedQBO = await qboService.updateQBO(params.id, userId, updateData);
+    const updatedQBO = await qboService.updateQBO(id, userId, updateData);
+    
     if (!updatedQBO) {
       return NextResponse.json(
         {
@@ -82,7 +85,7 @@ export async function PUT(
       data: updatedQBO
     });
   } catch (error) {
-    console.error(`Error in PUT /api/qbos/${params.id}:`, error);
+    console.error('Error in PUT /api/qbos:', error);
     return NextResponse.json(
       {
         success: false,
@@ -95,7 +98,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -108,7 +111,10 @@ export async function DELETE(
         { status: 401 }
       );
     }
-    const deleted = await qboService.deleteQBO(params.id, userId);
+    
+    const id = (await params).id;
+    const deleted = await qboService.deleteQBO(id, userId);
+    
     if (!deleted) {
       return NextResponse.json(
         {
@@ -124,7 +130,7 @@ export async function DELETE(
       message: 'QBO deleted successfully'
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/qbos/${params.id}:`, error);
+    console.error('Error in DELETE /api/qbos:', error);
     return NextResponse.json(
       {
         success: false,

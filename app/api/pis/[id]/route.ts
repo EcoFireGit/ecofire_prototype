@@ -4,12 +4,11 @@ import { NextResponse } from 'next/server';
 import { PIService } from '@/lib/services/pi.service';
 import { auth } from '@clerk/nextjs/server';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
-
 const piService = new PIService();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -22,8 +21,10 @@ export async function GET(
         { status: 401 }
       );
     }
-    const pi = await piService.getPIById(params.id, userId);
-  
+    
+    const id = (await params).id;
+    const pi = await piService.getPIById(id, userId);
+ 
     if (!pi) {
       return NextResponse.json(
         {
@@ -38,7 +39,7 @@ export async function GET(
       data: pi
     });
   } catch (error) {
-    console.error(`Error in GET /api/pis/${params.id}:`, error);
+    console.error('Error in GET /api/pis:', error);
     return NextResponse.json(
       {
         success: false,
@@ -51,7 +52,7 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -64,10 +65,11 @@ export async function PUT(
         { status: 401 }
       );
     }
-
+    
+    const id = (await params).id;
     const updateData = await request.json();
-    const updatedPI = await piService.updatePI(params.id, userId, updateData);
-
+    const updatedPI = await piService.updatePI(id, userId, updateData);
+    
     if (!updatedPI) {
       return NextResponse.json(
         {
@@ -83,7 +85,7 @@ export async function PUT(
       data: updatedPI
     });
   } catch (error) {
-    console.error(`Error in PUT /api/pis/${params.id}:`, error);
+    console.error('Error in PUT /api/pis:', error);
     return NextResponse.json(
       {
         success: false,
@@ -96,7 +98,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -109,9 +111,10 @@ export async function DELETE(
         { status: 401 }
       );
     }
-
-    const deleted = await piService.deletePI(params.id, userId);
-
+    
+    const id = (await params).id;
+    const deleted = await piService.deletePI(id, userId);
+    
     if (!deleted) {
       return NextResponse.json(
         {
@@ -127,7 +130,7 @@ export async function DELETE(
       message: 'PI deleted successfully'
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/pis/${params.id}:`, error);
+    console.error('Error in DELETE /api/pis:', error);
     return NextResponse.json(
       {
         success: false,

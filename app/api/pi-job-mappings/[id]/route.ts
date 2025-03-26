@@ -4,12 +4,11 @@ import { NextResponse } from 'next/server';
 import { MappingService } from '@/lib/services/pi-job-mapping.service';
 import { auth } from '@clerk/nextjs/server';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
-
 const mappingService = new MappingService();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -22,8 +21,10 @@ export async function GET(
         { status: 401 }
       );
     }
-    const JP = await mappingService.getMappingById(params.id, userId);
-  
+    
+    const id = (await params).id;
+    const JP = await mappingService.getMappingById(id, userId);
+ 
     if (!JP) {
       return NextResponse.json(
         {
@@ -38,7 +39,7 @@ export async function GET(
       data: JP
     });
   } catch (error) {
-    console.error(`Error in GET /api/MappingJP/${params.id}:`, error);
+    console.error('Error in GET /api/MappingJP:', error);
     return NextResponse.json(
       {
         success: false,
@@ -51,7 +52,7 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -64,10 +65,11 @@ export async function PUT(
         { status: 401 }
       );
     }
-
+    
+    const id = (await params).id;
     const updateData = await request.json();
-    const updatedMapping = await mappingService.updateMappingJP(params.id, userId, updateData);
-
+    const updatedMapping = await mappingService.updateMappingJP(id, userId, updateData);
+    
     if (!updatedMapping) {
       return NextResponse.json(
         {
@@ -83,7 +85,7 @@ export async function PUT(
       data: updatedMapping
     });
   } catch (error) {
-    console.error(`Error in PUT /api/MappingJP/${params.id}:`, error);
+    console.error('Error in PUT /api/MappingJP:', error);
     return NextResponse.json(
       {
         success: false,
@@ -96,7 +98,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -109,9 +111,10 @@ export async function DELETE(
         { status: 401 }
       );
     }
-
-    const deleted = await mappingService.deleteMappingJP(params.id, userId);
-
+    
+    const id = (await params).id;
+    const deleted = await mappingService.deleteMappingJP(id, userId);
+    
     if (!deleted) {
       return NextResponse.json(
         {
@@ -127,7 +130,7 @@ export async function DELETE(
       message: 'Mapping deleted successfully'
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/MappingJP/${params.id}:`, error);
+    console.error('Error in DELETE /api/MappingJP:', error);
     return NextResponse.json(
       {
         success: false,
