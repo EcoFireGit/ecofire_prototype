@@ -7,8 +7,6 @@ const searchService = new SearchService();
 
 export async function GET(request: Request) {
     try {
-
-        console.log(auth());
         const { userId } = await auth();
         if (!userId) {
           return NextResponse.json(

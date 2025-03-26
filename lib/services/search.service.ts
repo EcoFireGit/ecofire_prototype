@@ -24,8 +24,6 @@ export class SearchService {
   ): Promise<SearchResult[]> {
     try {
       await dbConnect();
-      
-      console.log(query);
       const searchCriteria: any = {
         userId,
         $text: { $search: query }
@@ -79,7 +77,7 @@ export class SearchService {
         
       return JSON.parse(JSON.stringify(combinedResults));
     } catch (error) {
-      console.log(error);
+      console.error('Error in searchService/search:', error);
       throw new Error('Error performing search operation');
     }
   }
