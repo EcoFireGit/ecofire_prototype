@@ -12,8 +12,9 @@ export async function POST(req: NextRequest) {
     }
     console.log("inside onboarding route");
     const data = await req.json();
-    const { businessName, businessIndustry, businessDescription } = data;
     
+    const { businessName, businessIndustry, businessDescription } = data.data;
+    console.log(businessName, businessIndustry, businessDescription);
     if (!businessName || !businessIndustry || !businessDescription) {
       return new Response(JSON.stringify({ 
         error: "Bad Request", 
