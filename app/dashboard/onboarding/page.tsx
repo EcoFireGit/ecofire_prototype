@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useChat } from '@ai-sdk/react';
@@ -14,7 +13,6 @@ import { Loader2 } from "lucide-react";
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
   const [businessIndustry, setBusinessIndustry] = useState("");
-  const [businessDescription, setBusinessDescription] = useState("");
   const [step, setStep] = useState(1);
   const { toast } = useToast();
   const router = useRouter();
@@ -30,17 +28,18 @@ export default function OnboardingPage() {
     stop,
     setMessages,
   } = useChat({
-    body: { 
-      businessName,
-      businessIndustry,
-      businessDescription
-    },
     api: '/api/onboarding',
     onResponse(response) {
       console.log('Response received:', response.status);
       if (!response.ok) {
         console.error('API response not OK:', response.status);
-        // We'll let onError handle this
+        stop();
+        setStep(2);
+        toast({
+          title: "Error",
+          description: `Server error: ${response.status}`,
+          variant: "destructive"
+        });
       }
     },
     onFinish(message, { usage, finishReason }) {
@@ -113,7 +112,7 @@ export default function OnboardingPage() {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!businessDescription.trim()) {
+    if (!input.trim()) {
       toast({
         title: "Missing Information",
         description: "Please provide a description of your business",
@@ -123,7 +122,7 @@ export default function OnboardingPage() {
     }
     
     // Check if the business description is too long, which might cause timeouts
-    if (businessDescription.length > 3000) {
+    if (input.length > 3000) {
       toast({
         title: "Description Too Long",
         description: "Please keep your business description under 3000 characters to avoid timeouts.",
@@ -136,7 +135,7 @@ export default function OnboardingPage() {
     console.log("Submitting form data:", {
       businessName: businessName.trim(),
       businessIndustry: businessIndustry.trim(),
-      businessDescription: businessDescription.substring(0, 100) + "..." // Log truncated for readability
+      businessDescription: input.substring(0, 100) + "..." // Log truncated for readability
     });
     
     // Reset any previous errors
@@ -148,8 +147,15 @@ export default function OnboardingPage() {
     setStep(2.5); // Use a fractional step to indicate "processing"
     
     try {
-      // Handle form submission - this triggers the API call via useChat
-      handleSubmit(e);
+      // The correct way to pass data to the API is to use the input field for main content
+      // and set the metadata for processing in the body parameter
+      handleSubmit(e, {
+        data: {
+          businessName: businessName.trim(),
+          businessIndustry: businessIndustry.trim(),
+          businessDescription: input.trim()
+        }
+      });
     } catch (err) {
       console.error("Error during form submission:", err);
       setStep(2);
@@ -203,8 +209,8 @@ export default function OnboardingPage() {
             <Label htmlFor="businessDescription">Business Description</Label>
             <Textarea
               id="businessDescription"
-              value={businessDescription}
-              onChange={(e) => setBusinessDescription(e.target.value)}
+              value={input}
+              onChange={handleInputChange}
               placeholder="Describe your business in detail..."
               className="mt-1 h-40"
             />
@@ -216,7 +222,7 @@ export default function OnboardingPage() {
             </Button>
             <Button 
               onClick={handleFormSubmit} 
-              disabled={status === 'streaming' || !businessDescription.trim()}
+              disabled={status === 'streaming' || !input.trim()}
               className="flex items-center gap-2"
             >
               {status === 'streaming' && <Loader2 className="h-4 w-4 animate-spin" />}

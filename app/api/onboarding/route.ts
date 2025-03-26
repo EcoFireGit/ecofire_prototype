@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
-
+    console.log("inside onboarding route");
     const data = await req.json();
     const { businessName, businessIndustry, businessDescription } = data;
     
