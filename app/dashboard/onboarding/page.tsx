@@ -196,26 +196,8 @@ export default function OnboardingPage() {
   };
 
   useEffect(() => {
-    // Fetch growth stage options from "/api/growth-stage-options"
-    const fetchGrowthStageOptions = async () => {
-      try {
-        const response = await fetch('/api/growth-stage-options');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setGrowthStageOptions(data);
-      } catch (error) {
-        console.error('Error fetching growth stage options:', error);
-        toast({
-          title: "Error",
-          description: "Could not load growth stage options. Please try again later.",
-          variant: "destructive"
-        });
-      }
-    };
-
-    fetchGrowthStageOptions();
+    // Set hardcoded growth stage options
+    setGrowthStageOptions(["Pre-seed", "Seed", "Early", "Growth", "Expansion", "Mature", "custom"]);
   }, []);
 
 
