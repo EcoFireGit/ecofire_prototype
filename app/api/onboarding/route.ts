@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
     //console.log("inside onboarding route");
     const data = await req.json();
     
-    const { businessName, businessIndustry, businessDescription } = data.data;
-    // console.log(businessName, businessIndustry, businessDescription);
+    const { businessName, businessIndustry, businessDescription, monthsInBusiness } = data.data;
+    console.log("API received:", { businessName, businessIndustry, monthsInBusiness });
+    
     if (!businessName || !businessIndustry || !businessDescription) {
       return new Response(JSON.stringify({ 
         error: "Bad Request", 
@@ -37,7 +38,10 @@ export async function POST(req: NextRequest) {
       businessName +
       '", which is in the industry of ' +
       businessIndustry +
-      ' and is described as follows: "' +
+      (monthsInBusiness !== undefined && monthsInBusiness !== "" 
+        ? `, has been operating for ${monthsInBusiness} months, ` 
+        : ", ") +
+      'and is described as follows: "' +
       businessDescription +
       '". Provide them with initial strategic recommendations and next steps to establish or grow their business. ' +
       "Be specific, actionable, and empathetic in your response.";

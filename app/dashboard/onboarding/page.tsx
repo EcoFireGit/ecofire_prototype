@@ -148,13 +148,17 @@ export default function OnboardingPage() {
     setStep(2.5); // Use a fractional step to indicate "processing"
     
     try {
+      // Log to verify monthsInBusiness value
+      console.log("Submitting monthsInBusiness:", monthsInBusiness);
+      
       // The correct way to pass data to the API is to use the input field for main content
       // and set the metadata for processing in the body parameter
       handleSubmit(e, {
         data: {
           businessName: businessName.trim(),
           businessIndustry: businessIndustry.trim(),
-          businessDescription: input.trim()
+          businessDescription: input.trim(),
+          monthsInBusiness: monthsInBusiness
         }
       });
     } catch (err) {
