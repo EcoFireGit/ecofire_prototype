@@ -12,36 +12,48 @@ export async function POST(req: NextRequest) {
     }
     //console.log("inside onboarding route");
     const data = await req.json();
-    
-    const { businessName, businessIndustry, businessDescription, monthsInBusiness } = data.data;
-    console.log("API received:", { businessName, businessIndustry, monthsInBusiness });
-    
+
+    const {
+      businessName,
+      businessIndustry,
+      businessDescription,
+      monthsInBusiness,
+    } = data.data;
+    console.log("API received:", {
+      businessName,
+      businessIndustry,
+      monthsInBusiness,
+    });
+
     if (!businessName || !businessIndustry || !businessDescription) {
-      return new Response(JSON.stringify({ 
-        error: "Bad Request", 
-        message: "Missing required business information" 
-      }), { 
-        status: 400,
-        headers: { "Content-Type": "application/json" } 
-      });
+      return new Response(
+        JSON.stringify({
+          error: "Bad Request",
+          message: "Missing required business information",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
-    
+
     const chatId = crypto.randomUUID(); // Generate a new chat ID for this session
 
     // console.log("Processing onboarding request for:", businessName);
     // console.log("Industry:", businessIndustry);
     // console.log("Description:", businessDescription.substring(0, 100) + "...");
-    
+
     const systemPrompt =
       "You are an elite business strategy consultant specializing in guiding startups and small businesses. " +
       'You are consulting a new business owner whose business is named: "' +
       businessName +
       '", which is in the industry of ' +
       businessIndustry +
-      (monthsInBusiness !== undefined && monthsInBusiness !== "" 
-        ? `, has been operating for ${monthsInBusiness} months, ` 
+      (monthsInBusiness !== undefined && monthsInBusiness !== ""
+        ? `, has been operating for ${monthsInBusiness} months, `
         : ", ") +
-      'and is described as follows: "' +
+      'and whose mission statement as follows: "' +
       businessDescription +
       '". Provide them with initial strategic recommendations and next steps to establish or grow their business. ' +
       "Be specific, actionable, and empathetic in your response.";
@@ -53,14 +65,17 @@ export async function POST(req: NextRequest) {
 
     // Set a timeout for the OpenAI API call
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("OpenAI API request timed out")), 25000);
+      setTimeout(
+        () => reject(new Error("OpenAI API request timed out")),
+        25000,
+      );
     });
 
     // Call the language model with timeout
     // Import MissionService
     const { MissionService } = await import("@/lib/services/mission.service");
     const missionService = new MissionService();
-    
+
     // Update the mission with the business description
     try {
       await missionService.updateMission(businessDescription);
@@ -69,7 +84,7 @@ export async function POST(req: NextRequest) {
       console.error("Error updating mission:", missionError);
       // Continue even if mission update fails
     }
-    
+
     const result = await Promise.race([
       streamText({
         model: openai("gpt-4o"),
@@ -80,7 +95,7 @@ export async function POST(req: NextRequest) {
           const messages = [
             { role: "user", content: outcomePrompt },
             { role: "assistant", content: text },
-            { role: "system", content: systemPrompt }
+            { role: "system", content: systemPrompt },
           ];
           try {
             await chatService.saveChatHistory(userId, chatId, messages);
@@ -91,10 +106,12 @@ export async function POST(req: NextRequest) {
           }
         },
       }),
-      timeoutPromise
-    ]).catch(error => {
+      timeoutPromise,
+    ]).catch((error) => {
       console.error("API timeout or error:", error.message);
-      throw new Error("Request timeout - GPT API is taking too long to respond");
+      throw new Error(
+        "Request timeout - GPT API is taking too long to respond",
+      );
     });
 
     console.log("Stream response generated, sending back to client");
@@ -102,16 +119,22 @@ export async function POST(req: NextRequest) {
     return result.toDataStreamResponse();
   } catch (error) {
     console.error("Error in onboarding API:", error);
-    
+
     // Provide a more specific error status and message for timeouts
     const status = error.message?.includes("timeout") ? 504 : 500;
-    const message = error.message?.includes("timeout") 
-      ? "Request timed out - please try again" 
+    const message = error.message?.includes("timeout")
+      ? "Request timed out - please try again"
       : "Internal Server Error - " + error.message;
-    
-    return new Response(JSON.stringify({ error: status === 504 ? "Gateway Timeout" : "Internal Server Error", message }), { 
-      status,
-      headers: { "Content-Type": "application/json" }
-    });
+
+    return new Response(
+      JSON.stringify({
+        error: status === 504 ? "Gateway Timeout" : "Internal Server Error",
+        message,
+      }),
+      {
+        status,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
