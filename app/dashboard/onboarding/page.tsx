@@ -9,8 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { Select } from "@/components/ui/select";
-import { SelectContent, SelectItem, SelectTrigger } from "@radix-ui/react-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 export default function OnboardingPage() {
@@ -260,8 +265,8 @@ export default function OnboardingPage() {
           <div>
             <Label htmlFor="growthStage">Growth Stage</Label>
             <Select value={growthStage} onValueChange={setGrowthStage}>
-              <SelectTrigger>
-                <span>Select Growth Stage</span>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select Growth Stage" />
               </SelectTrigger>
               <SelectContent>
                 {growthStageOptions.map((option) => (
