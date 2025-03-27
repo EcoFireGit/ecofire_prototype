@@ -9,8 +9,15 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   // Extract the data from the body of the request
-  const { messages, id, missionStatement } = await req.json();
+  const { messages, id } = await req.json();
   const chatId = id || crypto.randomUUID(); // Use provided ID or generate a new one
+  
+  // Get mission statement from database
+  const { MissionService } = await import("@/lib/services/mission.service");
+  const missionService = new MissionService();
+  const mission = await missionService.getMission();
+  const missionStatement = mission?.statement || "";
+  
   const systemPrompt_initial =
     'You are an elite business strategy consultant with decades of experience across multiple industries, specializing in guiding startups and small businesses from ideation through scaling. You are advising an entrepreneur whose business mission statement is "' +
     missionStatement +
