@@ -9,12 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { Select } from "@/components/ui/select";
+import { SelectContent, SelectItem, SelectTrigger } from "@radix-ui/react-select";
+
 
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
   const [businessIndustry, setBusinessIndustry] = useState("");
   const [monthsInBusiness, setMonthsInBusiness] = useState<number | "">("");
+  const [annualRevenue, setAnnualRevenue] = useState("");
+  const [growthStage, setGrowthStage] = useState("");
   const [step, setStep] = useState(1);
+  const [growthStageOptions, setGrowthStageOptions] = useState<string[]>([]); // Added state for growth stage options
   const { toast } = useToast();
   const router = useRouter();
 
@@ -62,7 +68,7 @@ export default function OnboardingPage() {
   });
 
   const handleNextStep = () => {
-    if (step === 1 && (!businessName.trim() || !businessIndustry.trim())) {
+    if (step === 1 && (!businessName.trim() || !businessIndustry.trim() || !annualRevenue.trim() || !growthStage.trim())) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -80,7 +86,7 @@ export default function OnboardingPage() {
   // Add timeout handling to prevent infinite loading state
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     if (step === 2.5) {
       // Set a 35-second timeout to revert back to step 2 if no response
       timeoutId = setTimeout(() => {
@@ -93,7 +99,7 @@ export default function OnboardingPage() {
           variant: "destructive"
         });
       }, 35000); // 35 seconds timeout - slightly longer than the backend timeout
-      
+
       // Also set a notification after 15 seconds to let user know it's still processing
       setTimeout(() => {
         if (step === 2.5) {
@@ -104,15 +110,15 @@ export default function OnboardingPage() {
         }
       }, 15000);
     }
-    
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [step, toast, stop]);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!input.trim()) {
       toast({
         title: "Missing Information",
@@ -121,7 +127,7 @@ export default function OnboardingPage() {
       });
       return;
     }
-    
+
     // Check if the business description is too long, which might cause timeouts
     if (input.length > 3000) {
       toast({
@@ -131,30 +137,51 @@ export default function OnboardingPage() {
       });
       return;
     }
-    
+
     // Log to ensure data is correctly formed
     console.log("Submitting form data:", {
       businessName: businessName.trim(),
       businessIndustry: businessIndustry.trim(),
       businessDescription: input.substring(0, 100) + "..." // Log truncated for readability
     });
-    
+
     // Reset any previous errors
     if (error) {
       reload(); // Reset error state in useChat
     }
-    
+
     // Set step to indicate processing is happening
     setStep(2.5); // Use a fractional step to indicate "processing"
-    
+
     try {
       // The correct way to pass data to the API is to use the input field for main content
       // and set the metadata for processing in the body parameter
+      const updateResponse = await fetch("/api/business-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          missionStatement: input.trim(),
+          name: businessName.trim(),
+          industry: businessIndustry.trim(),
+          monthsInBusiness: monthsInBusiness === "" ? 0 : monthsInBusiness,
+          annualRevenue: annualRevenue === "" ? 0 : Number(annualRevenue),
+          growthStage: growthStage,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error("Failed to update business information");
+      }
+
       handleSubmit(e, {
         data: {
           businessName: businessName.trim(),
           businessIndustry: businessIndustry.trim(),
-          businessDescription: input.trim()
+          businessDescription: input.trim(),
+          annualRevenue: annualRevenue,
+          growthStage: growthStage
         }
       });
     } catch (err) {
@@ -167,6 +194,30 @@ export default function OnboardingPage() {
       });
     }
   };
+
+  useEffect(() => {
+    // Fetch growth stage options from "/api/growth-stage-options"
+    const fetchGrowthStageOptions = async () => {
+      try {
+        const response = await fetch('/api/growth-stage-options');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setGrowthStageOptions(data);
+      } catch (error) {
+        console.error('Error fetching growth stage options:', error);
+        toast({
+          title: "Error",
+          description: "Could not load growth stage options. Please try again later.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchGrowthStageOptions();
+  }, []);
+
 
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
@@ -182,10 +233,11 @@ export default function OnboardingPage() {
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
               placeholder="Enter your business name"
+              required
               className="mt-1"
             />
           </div>
-          
+
           <div>
             <Label htmlFor="businessIndustry">Business Industry</Label>
             <Input
@@ -193,10 +245,11 @@ export default function OnboardingPage() {
               value={businessIndustry}
               onChange={(e) => setBusinessIndustry(e.target.value)}
               placeholder="Enter your business industry"
+              required
               className="mt-1"
             />
           </div>
-          
+
           <div>
             <Label htmlFor="monthsInBusiness">Number of months in business</Label>
             <Input
@@ -206,8 +259,36 @@ export default function OnboardingPage() {
               onChange={(e) => setMonthsInBusiness(e.target.value === "" ? "" : Number(e.target.value))}
               placeholder="0"
               min="0"
+              required
               className="mt-1"
             />
+          </div>
+          <div>
+            <Label htmlFor="annualRevenue">Annual Revenue</Label>
+            <Input
+              id="annualRevenue"
+              type="number"
+              value={annualRevenue}
+              onChange={(e) => setAnnualRevenue(e.target.value)}
+              placeholder="Enter your annual revenue"
+              required
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="growthStage">Growth Stage</Label>
+            <Select value={growthStage} onValueChange={setGrowthStage}>
+              <SelectTrigger>
+                <span>Select Growth Stage</span>
+              </SelectTrigger>
+              <SelectContent>
+                {growthStageOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="mt-8 flex justify-end">
@@ -234,8 +315,8 @@ export default function OnboardingPage() {
             <Button variant="outline" onClick={handlePreviousStep} disabled={status === 'streaming'}>
               Back
             </Button>
-            <Button 
-              onClick={handleFormSubmit} 
+            <Button
+              onClick={handleFormSubmit}
               disabled={status === 'streaming' || !input.trim()}
               className="flex items-center gap-2"
             >
@@ -245,18 +326,18 @@ export default function OnboardingPage() {
           </div>
         </div>
       )}
-      
+
       {/* Processing indicator */}
       {step === 2.5 && (
         <div className="flex flex-col items-center justify-center space-y-4 py-12">
           <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
           <p className="text-lg font-medium">Analyzing your business...</p>
           <p className="text-sm text-gray-500">This may take a moment. We're generating strategic recommendations based on your input.</p>
-          
+
           {/* Timeout recovery option */}
           <div className="mt-8">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setStep(2);
                 stop();
@@ -280,10 +361,10 @@ export default function OnboardingPage() {
               Your business description has been saved as your mission statement. You can edit it anytime from the dashboard.
             </p>
           </div>
-          
+
           <div>
             <h2 className="text-xl font-semibold mb-2">Strategic Recommendations</h2>
-            
+
             {/* Display AI response */}
             <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
               {messages.map(m => (
@@ -291,7 +372,7 @@ export default function OnboardingPage() {
                   {m.role === 'assistant' && m.content}
                 </div>
               ))}
-              
+
               {status === 'streaming' && (
                 <div className="flex items-center justify-center h-10">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -299,7 +380,7 @@ export default function OnboardingPage() {
               )}
             </div>
           </div>
-          
+
           {error && (
             <div className="mt-4">
               <div className="text-red-500">An error occurred.</div>
@@ -312,18 +393,18 @@ export default function OnboardingPage() {
               </Button>
             </div>
           )}
-          
+
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(2)}>
               Edit Information
             </Button>
-            
+
             {status === 'streaming' && (
               <Button onClick={stop} variant="destructive">
                 Stop Generation
               </Button>
             )}
-            
+
             <Button onClick={() => router.push("/dashboard")}>
               Return to Dashboard
             </Button>
