@@ -57,6 +57,19 @@ export async function POST(req: NextRequest) {
     });
 
     // Call the language model with timeout
+    // Import MissionService
+    const { MissionService } = await import("@/lib/services/mission.service");
+    const missionService = new MissionService();
+    
+    // Update the mission with the business description
+    try {
+      await missionService.updateMission(businessDescription);
+      console.log("Mission updated with business description");
+    } catch (missionError) {
+      console.error("Error updating mission:", missionError);
+      // Continue even if mission update fails
+    }
+    
     const result = await Promise.race([
       streamText({
         model: openai("gpt-4o"),

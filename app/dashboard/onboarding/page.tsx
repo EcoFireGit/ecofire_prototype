@@ -275,6 +275,12 @@ export default function OnboardingPage() {
       {/* Step 3: AI Response */}
       {step === 3 && (
         <div className="space-y-6">
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-blue-700 text-sm font-medium">
+              Your business description has been saved as your mission statement. You can edit it anytime from the dashboard.
+            </p>
+          </div>
+          
           <div>
             <h2 className="text-xl font-semibold mb-2">Strategic Recommendations</h2>
             
