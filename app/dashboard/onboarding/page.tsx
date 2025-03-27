@@ -13,6 +13,7 @@ import { Loader2 } from "lucide-react";
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
   const [businessIndustry, setBusinessIndustry] = useState("");
+  const [monthsInBusiness, setMonthsInBusiness] = useState<number | "">("");
   const [step, setStep] = useState(1);
   const { toast } = useToast();
   const router = useRouter();
@@ -192,6 +193,19 @@ export default function OnboardingPage() {
               value={businessIndustry}
               onChange={(e) => setBusinessIndustry(e.target.value)}
               placeholder="Enter your business industry"
+              className="mt-1"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="monthsInBusiness">Number of months in business</Label>
+            <Input
+              id="monthsInBusiness"
+              type="number"
+              value={monthsInBusiness}
+              onChange={(e) => setMonthsInBusiness(e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder="0"
+              min="0"
               className="mt-1"
             />
           </div>
