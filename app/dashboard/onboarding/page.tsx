@@ -1,6 +1,6 @@
 "use client";
 
-import { useChat } from '@ai-sdk/react';
+import { useChat } from "@ai-sdk/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
@@ -40,44 +39,51 @@ export default function OnboardingPage() {
     stop,
     setMessages,
   } = useChat({
-    api: '/api/onboarding',
+    api: "/api/onboarding",
     onResponse(response) {
-      console.log('Response received:', response.status);
+      console.log("Response received:", response.status);
       if (!response.ok) {
-        console.error('API response not OK:', response.status);
+        console.error("API response not OK:", response.status);
         stop();
         setStep(2);
         toast({
           title: "Error",
           description: `Server error: ${response.status}`,
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     },
     onFinish(message, { usage, finishReason }) {
-      console.log('Usage', usage);
-      console.log('FinishReason', finishReason);
-      console.log('Message content length:', message.content.length);
+      console.log("Usage", usage);
+      console.log("FinishReason", finishReason);
+      console.log("Message content length:", message.content.length);
       setStep(3); // Show results after completion
     },
     onError(error) {
-      console.error('Chat error:', error);
+      console.error("Chat error:", error);
       // Return to step 2 so the user can try again
       setStep(2);
       toast({
         title: "Error",
-        description: "An error occurred while processing your business information. Please try again.",
-        variant: "destructive"
+        description:
+          "An error occurred while processing your business information. Please try again.",
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const handleNextStep = () => {
-    if (step === 1 && (!businessName.trim() || !businessIndustry.trim() || !annualRevenue.trim() || !growthStage.trim())) {
+    if (
+      step === 1 &&
+      (!businessName.trim() ||
+        !businessIndustry.trim() ||
+        !annualRevenue.trim() ||
+        !growthStage.trim())
+    ) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -100,8 +106,9 @@ export default function OnboardingPage() {
         stop(); // Stop any ongoing streaming
         toast({
           title: "Request Timeout",
-          description: "The analysis is taking longer than expected. Please try again with a more concise description.",
-          variant: "destructive"
+          description:
+            "The analysis is taking longer than expected. Please try again with a more concise description.",
+          variant: "destructive",
         });
       }, 35000); // 35 seconds timeout - slightly longer than the backend timeout
 
@@ -110,7 +117,8 @@ export default function OnboardingPage() {
         if (step === 2.5) {
           toast({
             title: "Still Processing",
-            description: "The AI is working on your business analysis. This might take a moment.",
+            description:
+              "The AI is working on your business analysis. This might take a moment.",
           });
         }
       }, 15000);
@@ -128,7 +136,7 @@ export default function OnboardingPage() {
       toast({
         title: "Missing Information",
         description: "Please provide a description of your business",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -136,9 +144,10 @@ export default function OnboardingPage() {
     // Check if the business description is too long, which might cause timeouts
     if (input.length > 3000) {
       toast({
-        title: "Description Too Long",
-        description: "Please keep your business description under 3000 characters to avoid timeouts.",
-        variant: "destructive"
+        title: "Mission Statement Too Long",
+        description:
+          "Please keep your Mission Statement under 3000 characters to avoid timeouts.",
+        variant: "destructive",
       });
       return;
     }
@@ -147,7 +156,7 @@ export default function OnboardingPage() {
     console.log("Submitting form data:", {
       businessName: businessName.trim(),
       businessIndustry: businessIndustry.trim(),
-      businessDescription: input.substring(0, 100) + "..." // Log truncated for readability
+      businessDescription: input.substring(0, 100) + "...", // Log truncated for readability
     });
 
     // Reset any previous errors
@@ -186,25 +195,33 @@ export default function OnboardingPage() {
           businessIndustry: businessIndustry.trim(),
           businessDescription: input.trim(),
           annualRevenue: annualRevenue,
-          growthStage: growthStage
-        }
+          growthStage: growthStage,
+        },
       });
     } catch (err) {
       console.error("Error during form submission:", err);
       setStep(2);
       toast({
         title: "Submission Error",
-        description: "There was a problem submitting your data. Please try again.",
-        variant: "destructive"
+        description:
+          "There was a problem submitting your data. Please try again.",
+        variant: "destructive",
       });
     }
   };
 
   useEffect(() => {
     // Set hardcoded growth stage options
-    setGrowthStageOptions(["Pre-seed", "Seed", "Early", "Growth", "Expansion", "Mature", "custom"]);
+    setGrowthStageOptions([
+      "Pre-seed",
+      "Seed",
+      "Early",
+      "Growth",
+      "Expansion",
+      "Mature",
+      "custom",
+    ]);
   }, []);
-
 
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
@@ -238,12 +255,18 @@ export default function OnboardingPage() {
           </div>
 
           <div>
-            <Label htmlFor="monthsInBusiness">Number of months in business</Label>
+            <Label htmlFor="monthsInBusiness">
+              Number of months in business
+            </Label>
             <Input
               id="monthsInBusiness"
               type="number"
               value={monthsInBusiness}
-              onChange={(e) => setMonthsInBusiness(e.target.value === "" ? "" : Number(e.target.value))}
+              onChange={(e) =>
+                setMonthsInBusiness(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
+              }
               placeholder="0"
               min="0"
               required
@@ -264,7 +287,8 @@ export default function OnboardingPage() {
           </div>
           <div>
             <Label htmlFor="growthStage">Growth Stage</Label>
-            {growthStage === "custom" || (growthStage && !growthStageOptions.includes(growthStage)) ? (
+            {growthStage === "custom" ||
+            (growthStage && !growthStageOptions.includes(growthStage)) ? (
               <div className="space-y-2">
                 <Input
                   id="customGrowthStage"
@@ -309,27 +333,35 @@ export default function OnboardingPage() {
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <Label htmlFor="businessDescription">Business Description</Label>
+            <Label htmlFor="businessDescription">
+              Business Mission Statement
+            </Label>
             <Textarea
               id="businessDescription"
               value={input}
               onChange={handleInputChange}
-              placeholder="Describe your business in detail..."
+              placeholder="Describe your business' Mission Statement"
               className="mt-1 h-40"
             />
           </div>
 
           <div className="mt-8 flex justify-between">
-            <Button variant="outline" onClick={handlePreviousStep} disabled={status === 'streaming'}>
+            <Button
+              variant="outline"
+              onClick={handlePreviousStep}
+              disabled={status === "streaming"}
+            >
               Back
             </Button>
             <Button
               onClick={handleFormSubmit}
-              disabled={status === 'streaming' || !input.trim()}
+              disabled={status === "streaming" || !input.trim()}
               className="flex items-center gap-2"
             >
-              {status === 'streaming' && <Loader2 className="h-4 w-4 animate-spin" />}
-              {status === 'streaming' ? "Analyzing..." : "Submit"}
+              {status === "streaming" && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {status === "streaming" ? "Analyzing..." : "Submit"}
             </Button>
           </div>
         </div>
@@ -340,7 +372,10 @@ export default function OnboardingPage() {
         <div className="flex flex-col items-center justify-center space-y-4 py-12">
           <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
           <p className="text-lg font-medium">Analyzing your business...</p>
-          <p className="text-sm text-gray-500">This may take a moment. We're generating strategic recommendations based on your input.</p>
+          <p className="text-sm text-gray-500">
+            This may take a moment. We're generating strategic recommendations
+            based on your input.
+          </p>
 
           {/* Timeout recovery option */}
           <div className="mt-8">
@@ -351,7 +386,8 @@ export default function OnboardingPage() {
                 stop();
                 toast({
                   title: "Process cancelled",
-                  description: "You can try submitting again with more details.",
+                  description:
+                    "You can try submitting again with more details.",
                 });
               }}
             >
@@ -366,22 +402,25 @@ export default function OnboardingPage() {
         <div className="space-y-6">
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-blue-700 text-sm font-medium">
-              Your business description has been saved as your mission statement. You can edit it anytime from the dashboard.
+              Your business description has been saved as your mission
+              statement. You can edit it anytime from the dashboard.
             </p>
           </div>
 
           <div>
-            <h2 className="text-xl font-semibold mb-2">Strategic Recommendations</h2>
+            <h2 className="text-xl font-semibold mb-2">
+              Strategic Recommendations
+            </h2>
 
             {/* Display AI response */}
             <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
-              {messages.map(m => (
+              {messages.map((m) => (
                 <div key={m.id} className="whitespace-pre-wrap mb-4">
-                  {m.role === 'assistant' && m.content}
+                  {m.role === "assistant" && m.content}
                 </div>
               ))}
 
-              {status === 'streaming' && (
+              {status === "streaming" && (
                 <div className="flex items-center justify-center h-10">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 </div>
@@ -407,7 +446,7 @@ export default function OnboardingPage() {
               Edit Information
             </Button>
 
-            {status === 'streaming' && (
+            {status === "streaming" && (
               <Button onClick={stop} variant="destructive">
                 Stop Generation
               </Button>
