@@ -6,7 +6,7 @@ First, install all dependencies:
 ```
 npm i
 ```
-Then, set up environment variables to connect to MongoDB and Clerk authentication in a .env.local file in the root directory
+Then, set up environment variables to connect to MongoDB and Clerk authentication in a `.env.local` file in the root directory
 ```
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<enter your key>
 CLERK_SECRET_KEY=<enter your key>

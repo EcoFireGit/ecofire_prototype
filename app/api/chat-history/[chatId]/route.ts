@@ -1,11 +1,10 @@
-
 import { NextResponse } from 'next/server';
 import { ChatService } from '@/lib/services/chat.service';
 import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -15,23 +14,23 @@ export async function GET(
         { status: 401 }
       );
     }
-
-    // Access chatId with await in Next.js 15
-    const { chatId } = await params;
     
+    // Use the Stack Overflow solution to correctly await the chatId
+    const chatId = (await params).chatId;
+   
     const chatService = new ChatService();
     const chatHistory = await chatService.getChatById(userId, chatId);
-    
+   
     if (!chatHistory) {
       return NextResponse.json(
         { success: false, error: 'Chat not found' },
         { status: 404 }
       );
     }
-    
+   
     return NextResponse.json(chatHistory);
   } catch (error) {
-    console.error('Error in GET /api/chat-history/[chatId]:', error);
+    console.error('Error in GET /api/chat-history:', error);
     return NextResponse.json(
       { success: false, error: 'Internal Server Error' },
       { status: 500 }

@@ -88,4 +88,6 @@ TaskSchema.index({ jobId: 1, nextTask: 1 }, {
   partialFilterExpression: { nextTask: true }
 });
 
+TaskSchema.index({ title: 'text', notes: 'text', tags: 'text' });
+
 export default mongoose.models.Task || mongoose.model<Task>("Task", TaskSchema);

@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck } from "lucide-react"
+import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -50,6 +50,11 @@ const items = [
     url: "/dashboard/jija",
     icon: Dog,
   },
+  {
+    title: "Search",
+    url: "/dashboard/search",
+    icon: Search,
+  }  
 ]
 
 // Backstage sub-items
@@ -94,7 +99,7 @@ export function AppSidebar() {
               <Collapsible defaultOpen className="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent">
-                    <Search className="mr-2 h-4 w-4" />
+                    <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
                     <span>Backstage</span>
                     <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                   </CollapsibleTrigger>
