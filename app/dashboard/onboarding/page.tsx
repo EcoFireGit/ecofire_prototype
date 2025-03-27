@@ -264,18 +264,39 @@ export default function OnboardingPage() {
           </div>
           <div>
             <Label htmlFor="growthStage">Growth Stage</Label>
-            <Select value={growthStage} onValueChange={setGrowthStage}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select Growth Stage" />
-              </SelectTrigger>
-              <SelectContent>
-                {growthStageOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {growthStage === "custom" ? (
+              <div className="space-y-2">
+                <Input
+                  id="customGrowthStage"
+                  value={growthStage === "custom" ? "" : growthStage}
+                  onChange={(e) => setGrowthStage(e.target.value || "custom")}
+                  placeholder="Enter custom growth stage"
+                  required
+                  className="mt-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setGrowthStage("Pre-seed")}
+                >
+                  Use dropdown options instead
+                </Button>
+              </div>
+            ) : (
+              <Select value={growthStage} onValueChange={setGrowthStage}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select Growth Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  {growthStageOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="mt-8 flex justify-end">
