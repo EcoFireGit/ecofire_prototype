@@ -193,13 +193,13 @@ export default function BusinessInfoPage() {
 
         <div className="space-y-2">
           <Label htmlFor="growthStage">Growth Stage</Label>
-          {businessInfo.growthStage === "custom" ? (
+          {businessInfo.growthStage === "custom" || (!["Pre-seed", "Seed", "Early", "Growth", "Expansion", "Mature", ""].includes(businessInfo.growthStage) && businessInfo.growthStage) ? (
             <div className="space-y-2">
               <Input
                 id="customGrowthStage"
                 name="growthStage"
                 value={businessInfo.growthStage}
-                onChange={handleChange}
+                onChange={(e) => setBusinessInfo(prev => ({...prev, growthStage: e.target.value}))}
                 placeholder="Enter custom growth stage"
                 required
               />
