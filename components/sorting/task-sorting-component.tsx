@@ -8,9 +8,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown, ArrowDown, ArrowUp, Clock, CalendarClock } from "lucide-react";
+import {
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
+  Clock,
+  CalendarClock,
+} from "lucide-react";
 
-export type TaskSortOption = "recommended" | "date-asc" | "date-desc" | "hoursRequired-asc" | "hoursRequired-desc";
+export type TaskSortOption =
+  | "recommended"
+  | "date-asc"
+  | "date-desc"
+  | "hoursRequired-asc"
+  | "hoursRequired-desc";
 
 interface TaskSortingComponentProps {
   onSortChange: (sortedTasks: any[]) => void;
@@ -21,7 +32,7 @@ interface TaskSortingComponentProps {
 const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
   onSortChange,
   tasks,
-  jobs
+  jobs,
 }) => {
   const [sortOption, setSortOption] = useState<TaskSortOption>("recommended");
 
@@ -40,23 +51,23 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
           // Check if task is a next task
           const aIsNextTask = a.jobId && jobs[a.jobId]?.nextTaskId === a._id;
           const bIsNextTask = b.jobId && jobs[b.jobId]?.nextTaskId === b._id;
-          
+
           // First sort by next task status
           if (aIsNextTask && !bIsNextTask) return -1;
           if (!aIsNextTask && bIsNextTask) return 1;
-          
+
           // If both are next tasks, sort by job impact score (higher first)
           if (aIsNextTask && bIsNextTask) {
             const aImpact = jobs[a.jobId]?.impact || 0;
             const bImpact = jobs[b.jobId]?.impact || 0;
             return bImpact - aImpact;
           }
-          
+
           // If neither are next tasks, sort by date
           if (a.date && b.date) {
             return new Date(a.date).getTime() - new Date(b.date).getTime();
           }
-          
+
           // Default fallback for sorting
           return 0;
         });
@@ -83,8 +94,14 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
       case "hoursRequired-asc":
         // Sort by hours required (ascending), nulls at the end
         sortedTasks.sort((a, b) => {
-          const hoursA = a.requiredHours !== undefined ? a.requiredHours : Number.MAX_SAFE_INTEGER;
-          const hoursB = b.requiredHours !== undefined ? b.requiredHours : Number.MAX_SAFE_INTEGER;
+          const hoursA =
+            a.requiredHours !== undefined
+              ? a.requiredHours
+              : Number.MAX_SAFE_INTEGER;
+          const hoursB =
+            b.requiredHours !== undefined
+              ? b.requiredHours
+              : Number.MAX_SAFE_INTEGER;
           return hoursA - hoursB;
         });
         break;
@@ -95,11 +112,11 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
           // Use 0 as default for null values, but place them at the end
           const hoursA = a.requiredHours !== undefined ? a.requiredHours : -1;
           const hoursB = b.requiredHours !== undefined ? b.requiredHours : -1;
-          
+
           if (hoursA < 0 && hoursB < 0) return 0;
           if (hoursA < 0) return 1;
           if (hoursB < 0) return -1;
-          
+
           return hoursB - hoursA;
         });
         break;
@@ -112,15 +129,30 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
   const getOptionDetails = (option: TaskSortOption) => {
     switch (option) {
       case "recommended":
-        return { label: "Recommended", icon: <ArrowUpDown className="h-4 w-4 mr-2" /> };
+        return {
+          label: "Recommended",
+          icon: <ArrowUpDown className="h-4 w-4 mr-2" />,
+        };
       case "date-asc":
-        return { label: "Date (earliest first)", icon: <ArrowUp className="h-4 w-4 mr-2" /> };
+        return {
+          label: "Do Date (earliest first)",
+          icon: <ArrowUp className="h-4 w-4 mr-2" />,
+        };
       case "date-desc":
-        return { label: "Date (latest first)", icon: <ArrowDown className="h-4 w-4 mr-2" /> };
+        return {
+          label: "Do Date (latest first)",
+          icon: <ArrowDown className="h-4 w-4 mr-2" />,
+        };
       case "hoursRequired-asc":
-        return { label: "Hours Required (low to high)", icon: <Clock className="h-4 w-4 mr-2" /> };
+        return {
+          label: "Hours Required (low to high)",
+          icon: <Clock className="h-4 w-4 mr-2" />,
+        };
       case "hoursRequired-desc":
-        return { label: "Hours Required (high to low)", icon: <Clock className="h-4 w-4 mr-2" /> };
+        return {
+          label: "Hours Required (high to low)",
+          icon: <Clock className="h-4 w-4 mr-2" />,
+        };
     }
   };
 
@@ -151,13 +183,13 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
             <SelectItem value="date-asc">
               <div className="flex items-center">
                 <ArrowUp className="h-4 w-4 mr-2" />
-                Date (earliest first)
+                Do Date (earliest first)
               </div>
             </SelectItem>
             <SelectItem value="date-desc">
               <div className="flex items-center">
                 <ArrowDown className="h-4 w-4 mr-2" />
-                Date (latest first)
+                Do Date (latest first)
               </div>
             </SelectItem>
             <SelectItem value="hoursRequired-asc">
