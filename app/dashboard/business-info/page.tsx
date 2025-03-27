@@ -1,13 +1,18 @@
+"use client";
 
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 
 interface BusinessInfo {
   name: string;
@@ -22,18 +27,18 @@ export default function BusinessInfoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
-    name: '',
-    industry: '',
-    missionStatement: '',
+    name: "",
+    industry: "",
+    missionStatement: "",
     monthsInBusiness: 0,
     annualRevenue: 0,
-    growthStage: ''
+    growthStage: "",
   });
 
   useEffect(() => {
     async function fetchBusinessInfo() {
       try {
-        const response = await fetch('/api/business-info');
+        const response = await fetch("/api/business-info");
         if (response.ok) {
           const data = await response.json();
           if (data && Object.keys(data).length > 0) {
@@ -41,11 +46,11 @@ export default function BusinessInfoPage() {
           }
         }
       } catch (error) {
-        console.error('Error fetching business info:', error);
+        console.error("Error fetching business info:", error);
         toast({
-          title: 'Error',
-          description: 'Failed to load business information',
-          variant: 'destructive',
+          title: "Error",
+          description: "Failed to load business information",
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -56,14 +61,15 @@ export default function BusinessInfoPage() {
   }, []);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setBusinessInfo((prev) => ({
       ...prev,
-      [name]: name === 'monthsInBusiness' || name === 'annualRevenue' 
-        ? Number(value) 
-        : value,
+      [name]:
+        name === "monthsInBusiness" || name === "annualRevenue"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -79,28 +85,28 @@ export default function BusinessInfoPage() {
     setSaving(true);
 
     try {
-      const response = await fetch('/api/business-info', {
-        method: 'POST',
+      const response = await fetch("/api/business-info", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(businessInfo),
       });
 
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: 'Business information saved successfully',
+          title: "Success",
+          description: "Business information saved successfully",
         });
       } else {
-        throw new Error('Failed to save');
+        throw new Error("Failed to save");
       }
     } catch (error) {
-      console.error('Error saving business info:', error);
+      console.error("Error saving business info:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to save business information',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to save business information",
+        variant: "destructive",
       });
     } finally {
       setSaving(false);
@@ -108,13 +114,17 @@ export default function BusinessInfoPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-[50vh]">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-[50vh]">
+        Loading...
+      </div>
+    );
   }
 
   return (
     <div className="container py-10 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Business Information</h1>
-      
+
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
         <div className="space-y-2">
           <Label htmlFor="name">Business Name</Label>
@@ -127,7 +137,7 @@ export default function BusinessInfoPage() {
             required
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="industry">Industry</Label>
           <Input
@@ -139,7 +149,7 @@ export default function BusinessInfoPage() {
             required
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="missionStatement">Mission Statement</Label>
           <Textarea
@@ -152,7 +162,7 @@ export default function BusinessInfoPage() {
             rows={4}
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="monthsInBusiness">Months in Business</Label>
           <Input
@@ -166,7 +176,7 @@ export default function BusinessInfoPage() {
             required
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="annualRevenue">Annual Revenue ($)</Label>
           <Input
@@ -180,24 +190,24 @@ export default function BusinessInfoPage() {
             required
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="growthStage">Growth Stage</Label>
-          {businessInfo.growthStage === 'custom' ? (
+          {businessInfo.growthStage === "custom" ? (
             <div className="space-y-2">
               <Input
                 id="customGrowthStage"
                 name="growthStage"
-                value={businessInfo.growthStage === 'custom' ? '' : businessInfo.growthStage}
+                value={businessInfo.growthStage}
                 onChange={handleChange}
                 placeholder="Enter custom growth stage"
                 required
               />
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handleSelectChange('growthStage', 'Pre-seed')}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleSelectChange("growthStage", "Pre-seed")}
               >
                 Use dropdown options instead
               </Button>
@@ -206,7 +216,9 @@ export default function BusinessInfoPage() {
             <div className="space-y-2">
               <Select
                 value={businessInfo.growthStage}
-                onValueChange={(value) => handleSelectChange('growthStage', value)}
+                onValueChange={(value) =>
+                  handleSelectChange("growthStage", value)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select growth stage" />
@@ -218,15 +230,17 @@ export default function BusinessInfoPage() {
                   <SelectItem value="Growth">Growth</SelectItem>
                   <SelectItem value="Expansion">Expansion</SelectItem>
                   <SelectItem value="Mature">Mature</SelectItem>
-                  <SelectItem value="custom">Custom (enter your own)</SelectItem>
+                  <SelectItem value="custom">
+                    Custom (enter your own)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
         </div>
-        
+
         <Button type="submit" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Business Information'}
+          {saving ? "Saving..." : "Save Business Information"}
         </Button>
       </form>
     </div>
