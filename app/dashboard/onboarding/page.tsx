@@ -183,6 +183,7 @@ export default function OnboardingPage() {
           businessName: businessName.trim(),
           businessIndustry: businessIndustry.trim(),
           businessDescription: input.trim(),
+          monthsInBusiness: monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
           annualRevenue: annualRevenue,
           growthStage: growthStage,
         },
