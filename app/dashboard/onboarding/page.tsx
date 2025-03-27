@@ -1,6 +1,6 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
+import { useCompletion } from "@ai-sdk/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -21,24 +21,26 @@ export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
   const [businessIndustry, setBusinessIndustry] = useState("");
   const [monthsInBusiness, setMonthsInBusiness] = useState<number | "">("");
-  const [annualRevenue, setAnnualRevenue] = useState("");
+  const [annualRevenue, setAnnualRevenue] = useState<number | "">("");
   const [growthStage, setGrowthStage] = useState("");
   const [step, setStep] = useState(1);
   const [growthStageOptions, setGrowthStageOptions] = useState<string[]>([]); // Added state for growth stage options
+  const [messages, setMessages] = useState<
+    Array<{ role: string; content: string }>
+  >([]);
   const { toast } = useToast();
   const router = useRouter();
 
   const {
+    complete,
+    completion,
     error,
-    input,
-    status,
-    handleInputChange,
-    handleSubmit,
-    messages,
-    reload,
+    isLoading,
     stop,
-    setMessages,
-  } = useChat({
+    input,
+    handleInputChange,
+    setInput,
+  } = useCompletion({
     api: "/api/onboarding",
     onResponse(response) {
       console.log("Response received:", response.status);
@@ -53,14 +55,16 @@ export default function OnboardingPage() {
         });
       }
     },
-    onFinish(message, { usage, finishReason }) {
+    onFinish(result, { usage, finishReason }) {
       console.log("Usage", usage);
       console.log("FinishReason", finishReason);
-      console.log("Message content length:", message.content.length);
+      console.log("Result content length:", result.length);
+      // Add the completion to messages for display
+      setMessages([...messages, { role: "assistant", content: result }]);
       setStep(3); // Show results after completion
     },
     onError(error) {
-      console.error("Chat error:", error);
+      console.error("Completion error:", error);
       // Return to step 2 so the user can try again
       setStep(2);
       toast({
@@ -75,10 +79,7 @@ export default function OnboardingPage() {
   const handleNextStep = () => {
     if (
       step === 1 &&
-      (!businessName.trim() ||
-        !businessIndustry.trim() ||
-        !annualRevenue.trim() ||
-        !growthStage.trim())
+      (!businessName.trim() || !businessIndustry.trim() || !growthStage.trim())
     ) {
       toast({
         title: "Missing Information",
@@ -111,17 +112,6 @@ export default function OnboardingPage() {
           variant: "destructive",
         });
       }, 35000); // 35 seconds timeout - slightly longer than the backend timeout
-
-      // Also set a notification after 15 seconds to let user know it's still processing
-      setTimeout(() => {
-        if (step === 2.5) {
-          toast({
-            title: "Still Processing",
-            description:
-              "The AI is working on your business analysis. This might take a moment.",
-          });
-        }
-      }, 15000);
     }
 
     return () => {
@@ -144,9 +134,9 @@ export default function OnboardingPage() {
     // Check if the business description is too long, which might cause timeouts
     if (input.length > 3000) {
       toast({
-        title: "Mission Statement Too Long",
+        title: "Description Too Long",
         description:
-          "Please keep your Mission Statement under 3000 characters to avoid timeouts.",
+          "Please keep your business description under 3000 characters to avoid timeouts.",
         variant: "destructive",
       });
       return;
@@ -159,17 +149,14 @@ export default function OnboardingPage() {
       businessDescription: input.substring(0, 100) + "...", // Log truncated for readability
     });
 
-    // Reset any previous errors
-    if (error) {
-      reload(); // Reset error state in useChat
-    }
-
     // Set step to indicate processing is happening
     setStep(2.5); // Use a fractional step to indicate "processing"
 
+    // Add user input to messages for display
+    setMessages([...messages, { role: "user", content: input }]);
+
     try {
-      // The correct way to pass data to the API is to use the input field for main content
-      // and set the metadata for processing in the body parameter
+      // Update business info in database
       const updateResponse = await fetch("/api/business-info", {
         method: "POST",
         headers: {
@@ -179,7 +166,8 @@ export default function OnboardingPage() {
           missionStatement: input.trim(),
           name: businessName.trim(),
           industry: businessIndustry.trim(),
-          monthsInBusiness: monthsInBusiness === "" ? 0 : monthsInBusiness,
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
           annualRevenue: annualRevenue === "" ? 0 : Number(annualRevenue),
           growthStage: growthStage,
         }),
@@ -189,8 +177,9 @@ export default function OnboardingPage() {
         throw new Error("Failed to update business information");
       }
 
-      handleSubmit(e, {
-        data: {
+      // Call the complete function with business data
+      await complete(input, {
+        body: {
           businessName: businessName.trim(),
           businessIndustry: businessIndustry.trim(),
           businessDescription: input.trim(),
@@ -264,7 +253,7 @@ export default function OnboardingPage() {
               value={monthsInBusiness}
               onChange={(e) =>
                 setMonthsInBusiness(
-                  e.target.value === "" ? "" : Number(e.target.value),
+                  e.target.value === "" ? 0 : Number(e.target.value),
                 )
               }
               placeholder="0"
@@ -279,7 +268,11 @@ export default function OnboardingPage() {
               id="annualRevenue"
               type="number"
               value={annualRevenue}
-              onChange={(e) => setAnnualRevenue(e.target.value)}
+              onChange={(e) =>
+                setAnnualRevenue(
+                  e.target.value === "" ? 0 : Number(e.target.value),
+                )
+              }
               placeholder="Enter your annual revenue"
               required
               className="mt-1"
@@ -333,14 +326,12 @@ export default function OnboardingPage() {
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <Label htmlFor="businessDescription">
-              Business Mission Statement
-            </Label>
+            <Label htmlFor="businessDescription">Business Description</Label>
             <Textarea
               id="businessDescription"
               value={input}
               onChange={handleInputChange}
-              placeholder="Describe your business' Mission Statement"
+              placeholder="Describe your business Mission Statement."
               className="mt-1 h-40"
             />
           </div>
@@ -349,19 +340,17 @@ export default function OnboardingPage() {
             <Button
               variant="outline"
               onClick={handlePreviousStep}
-              disabled={status === "streaming"}
+              disabled={isLoading}
             >
               Back
             </Button>
             <Button
               onClick={handleFormSubmit}
-              disabled={status === "streaming" || !input.trim()}
+              disabled={isLoading || !input.trim()}
               className="flex items-center gap-2"
             >
-              {status === "streaming" && (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              )}
-              {status === "streaming" ? "Analyzing..." : "Submit"}
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isLoading ? "Analyzing..." : "Submit"}
             </Button>
           </div>
         </div>
@@ -414,13 +403,16 @@ export default function OnboardingPage() {
 
             {/* Display AI response */}
             <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
-              {messages.map((m) => (
-                <div key={m.id} className="whitespace-pre-wrap mb-4">
-                  {m.role === "assistant" && m.content}
-                </div>
-              ))}
+              {messages.map(
+                (m, index) =>
+                  m.role === "assistant" && (
+                    <div key={index} className="whitespace-pre-wrap mb-4">
+                      {m.content}
+                    </div>
+                  ),
+              )}
 
-              {status === "streaming" && (
+              {isLoading && (
                 <div className="flex items-center justify-center h-10">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 </div>
@@ -434,7 +426,10 @@ export default function OnboardingPage() {
               <Button
                 type="button"
                 className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
-                onClick={() => reload()}
+                onClick={() => {
+                  setStep(2);
+                  setInput(input); // Preserve the input
+                }}
               >
                 Retry
               </Button>
@@ -446,7 +441,7 @@ export default function OnboardingPage() {
               Edit Information
             </Button>
 
-            {status === "streaming" && (
+            {isLoading && (
               <Button onClick={stop} variant="destructive">
                 Stop Generation
               </Button>

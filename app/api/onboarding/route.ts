@@ -11,14 +11,16 @@ export async function POST(req: NextRequest) {
       return new Response("Unauthorized", { status: 401 });
     }
     //console.log("inside onboarding route");
-    const data = await req.json();
-
+    const params = await req.json();
+    // START DEBUG
+    // console.log("params", params);
+    // END DEBUG
     const {
       businessName,
       businessIndustry,
       businessDescription,
       monthsInBusiness,
-    } = data.data;
+    } = params;
     console.log("API received:", {
       businessName,
       businessIndustry,
