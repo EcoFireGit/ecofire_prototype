@@ -264,7 +264,7 @@ export default function OnboardingPage() {
           </div>
           <div>
             <Label htmlFor="growthStage">Growth Stage</Label>
-            {growthStage === "custom" ? (
+            {growthStage === "custom" || (growthStage && !growthStageOptions.includes(growthStage)) ? (
               <div className="space-y-2">
                 <Input
                   id="customGrowthStage"
