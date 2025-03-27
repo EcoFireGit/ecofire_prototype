@@ -93,9 +93,9 @@ export async function POST(req: NextRequest) {
         async onFinish({ text, usage, finishReason }) {
           // Store chat history
           const messages = [
+            { role: "system", content: systemPrompt },
             { role: "user", content: outcomePrompt },
             { role: "assistant", content: text },
-            { role: "system", content: systemPrompt },
           ];
           try {
             await chatService.saveChatHistory(userId, chatId, messages);
