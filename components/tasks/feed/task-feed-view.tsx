@@ -5,6 +5,7 @@ import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { TaskDialog } from "@/components/tasks/tasks-dialog";
 import FilterComponent from "@/components/filters/filter-component";
+import TaskSortingComponent from "@/components/sorting/task-sorting-component";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ import type { Jobs } from "@/lib/models/job.model";
 export default function TaskFeedView() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
+  const [sortedTasks, setSortedTasks] = useState<any[]>([]);
   const [jobs, setJobs] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
@@ -181,6 +183,7 @@ export default function TaskFeedView() {
       
       setTasks(sortedTasks);
       setFilteredTasks(sortedTasks);
+      setSortedTasks(sortedTasks);
       
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -318,10 +321,19 @@ export default function TaskFeedView() {
       return matches;
     });
     
-    // Re-sort the filtered tasks
-    const sortedFiltered = sortTasks(filtered, jobs);
-    setFilteredTasks(sortedFiltered);
+    setFilteredTasks(filtered);
   };
+
+  // Handler for sort changes
+  const handleSortChange = (sortedTasks: any[]) => {
+    setSortedTasks(sortedTasks);
+  };
+
+  // Effect to update filtered tasks when tasks change
+  useEffect(() => {
+    // Apply filters to the new tasks
+    handleFilterChange(activeFilters);
+  }, [tasks]);
 
   // Fetch all necessary data when component mounts
   useEffect(() => {
@@ -394,6 +406,9 @@ export default function TaskFeedView() {
           setFilteredTasks((prevTasks) =>
             prevTasks.filter((task) => task._id !== id)
           );
+          setSortedTasks((prevTasks) =>
+            prevTasks.filter((task) => task._id !== id)
+          );
         }, 500);
 
         toast({
@@ -458,6 +473,18 @@ export default function TaskFeedView() {
         
         // Also update filtered tasks
         setFilteredTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task._id === id
+              ? {
+                  ...task,
+                  completed: false
+                }
+              : task
+          )
+        );
+        
+        // Also update sorted tasks
+        setSortedTasks((prevTasks) =>
           prevTasks.map((task) =>
             task._id === id
               ? {
@@ -576,6 +603,7 @@ export default function TaskFeedView() {
         // Remove task from both UI states
         setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
         setFilteredTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
+        setSortedTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
 
         // Find any jobs that reference this task as nextTaskId and update them
         const jobsWithThisNextTask = Object.values(jobs).filter(
@@ -619,18 +647,26 @@ export default function TaskFeedView() {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Add the FilterComponent at the top */}
-      <FilterComponent
-        onFilterChange={handleFilterChange}
-        businessFunctions={businessFunctions}
-        owners={owners}
-        initialFilters={activeFilters}
-      />
+      {/* Add the FilterComponent and TaskSortingComponent at the top */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+        <FilterComponent
+          onFilterChange={handleFilterChange}
+          businessFunctions={businessFunctions}
+          owners={owners}
+          initialFilters={activeFilters}
+        />
+        
+        <TaskSortingComponent
+          onSortChange={handleSortChange}
+          tasks={filteredTasks}
+          jobs={jobs}
+        />
+      </div>
       
       <div className="grid gap-6 mt-4">
         <div className="w-full">
           <NextTasks
-            tasks={filteredTasks}
+            tasks={sortedTasks}
             jobs={jobs}
             onComplete={handleCompleteTask}
             onViewTask={handleViewNotes}
