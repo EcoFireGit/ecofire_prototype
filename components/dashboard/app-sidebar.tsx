@@ -41,6 +41,11 @@ const items = [
     icon: Search,
   },
   {
+    title: "Business Info",
+    url: "/dashboard/business-info",
+    icon: BarChart2,
+  },
+  {
     title: "Team",
     url: "/dashboard/owners",
     icon: Users,
