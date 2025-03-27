@@ -183,22 +183,46 @@ export default function BusinessInfoPage() {
         
         <div className="space-y-2">
           <Label htmlFor="growthStage">Growth Stage</Label>
-          <Select
-            value={businessInfo.growthStage}
-            onValueChange={(value) => handleSelectChange('growthStage', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select growth stage" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Pre-seed">Pre-seed</SelectItem>
-              <SelectItem value="Seed">Seed</SelectItem>
-              <SelectItem value="Early">Early</SelectItem>
-              <SelectItem value="Growth">Growth</SelectItem>
-              <SelectItem value="Expansion">Expansion</SelectItem>
-              <SelectItem value="Mature">Mature</SelectItem>
-            </SelectContent>
-          </Select>
+          {businessInfo.growthStage === 'custom' ? (
+            <div className="space-y-2">
+              <Input
+                id="customGrowthStage"
+                name="growthStage"
+                value={businessInfo.growthStage === 'custom' ? '' : businessInfo.growthStage}
+                onChange={handleChange}
+                placeholder="Enter custom growth stage"
+                required
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleSelectChange('growthStage', 'Pre-seed')}
+              >
+                Use dropdown options instead
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Select
+                value={businessInfo.growthStage}
+                onValueChange={(value) => handleSelectChange('growthStage', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select growth stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pre-seed">Pre-seed</SelectItem>
+                  <SelectItem value="Seed">Seed</SelectItem>
+                  <SelectItem value="Early">Early</SelectItem>
+                  <SelectItem value="Growth">Growth</SelectItem>
+                  <SelectItem value="Expansion">Expansion</SelectItem>
+                  <SelectItem value="Mature">Mature</SelectItem>
+                  <SelectItem value="custom">Custom (enter your own)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         
         <Button type="submit" disabled={saving}>
