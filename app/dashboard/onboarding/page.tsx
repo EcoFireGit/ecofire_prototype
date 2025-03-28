@@ -105,6 +105,7 @@ export default function OnboardingPage() {
     onFinish(result, { usage, finishReason }) {
       console.log("Jobs usage", usage);
       console.log("Jobs finishReason", finishReason);
+      console.log("Jobs result JSON:", result); // Added debugging output
       // Add the completion to jobs messages for display
       setJobsMessages([
         ...jobsMessages,
