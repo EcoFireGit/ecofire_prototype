@@ -183,7 +183,8 @@ export default function OnboardingPage() {
           businessName: businessName.trim(),
           businessIndustry: businessIndustry.trim(),
           businessDescription: input.trim(),
-          monthsInBusiness: monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
           annualRevenue: annualRevenue,
           growthStage: growthStage,
         },
@@ -404,14 +405,7 @@ export default function OnboardingPage() {
 
             {/* Display AI response */}
             <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
-              {messages.map(
-                (m, index) =>
-                  m.role === "assistant" && (
-                    <div key={index} className="whitespace-pre-wrap mb-4">
-                      {m.content}
-                    </div>
-                  ),
-              )}
+              {completion}
 
               {isLoading && (
                 <div className="flex items-center justify-center h-10">

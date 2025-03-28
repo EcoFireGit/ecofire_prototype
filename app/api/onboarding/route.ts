@@ -12,19 +12,20 @@ export async function POST(req: NextRequest) {
     }
     //console.log("inside onboarding route");
     const params = await req.json();
-    // START DEBUG
-    // console.log("params", params);
-    // END DEBUG
     const {
       businessName,
       businessIndustry,
       businessDescription,
       monthsInBusiness,
+      annualRevenue,
+      growthStage,
     } = params;
     console.log("API received:", {
       businessName,
       businessIndustry,
       monthsInBusiness,
+      annualRevenue,
+      growthStage,
     });
 
     if (!businessName || !businessIndustry || !businessDescription) {
@@ -55,15 +56,21 @@ export async function POST(req: NextRequest) {
       (monthsInBusiness !== undefined && monthsInBusiness !== ""
         ? `, has been operating for ${monthsInBusiness} months, `
         : ", ") +
-      'and whose mission statement as follows: "' +
+      (annualRevenue !== undefined && annualRevenue !== ""
+        ? `, with annual revenues of USD ${monthsInBusiness}, `
+        : ", ") +
+      "and is currently in the " +
+      growthStage +
+      " stage of growth." +
+      'The business mission statement as follows: "' +
       businessDescription +
       '". Provide them with initial strategic recommendations and next steps to establish or grow their business. ' +
       "Be specific, actionable, and empathetic in your response.";
 
     //const outcomePrompt =
-    //"Please suggest the 5 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a table with the following columns: Outcome name, target value, deadline (date) and points allocated to that outcome.";
+    //"Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a table with the following columns: Outcome name, target value, deadline (date) and points allocated to that outcome.";
     const outcomePrompt =
-      "Please suggest the 5 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { 'outcome1': { 'name': 'Outcome 1', 'targetValue': 100, 'deadline':  '2023-12-31', 'points': 50 } }. Your output should strictly follow this format and this should be the only output.";
+      "Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { 'outcome1': { 'name': 'Outcome 1', 'targetValue': 100, 'deadline':  '2023-12-31', 'points': 50 } }. Your output should strictly follow this format and this should be the only output.";
 
     const chatService = new ChatService();
 
