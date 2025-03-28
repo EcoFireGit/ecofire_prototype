@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle, CheckSquare } from "lucide-react";
 
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
@@ -25,7 +24,7 @@ export default function OnboardingPage() {
   const [annualRevenue, setAnnualRevenue] = useState<number | "">("");
   const [growthStage, setGrowthStage] = useState("");
   const [step, setStep] = useState(1);
-  const [growthStageOptions, setGrowthStageOptions] = useState<string[]>([]);
+  const [growthStageOptions, setGrowthStageOptions] = useState<string[]>([]); // Added state for growth stage options
   const [messages, setMessages] = useState<
     Array<{ role: string; content: string }>
   >([]);
@@ -111,21 +110,6 @@ export default function OnboardingPage() {
         ...jobsMessages,
         { role: "assistant", content: result },
       ]);
-      // Attempt to parse the JSON response and update jobsData state
-      try {
-        const jsonMatch = result.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          let jsonStr = jsonMatch[0];
-          jsonStr = jsonStr.replace(/'/g, '"');
-          const parsedJobsData = JSON.parse(jsonStr);
-          setJobsData(parsedJobsData);
-        } else {
-          setJobsData(null); // Set to null if no JSON is found
-        }
-      } catch (error) {
-        console.error("Error parsing jobs data:", error);
-        setJobsData(null); // Set to null if parsing fails
-      }
     },
     onError(error) {
       console.error("Jobs completion error:", error);
@@ -303,115 +287,6 @@ export default function OnboardingPage() {
       "custom",
     ]);
   }, []);
-
-  // Display the jobs messages
-  const JobsDisplay = () => {
-    // Find any structured data (JSON) in the message content
-    const findStructuredData = (content: string) => {
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const data = JSON.parse(jsonMatch[0]);
-          return data;
-        }
-      } catch (error) {
-        console.error("Failed to parse JSON:", error);
-      }
-      return null;
-    };
-
-    // Helper to render structured job data with tasks
-    const renderStructuredJobs = (data: any) => {
-      if (!data) return <p>No structured jobs data available</p>;
-
-      return (
-        <div className="space-y-6">
-          {Object.keys(data).map((key) => {
-            const job = data[key];
-            return (
-              <div
-                key={key}
-                className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <h3 className="text-lg font-semibold flex items-center">
-                  <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
-                  {job.title}
-                </h3>
-                <p className="text-gray-700 ml-7 mb-3">{job.notes}</p>
-
-                {/* Display tasks for this job */}
-                {job.tasks && Array.isArray(job.tasks) && job.tasks.length > 0 ? (
-                  <div className="ml-7 mt-2 space-y-2">
-                    <h4 className="text-sm font-medium text-gray-600">Tasks:</h4>
-                    {job.tasks.map((task: any, index: number) => (
-                      <div key={index} className="p-2 pl-3 border-l-2 border-blue-300 bg-blue-50 rounded-sm">
-                        <h5 className="text-sm font-medium flex items-center">
-                          <CheckSquare className="h-4 w-4 mr-2 text-blue-500" />
-                          {task.title}
-                        </h5>
-                        {task.notes && (
-                          <p className="text-xs text-gray-600 ml-6">{task.notes}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      );
-    };
-
-    // Use the stored parsed data if available
-    if (jobsData) {
-      return (
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold">Jobs To Be Done</h2>
-          {renderStructuredJobs(jobsData)}
-        </div>
-      );
-    }
-
-    // Fallback to trying to parse from messages
-    const assistantMessage = jobsMessages.find(
-      (msg) => msg.role === "assistant"
-    );
-    const structuredData = assistantMessage
-      ? findStructuredData(assistantMessage.content)
-      : null;
-
-    return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold">Jobs To Be Done</h2>
-        {jobsMessages.length === 0 ? (
-          <div className="p-4 border rounded-lg bg-gray-50">
-            <p className="text-gray-500 text-center">
-              Jobs will appear here after generation
-            </p>
-          </div>
-        ) : structuredData ? (
-          renderStructuredJobs(structuredData)
-        ) : (
-          <div className="space-y-4">
-            {jobsMessages.map((msg, i) => (
-              <div
-                key={i}
-                className={`p-4 border rounded-lg ${
-                  msg.role === "assistant"
-                    ? "bg-blue-50 border-blue-200"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
 
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
@@ -726,7 +601,108 @@ export default function OnboardingPage() {
       )}
 
       {/* Step 4: Jobs To Be Done */}
-      {step === 4 && <JobsDisplay />}
+      {step === 4 && (
+        <div className="space-y-6">
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-blue-700 text-sm font-medium">
+              Here are the recommended jobs to help you achieve your business
+              outcomes.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold mb-2">
+              Recommended Jobs To Be Done
+            </h2>
+
+            {/* Display AI jobs response */}
+            <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
+              {jobsCompletion}
+
+              {isJobsLoading && (
+                <div className="flex items-center justify-center h-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              )}
+
+              {!isJobsLoading && jobsCompletion && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h3 className="text-lg font-medium mb-2">Recommended Jobs</h3>
+                  {(() => {
+                    try {
+                      // Try to extract and parse the JSON
+                      const jsonMatch = jobsCompletion.match(/\{[\s\S]*\}/);
+                      if (jsonMatch) {
+                        let jsonStr = jsonMatch[0];
+                        jsonStr = jsonStr.replace(/'/g, '"');
+                        const jobsData = JSON.parse(jsonStr);
+
+                        return (
+                          <div className="space-y-4">
+                            {Object.keys(jobsData).map((key) => {
+                              const job = jobsData[key];
+                              return (
+                                <div
+                                  key={key}
+                                  className="bg-white p-3 rounded-md border border-gray-300"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <h4 className="font-bold">{job.title}</h4>
+                                    <span className="text-green-600 font-medium">
+                                      Notes: {job.notes}
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 text-sm">
+                                    <p>{job.description}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+                    } catch (e) {
+                      console.error("Error parsing jobs data for display:", e);
+                    }
+                    return (
+                      <p className="text-gray-500">
+                        No structured jobs data available
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {jobsError && (
+            <div className="mt-4">
+              <div className="text-red-500">
+                An error occurred generating jobs.
+              </div>
+              <Button variant="outline" onClick={handleCreateJobs}>
+                Retry
+              </Button>
+            </div>
+          )}
+
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => setStep(3)}>
+              Back to Outcomes
+            </Button>
+
+            {isJobsLoading && (
+              <Button onClick={stopJobs} variant="destructive">
+                Stop Generation
+              </Button>
+            )}
+
+            <Button onClick={() => router.push("/dashboard")}>
+              Return to Dashboard
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
