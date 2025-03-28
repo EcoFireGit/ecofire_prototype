@@ -37,7 +37,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">QBO Progress Tracking</h1>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
         <button 
           onClick={fetchQBOs}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
@@ -57,7 +57,6 @@ export default function Dashboard() {
           <p>{error}</p>
         </div>
       ) : (
-        // Using a wrapping div with flex to control the chart width
         <div className="w-screen flex">
           <QBOProgressChart 
             qbos={qbos.length > 0 ? qbos : [
@@ -86,6 +85,7 @@ export default function Dashboard() {
               } as QBOData
             ]} 
             width="50%" 
+            onRefresh={fetchQBOs}
           />
         </div>
       )}
