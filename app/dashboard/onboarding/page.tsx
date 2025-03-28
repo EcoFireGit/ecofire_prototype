@@ -28,9 +28,13 @@ export default function OnboardingPage() {
   const [messages, setMessages] = useState<
     Array<{ role: string; content: string }>
   >([]);
+  const [jobsMessages, setJobsMessages] = useState<
+    Array<{ role: string; content: string }>
+  >([]);
   const { toast } = useToast();
   const router = useRouter();
 
+  // Hook for outcomes completion
   const {
     complete,
     completion,
@@ -75,6 +79,72 @@ export default function OnboardingPage() {
       });
     },
   });
+
+  // Second hook for jobs completion
+  const {
+    complete: completeJobs,
+    completion: jobsCompletion,
+    error: jobsError,
+    isLoading: isJobsLoading,
+    stop: stopJobs,
+  } = useCompletion({
+    id: "jobs-completion",
+    api: "/api/onboarding",
+    onResponse(response) {
+      console.log("Jobs response received:", response.status);
+      if (!response.ok) {
+        console.error("Jobs API response not OK:", response.status);
+        stopJobs();
+        toast({
+          title: "Error",
+          description: `Server error: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    },
+    onFinish(result, { usage, finishReason }) {
+      console.log("Jobs usage", usage);
+      console.log("Jobs finishReason", finishReason);
+      // Add the completion to jobs messages for display
+      setJobsMessages([...jobsMessages, { role: "assistant", content: result }]);
+    },
+    onError(error) {
+      console.error("Jobs completion error:", error);
+      toast({
+        title: "Error",
+        description:
+          "An error occurred while generating jobs. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handler for "Create Jobs To Be Done" button
+  const handleCreateJobs = async () => {
+    setStep(4); // Move to the jobs step
+    
+    try {
+      // Call the API with the step parameter set to "jobs"
+      await completeJobs("", {
+        body: {
+          businessName: businessName.trim(),
+          businessIndustry: businessIndustry.trim(),
+          businessDescription: input.trim(),
+          monthsInBusiness: monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          annualRevenue: annualRevenue,
+          growthStage: growthStage,
+          step: "jobs", // Indicate this is the jobs step
+        },
+      });
+    } catch (err) {
+      console.error("Error during jobs generation:", err);
+      toast({
+        title: "Jobs Generation Error",
+        description: "There was a problem generating jobs. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleNextStep = () => {
     if (
@@ -388,7 +458,7 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {/* Step 3: AI Response */}
+      {/* Step 3: AI Response with Outcomes */}
       {step === 3 && (
         <div className="space-y-6">
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -400,16 +470,56 @@ export default function OnboardingPage() {
 
           <div>
             <h2 className="text-xl font-semibold mb-2">
-              Strategic Recommendations
+              Strategic Recommendations - Outcomes
             </h2>
 
-            {/* Display AI response */}
+            {/* Display AI outcomes response */}
             <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
               {completion}
 
               {isLoading && (
                 <div className="flex items-center justify-center h-10">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              )}
+
+              {!isLoading && completion && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h3 className="text-lg font-medium mb-2">Business Outcomes</h3>
+                  {(() => {
+                    try {
+                      // Try to extract and parse the JSON
+                      const jsonMatch = completion.match(/\{[\s\S]*\}/);
+                      if (jsonMatch) {
+                        let jsonStr = jsonMatch[0];
+                        jsonStr = jsonStr.replace(/'/g, '"');
+                        const outcomeData = JSON.parse(jsonStr);
+                        
+                        return (
+                          <div className="space-y-4">
+                            {Object.keys(outcomeData).map((key) => {
+                              const outcome = outcomeData[key];
+                              return (
+                                <div key={key} className="bg-white p-3 rounded-md border border-gray-300">
+                                  <div className="flex justify-between items-center">
+                                    <h4 className="font-bold">{outcome.name}</h4>
+                                    <span className="text-blue-600 font-medium">{outcome.points} points</span>
+                                  </div>
+                                  <div className="mt-2 text-sm">
+                                    <p><span className="font-medium">Target:</span> {outcome.targetValue}</p>
+                                    <p><span className="font-medium">Deadline:</span> {new Date(outcome.deadline).toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+                    } catch (e) {
+                      console.error("Error parsing outcome data for display:", e);
+                    }
+                    return <p className="text-gray-500">No structured outcome data available</p>;
+                  })()}
                 </div>
               )}
             </div>
@@ -431,13 +541,117 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <Button variant="outline" onClick={() => setStep(2)}>
               Edit Information
             </Button>
 
+            {!isLoading && !error && (
+              <Button 
+                onClick={handleCreateJobs}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Create Jobs To Be Done
+              </Button>
+            )}
+
             {isLoading && (
               <Button onClick={stop} variant="destructive">
+                Stop Generation
+              </Button>
+            )}
+
+            <Button onClick={() => router.push("/dashboard")}>
+              Return to Dashboard
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Jobs To Be Done */}
+      {step === 4 && (
+        <div className="space-y-6">
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-blue-700 text-sm font-medium">
+              Here are the recommended jobs to help you achieve your business outcomes.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold mb-2">
+              Recommended Jobs To Be Done
+            </h2>
+
+            {/* Display AI jobs response */}
+            <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
+              {jobsCompletion}
+
+              {isJobsLoading && (
+                <div className="flex items-center justify-center h-10">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              )}
+
+              {!isJobsLoading && jobsCompletion && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h3 className="text-lg font-medium mb-2">Recommended Jobs</h3>
+                  {(() => {
+                    try {
+                      // Try to extract and parse the JSON
+                      const jsonMatch = jobsCompletion.match(/\{[\s\S]*\}/);
+                      if (jsonMatch) {
+                        let jsonStr = jsonMatch[0];
+                        jsonStr = jsonStr.replace(/'/g, '"');
+                        const jobsData = JSON.parse(jsonStr);
+                        
+                        return (
+                          <div className="space-y-4">
+                            {Object.keys(jobsData).map((key) => {
+                              const job = jobsData[key];
+                              return (
+                                <div key={key} className="bg-white p-3 rounded-md border border-gray-300">
+                                  <div className="flex justify-between items-center">
+                                    <h4 className="font-bold">{job.title}</h4>
+                                    <span className="text-green-600 font-medium">Impact: {job.impact}/10</span>
+                                  </div>
+                                  <div className="mt-2 text-sm">
+                                    <p>{job.description}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+                    } catch (e) {
+                      console.error("Error parsing jobs data for display:", e);
+                    }
+                    return <p className="text-gray-500">No structured jobs data available</p>;
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {jobsError && (
+            <div className="mt-4">
+              <div className="text-red-500">An error occurred generating jobs.</div>
+              <Button
+                variant="outline"
+                onClick={handleCreateJobs}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => setStep(3)}>
+              Back to Outcomes
+            </Button>
+
+            {isJobsLoading && (
+              <Button onClick={stopJobs} variant="destructive">
                 Stop Generation
               </Button>
             )}
