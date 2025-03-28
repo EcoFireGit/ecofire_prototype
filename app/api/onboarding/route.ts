@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { ChatService } from "@/lib/services/chat.service";
+import { MissionService } from "@/lib/services/mission.service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,8 +84,6 @@ export async function POST(req: NextRequest) {
     });
 
     // Call the language model with timeout
-    // Import MissionService
-    const { MissionService } = await import("@/lib/services/mission.service");
     const missionService = new MissionService();
 
     // Update the mission with the business description
@@ -128,7 +127,7 @@ export async function POST(req: NextRequest) {
     console.log("Stream response generated, sending back to client");
     // Respond with the stream
     return result.toDataStreamResponse();
-  } catch (error) {
+  } catch (error: Error) {
     console.error("Error in onboarding API:", error);
 
     // Provide a more specific error status and message for timeouts
