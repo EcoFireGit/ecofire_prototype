@@ -106,7 +106,10 @@ export default function OnboardingPage() {
       console.log("Jobs usage", usage);
       console.log("Jobs finishReason", finishReason);
       // Add the completion to jobs messages for display
-      setJobsMessages([...jobsMessages, { role: "assistant", content: result }]);
+      setJobsMessages([
+        ...jobsMessages,
+        { role: "assistant", content: result },
+      ]);
     },
     onError(error) {
       console.error("Jobs completion error:", error);
@@ -122,7 +125,7 @@ export default function OnboardingPage() {
   // Handler for "Create Jobs To Be Done" button
   const handleCreateJobs = async () => {
     setStep(4); // Move to the jobs step
-    
+
     try {
       // Call the API with the step parameter set to "jobs"
       await completeJobs("", {
@@ -130,7 +133,8 @@ export default function OnboardingPage() {
           businessName: businessName.trim(),
           businessIndustry: businessIndustry.trim(),
           businessDescription: input.trim(),
-          monthsInBusiness: monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
           annualRevenue: annualRevenue,
           growthStage: growthStage,
           step: "jobs", // Indicate this is the jobs step
@@ -485,7 +489,9 @@ export default function OnboardingPage() {
 
               {!isLoading && completion && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h3 className="text-lg font-medium mb-2">Business Outcomes</h3>
+                  <h3 className="text-lg font-medium mb-2">
+                    Business Outcomes
+                  </h3>
                   {(() => {
                     try {
                       // Try to extract and parse the JSON
@@ -494,20 +500,39 @@ export default function OnboardingPage() {
                         let jsonStr = jsonMatch[0];
                         jsonStr = jsonStr.replace(/'/g, '"');
                         const outcomeData = JSON.parse(jsonStr);
-                        
+
                         return (
                           <div className="space-y-4">
                             {Object.keys(outcomeData).map((key) => {
                               const outcome = outcomeData[key];
                               return (
-                                <div key={key} className="bg-white p-3 rounded-md border border-gray-300">
+                                <div
+                                  key={key}
+                                  className="bg-white p-3 rounded-md border border-gray-300"
+                                >
                                   <div className="flex justify-between items-center">
-                                    <h4 className="font-bold">{outcome.name}</h4>
-                                    <span className="text-blue-600 font-medium">{outcome.points} points</span>
+                                    <h4 className="font-bold">
+                                      {outcome.name}
+                                    </h4>
+                                    <span className="text-blue-600 font-medium">
+                                      {outcome.points} points
+                                    </span>
                                   </div>
                                   <div className="mt-2 text-sm">
-                                    <p><span className="font-medium">Target:</span> {outcome.targetValue}</p>
-                                    <p><span className="font-medium">Deadline:</span> {new Date(outcome.deadline).toLocaleDateString()}</p>
+                                    <p>
+                                      <span className="font-medium">
+                                        Target:
+                                      </span>{" "}
+                                      {outcome.targetValue}
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">
+                                        Deadline:
+                                      </span>{" "}
+                                      {new Date(
+                                        outcome.deadline,
+                                      ).toLocaleDateString()}
+                                    </p>
                                   </div>
                                 </div>
                               );
@@ -516,9 +541,16 @@ export default function OnboardingPage() {
                         );
                       }
                     } catch (e) {
-                      console.error("Error parsing outcome data for display:", e);
+                      console.error(
+                        "Error parsing outcome data for display:",
+                        e,
+                      );
                     }
-                    return <p className="text-gray-500">No structured outcome data available</p>;
+                    return (
+                      <p className="text-gray-500">
+                        No structured outcome data available
+                      </p>
+                    );
                   })()}
                 </div>
               )}
@@ -547,7 +579,7 @@ export default function OnboardingPage() {
             </Button>
 
             {!isLoading && !error && (
-              <Button 
+              <Button
                 onClick={handleCreateJobs}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
@@ -573,7 +605,8 @@ export default function OnboardingPage() {
         <div className="space-y-6">
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-blue-700 text-sm font-medium">
-              Here are the recommended jobs to help you achieve your business outcomes.
+              Here are the recommended jobs to help you achieve your business
+              outcomes.
             </p>
           </div>
 
@@ -603,16 +636,21 @@ export default function OnboardingPage() {
                         let jsonStr = jsonMatch[0];
                         jsonStr = jsonStr.replace(/'/g, '"');
                         const jobsData = JSON.parse(jsonStr);
-                        
+
                         return (
                           <div className="space-y-4">
                             {Object.keys(jobsData).map((key) => {
                               const job = jobsData[key];
                               return (
-                                <div key={key} className="bg-white p-3 rounded-md border border-gray-300">
+                                <div
+                                  key={key}
+                                  className="bg-white p-3 rounded-md border border-gray-300"
+                                >
                                   <div className="flex justify-between items-center">
                                     <h4 className="font-bold">{job.title}</h4>
-                                    <span className="text-green-600 font-medium">Impact: {job.impact}/10</span>
+                                    <span className="text-green-600 font-medium">
+                                      Notes: {job.notes}
+                                    </span>
                                   </div>
                                   <div className="mt-2 text-sm">
                                     <p>{job.description}</p>
@@ -626,7 +664,11 @@ export default function OnboardingPage() {
                     } catch (e) {
                       console.error("Error parsing jobs data for display:", e);
                     }
-                    return <p className="text-gray-500">No structured jobs data available</p>;
+                    return (
+                      <p className="text-gray-500">
+                        No structured jobs data available
+                      </p>
+                    );
                   })()}
                 </div>
               )}
@@ -635,11 +677,10 @@ export default function OnboardingPage() {
 
           {jobsError && (
             <div className="mt-4">
-              <div className="text-red-500">An error occurred generating jobs.</div>
-              <Button
-                variant="outline"
-                onClick={handleCreateJobs}
-              >
+              <div className="text-red-500">
+                An error occurred generating jobs.
+              </div>
+              <Button variant="outline" onClick={handleCreateJobs}>
                 Retry
               </Button>
             </div>

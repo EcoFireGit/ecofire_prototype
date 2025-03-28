@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       'Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50 } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     const jobsPrompt =
-      'Based on the business mission and context, suggest 10 specific jobs to be done (tasks) that would help the business achieve its outcomes. For each task, provide a title, description, and estimate the impact on a scale of 1-10. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "description": "Description of what needs to be done", "impact": 8 } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
+      'Please generate the 10 most important jobs to be done in my business for achieving my mission statement. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "notes": "Description of what needs to be done" } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     // Set a timeout for the OpenAI API call
     const timeoutPromise = new Promise((_, reject) => {
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
                   try {
                     const outcomeData = JSON.parse(jsonStr);
-                    
+
                     // Import QBO service
                     const { QBOService } = await import(
                       "@/lib/services/qbo.service"
@@ -166,7 +166,9 @@ export async function POST(req: NextRequest) {
         timeoutPromise,
       ]).catch((error) => {
         console.error("API timeout or error:", error.message);
-        throw new Error("Request timeout - GPT API is taking too long to respond");
+        throw new Error(
+          "Request timeout - GPT API is taking too long to respond",
+        );
       });
 
       console.log("Stream response generated, sending back to client");
@@ -201,7 +203,7 @@ export async function POST(req: NextRequest) {
                   try {
                     const jobsData = JSON.parse(jsonStr);
                     console.log("Jobs data parsed successfully");
-                    
+
                     // Import Job service
                     const { JobService } = await import(
                       "@/lib/services/job.service"
@@ -211,12 +213,10 @@ export async function POST(req: NextRequest) {
                     // Save each job to Job table
                     for (const key in jobsData) {
                       const job = jobsData[key];
-                      
+
                       await jobService.createJob(
                         {
                           title: job.title,
-                          description: job.description,
-                          impact: job.impact,
                           isDone: false,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
@@ -245,7 +245,9 @@ export async function POST(req: NextRequest) {
         timeoutPromise,
       ]).catch((error) => {
         console.error("API timeout or error:", error.message);
-        throw new Error("Request timeout - GPT API is taking too long to respond");
+        throw new Error(
+          "Request timeout - GPT API is taking too long to respond",
+        );
       });
 
       console.log("Jobs stream response generated, sending back to client");
