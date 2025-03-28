@@ -21,13 +21,6 @@ export async function POST(req: NextRequest) {
       annualRevenue,
       growthStage,
     } = params;
-    console.log("API received:", {
-      businessName,
-      businessIndustry,
-      monthsInBusiness,
-      annualRevenue,
-      growthStage,
-    });
 
     if (!businessName || !businessIndustry || !businessDescription) {
       return new Response(
@@ -110,36 +103,53 @@ export async function POST(req: NextRequest) {
           try {
             await chatService.saveChatHistory(userId, chatId, messages);
             console.log("Chat saved with ID:", chatId);
-            
+
             // Parse the JSON from the AI response and save to QBO table
             try {
               // Extract JSON from the response text
               const jsonMatch = text.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
                 const jsonStr = jsonMatch[0];
+                // Assuming jsonStr is the input you're trying to parse
+                try {
+                  const outcomeData2 = JSON.parse(jsonStr);
+                  // Proceed with your logic here using outcomeData
+                } catch (error) {
+                  console.error(
+                    "Error parsing JSON:",
+                    error,
+                    "Input string:",
+                    jsonStr,
+                  );
+                  // Handle the error accordingly
+                }
                 const outcomeData = JSON.parse(jsonStr);
-                
                 // Import QBO service
-                const { QBOService } = await import("@/lib/services/qbo.service");
+                const { QBOService } = await import(
+                  "@/lib/services/qbo.service"
+                );
                 const qboService = new QBOService();
-                
+
                 // Save each outcome to QBO table
                 for (const key in outcomeData) {
                   const outcome = outcomeData[key];
-                  
+
                   // Format the date as an actual Date object
                   const deadlineDate = new Date(outcome.deadline);
-                  
-                  await qboService.createQBO({
-                    name: outcome.name,
-                    beginningValue: 0, // Initial value
-                    currentValue: 0, // Initial value
-                    targetValue: outcome.targetValue,
-                    deadline: deadlineDate,
-                    points: outcome.points,
-                    notes: `Auto-generated from onboarding for ${businessName}`
-                  }, userId);
-                  
+
+                  await qboService.createQBO(
+                    {
+                      name: outcome.name,
+                      beginningValue: 0, // Initial value
+                      currentValue: 0, // Initial value
+                      targetValue: outcome.targetValue,
+                      deadline: deadlineDate,
+                      points: outcome.points,
+                      notes: `Auto-generated from onboarding for ${businessName}`,
+                    },
+                    userId,
+                  );
+
                   console.log(`QBO created for outcome: ${outcome.name}`);
                 }
               } else {
