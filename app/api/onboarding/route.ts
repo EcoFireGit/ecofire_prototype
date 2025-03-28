@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       'Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50 } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     const jobsPrompt =
-      'Please generate the 10 most important jobs to be done in my business for achieving my mission statement. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "notes": "Description of what needs to be done" } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
+      'Please generate the 10 most important jobs to be done in my business for achieving my mission statement. For each job, also generate up to 3 specific tasks that need to be completed to accomplish that job. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "notes": "Description of what needs to be done", "tasks": [{"title": "Task 1 Title", "notes": "Description of the task"}, {"title": "Task 2 Title", "notes": "Description of the task"}, {"title": "Task 3 Title", "notes": "Description of the task"}] } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     // Set a timeout for the OpenAI API call
     const timeoutPromise = new Promise((_, reject) => {
@@ -210,20 +210,63 @@ export async function POST(req: NextRequest) {
                     );
                     const jobService = new JobService();
 
-                    // Save each job to Job table
+                    // Import Task service
+                    const { TaskService } = await import(
+                      "@/lib/services/task.service"
+                    );
+                    const taskService = new TaskService();
+
+                    // Save each job to Job table and create associated tasks
                     for (const key in jobsData) {
                       const job = jobsData[key];
-
-                      await jobService.createJob(
+                      
+                      // Create the job first
+                      const createdJob = await jobService.createJob(
                         {
                           title: job.title,
                           isDone: false,
                           notes: `Auto-generated from onboarding for ${businessName}`,
+                          tasks: [], // Initialize empty tasks array
                         },
                         userId,
                       );
 
                       console.log(`Job created: ${job.title}`);
+                      
+                      // If the job has tasks, create them
+                      if (job.tasks && Array.isArray(job.tasks) && job.tasks.length > 0) {
+                        const taskIds = [];
+                        
+                        // Create each task for this job
+                        for (const taskData of job.tasks) {
+                          const task = await taskService.createTask(
+                            {
+                              title: taskData.title,
+                              notes: taskData.notes || `Task for ${job.title}`,
+                              jobId: createdJob._id, // Associate with the job
+                              completed: false,
+                            },
+                            userId,
+                          );
+                          
+                          taskIds.push(task._id);
+                          console.log(`Task created: ${taskData.title} for job: ${job.title}`);
+                        }
+                        
+                        // Update the job with the task IDs
+                        if (taskIds.length > 0) {
+                          await jobService.updateJob(
+                            createdJob._id,
+                            userId,
+                            {
+                              tasks: taskIds,
+                              // Set the first task as the next task
+                              nextTaskId: taskIds[0]
+                            }
+                          );
+                          console.log(`Updated job ${job.title} with ${taskIds.length} tasks`);
+                        }
+                      }
                     }
                   } catch (error) {
                     console.error(
