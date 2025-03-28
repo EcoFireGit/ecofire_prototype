@@ -34,6 +34,7 @@
     "ecofire_prototype": "file:",
     "google-auth-library": "^9.15.1",
     "googleapis": "^105.0.0",
+    "jose": "^6.0.10",
     "lucide-react": "^0.475.0",
     "mongoose": "^8.10.0",
     "next": "15.1.6",

@@ -1,10 +1,9 @@
-import { generateAuthUrl } from '@/lib/services/gcal.service';
+import {generateAuthUrl} from '@/lib/services/gcal.service';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
     const authUrl =  await generateAuthUrl();
-   //  console.log("Console: route" + authUrl);
     return NextResponse.json({ success: true, authUrl: authUrl});
   } catch (error) {
     return NextResponse.json(
