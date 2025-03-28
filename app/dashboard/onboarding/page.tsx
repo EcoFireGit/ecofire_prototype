@@ -403,7 +403,9 @@ export default function OnboardingPage() {
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <Label htmlFor="businessDescription">Business Description</Label>
+            <Label htmlFor="businessDescription">
+              Business Mission Statement
+            </Label>
             <Textarea
               id="businessDescription"
               value={input}
@@ -480,7 +482,7 @@ export default function OnboardingPage() {
 
             {/* Display AI outcomes response */}
             <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
-              {completion}
+              {/*completion*/}
 
               {isLoading && (
                 <div className="flex items-center justify-center h-10">
@@ -618,7 +620,7 @@ export default function OnboardingPage() {
 
             {/* Display AI jobs response */}
             <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap">
-              {jobsCompletion}
+              {/*jobsCompletion*/}
 
               {isJobsLoading && (
                 <div className="flex items-center justify-center h-10">
@@ -648,26 +650,41 @@ export default function OnboardingPage() {
                                   className="bg-white p-4 rounded-md border border-gray-300"
                                 >
                                   <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-bold text-lg">{job.title}</h4>
+                                    <h4 className="font-bold text-lg">
+                                      {job.title}
+                                    </h4>
                                   </div>
                                   <div className="mb-3 text-sm text-gray-700">
                                     <p>{job.notes}</p>
                                   </div>
 
                                   {/* Display tasks if they exist */}
-                                  {job.tasks && Array.isArray(job.tasks) && job.tasks.length > 0 && (
-                                    <div className="mt-3">
-                                      <h5 className="font-semibold text-sm mb-2 text-gray-700">Tasks:</h5>
-                                      <div className="pl-4 border-l-2 border-gray-200 space-y-2">
-                                        {job.tasks.map((task, index) => (
-                                          <div key={index} className="bg-gray-50 p-2 rounded">
-                                            <p className="font-medium text-sm">{task.title}</p>
-                                            {task.notes && <p className="text-xs text-gray-600 mt-1">{task.notes}</p>}
-                                          </div>
-                                        ))}
+                                  {job.tasks &&
+                                    Array.isArray(job.tasks) &&
+                                    job.tasks.length > 0 && (
+                                      <div className="mt-3">
+                                        <h5 className="font-semibold text-sm mb-2 text-gray-700">
+                                          Tasks:
+                                        </h5>
+                                        <div className="pl-4 border-l-2 border-gray-200 space-y-2">
+                                          {job.tasks.map((task, index) => (
+                                            <div
+                                              key={index}
+                                              className="bg-gray-50 p-2 rounded"
+                                            >
+                                              <p className="font-medium text-sm">
+                                                {task.title}
+                                              </p>
+                                              {task.notes && (
+                                                <p className="text-xs text-gray-600 mt-1">
+                                                  {task.notes}
+                                                </p>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
                                 </div>
                               );
                             })}
