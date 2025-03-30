@@ -69,7 +69,7 @@ export class TaskService {
     const tasks = await Task.find({ 
       userId, 
     }).lean();
-    console.log(tasks);
+    // console.log(tasks);
     return JSON.parse(JSON.stringify(tasks));
   } catch (error) {
     throw new Error('Error fetching next tasks from database');
