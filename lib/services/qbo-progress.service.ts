@@ -198,10 +198,16 @@ export class QBOProgressService {
       const piEntry = progressPIs[mapping.piId];
       
       if (qboEntry && piEntry) {
-        // Calculate contribution using qboImpact value from mapping
-        const contributionAmount = mapping.qboImpact * piEntry[1];
-        console.log(`${piEntry[0]} contributes ${(contributionAmount * 100).toFixed(2)}% to ${qboEntry[0]} with impact factor ${mapping.qboImpact}`);
-        qboEntry[1] += contributionAmount;
+        // Find the corresponding QBO object to get target and beginning values
+        const qbo = qbos.find(q => q._id === mapping.qboId);
+        if (qbo) {
+          const qboDifference = qbo.targetValue - qbo.beginningValue;
+          // Calculate contribution using qboImpact value from mapping and normalize by QBO's target-beginning difference
+          const contributionAmount = qboDifference !== 0 ? 
+            (mapping.qboImpact * piEntry[1]) / qboDifference : 0;
+          console.log(`${piEntry[0]} contributes ${(contributionAmount * 100).toFixed(2)}% to ${qboEntry[0]} with impact factor ${mapping.qboImpact} and normalized by ${qboDifference}`);
+          qboEntry[1] += contributionAmount;
+        }
       }
     });
     
