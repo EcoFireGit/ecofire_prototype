@@ -179,7 +179,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
             <div className="absolute hidden group-hover:block right-0 top-full mt-2 bg-gray-800 text-white text-xs rounded py-1 px-2 w-48 z-10">
-              Click on the business objective names on the left to update current values
+              Click on objective names on the left to update current values
             </div>
           </div>
         </div>
@@ -216,19 +216,25 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
                   </span>
                   <div className="flex-1">
                     {/* Expected Outcome Bar */}
-                    <div className="relative h-5 mb-1">
+                    <div className="relative h-5 mb-1 group">
                       <div
                         className="absolute bg-blue-500 h-full rounded"
                         style={{ width: `${item.expectedOutcome}%` }}
                       ></div>
+                      <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10">
+                        Expected: {item.expectedOutcome.toFixed(1)}%
+                      </div>
                     </div>
                     
                     {/* Achieved Outcome Bar - No longer clickable */}
-                    <div className="relative h-5">
+                    <div className="relative h-5 group">
                       <div
                         className="absolute bg-green-500 h-full rounded"
                         style={{ width: `${item.achievedOutcome}%` }}
                       ></div>
+                      <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10">
+                        Achieved: {item.achievedOutcome.toFixed(1)}%
+                      </div>
                     </div>
                   </div>
                 </div>
