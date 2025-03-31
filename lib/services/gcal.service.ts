@@ -1,11 +1,14 @@
 import { authenticate } from '@google-cloud/local-auth';
 import { OAuth2Client } from 'google-auth-library';
-import { google } from 'googleapis';
+import { calendar, google,  } from 'googleapis';
 import { NextResponse } from 'next/server';
 import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
+import { GaxiosResponse } from 'gaxios'; // Import GaxiosResponse
+import { Schema$CalendarListEntry } from 'googleapis';
 
 import dbConnect from '../mongodb';
+import { GaxiosPromise } from 'googleapis/build/src/apis/abusiveexperiencereport';
 
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
@@ -77,6 +80,7 @@ async function processAuthCode(userId: string, code: string) {
     const { tokens } = await oauth2Client.getToken(code);
     //save tokens
     await saveCredentials(userId, tokens);
+    //get calendars
   }catch(error){
       console.log("Error in processAuthCode: " + error);
       throw new Error('Error getting tokens from auth code');
@@ -98,6 +102,53 @@ async function saveCredentials(userId: string, client: Record<string, any> ) {
 
 }
 
+export async function saveAuthorizedCalendars(userId: string, calendars: any) {
+  try {
+    await dbConnect();
+
+    //load refresh token from
+    const gcalAuth = await GCalAuth.findOne({ userId: userId });
+    if (!gcalAuth) {
+      throw new Error('No credentials found');
+    }
+    console.log('gcalAuth:', gcalAuth.calendars);
+    gcalAuth.calendars = calendars;
+    const savedAuth = gcalAuth.save();
+    return JSON.parse(JSON.stringify(savedAuth));
+
+  }
+  catch (error) {
+    console.log("Error in saveAuthorizedUserCalendars" + error);
+    throw new Error('Error saving user calendars');
+  }
+
+}
+export async function getCalendarsFromGoogle(userId: string): Promise<Schema$CalendarListEntry[]> {
+  try {
+    await dbConnect();
+
+    //load refresh token from
+    const gcalAuth = await GCalAuth.findOne({ userId: userId });
+    if (!gcalAuth) {
+      throw new Error('No credentials found');
+    }
+
+    const auth = gcalAuth.auth;
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+    oauth2Client.setCredentials(auth);
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const res = await calendar.calendarList.list();
+  
+    return res.data.items || [];
+    
+  }
+  catch (error) {
+    console.log("Error in getUserCalendars" + error);
+    throw new Error('Error getting user calendars');
+  }
+}
+ 
 export default processAuthCode
 
 
