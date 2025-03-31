@@ -59,31 +59,7 @@ export default function Dashboard() {
       ) : (
         <div className="w-screen flex">
           <QBOProgressChart 
-            qbos={qbos.length > 0 ? qbos : [
-              // Demo data in case API returns empty array
-              {
-                _id: '1',
-                name: 'progress toward prototype',
-                unit: '%',
-                beginningValue: 0,
-                currentValue: 0,
-                targetValue: 100,
-                deadline: new Date('2025-05-01'),
-                points: 10,
-                userId: 'user123'
-              } as QBOData,
-              {
-                _id: '2',
-                name: 'marketing efforts',
-                unit: '%',
-                beginningValue: 0,
-                currentValue: 25,
-                targetValue: 100,
-                deadline: new Date('2025-05-01'),
-                points: 10,
-                userId: 'user123'
-              } as QBOData
-            ]} 
+            qbos={qbos} 
             width="50%" 
             onRefresh={fetchQBOs}
           />

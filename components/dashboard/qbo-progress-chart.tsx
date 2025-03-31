@@ -172,12 +172,15 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
             <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
             <span className="text-sm">Achieved Outcome</span>
           </div>
-          <div className="text-gray-400 cursor-help">
+          <div className="text-gray-400 cursor-help relative group">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
+            <div className="absolute hidden group-hover:block right-0 top-full mt-2 bg-gray-800 text-white text-xs rounded py-1 px-2 w-48 z-10">
+              Click on the business objective names on the left to update current values
+            </div>
           </div>
         </div>
       </div>
@@ -204,7 +207,13 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
             return (
               <div key={index} className="flex flex-col">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-gray-600 w-36 text-right pr-2">{item.name}</span>
+                  <span 
+                    className="text-sm text-gray-600 w-36 text-right pr-2 cursor-pointer hover:text-blue-600 hover:font-medium transition-colors"
+                    onClick={() => qbo ? handleQBOClick(qbo) : null}
+                    title="Click to update current value"
+                  >
+                    {item.name}
+                  </span>
                   <div className="flex-1">
                     {/* Expected Outcome Bar */}
                     <div className="relative h-5 mb-1">
@@ -214,21 +223,12 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
                       ></div>
                     </div>
                     
-                    {/* Achieved Outcome Bar - Clickable */}
-                    <div 
-                      className="relative h-5 cursor-pointer group"
-                      onClick={() => qbo ? handleQBOClick(qbo) : null}
-                      title="Click to update current value"
-                    >
+                    {/* Achieved Outcome Bar - No longer clickable */}
+                    <div className="relative h-5">
                       <div
-                        className="absolute bg-green-500 h-full rounded group-hover:bg-green-600 transition-colors"
+                        className="absolute bg-green-500 h-full rounded"
                         style={{ width: `${item.achievedOutcome}%` }}
                       ></div>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-xs text-white font-medium bg-black bg-opacity-50 px-1 rounded">
-                          Click to update
-                        </span>
-                      </div>
                     </div>
                   </div>
                 </div>
