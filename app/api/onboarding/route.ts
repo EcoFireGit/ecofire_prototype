@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
-import { ChatService } from "@/lib/services/chat.service";
 import { MissionService } from "@/lib/services/mission.service";
 
 export async function POST(req: NextRequest) {
@@ -36,8 +35,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const chatId = crypto.randomUUID(); // Generate a new chat ID for this session
-    const chatService = new ChatService();
+    const chatId = crypto.randomUUID(); // Generate a new chat ID for this session (still needed for reference)
     const missionService = new MissionService();
 
     // Update the mission with the business description
@@ -94,17 +92,10 @@ export async function POST(req: NextRequest) {
           system: systemPrompt,
           prompt: outcomePrompt,
           async onFinish({ text, usage, finishReason }) {
-            // Store chat history
-            const messages = [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: outcomePrompt },
-              { role: "assistant", content: text },
-            ];
-            try {
-              await chatService.saveChatHistory(userId, chatId, messages);
-              console.log("Chat saved with ID:", chatId);
+            // Chat history saving removed
+            console.log("Outcomes processing - chat history saving removed");
 
-              // Process and save outcomes
+            // Process and save outcomes
               try {
                 // Extract JSON from the response text
                 const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -158,9 +149,7 @@ export async function POST(req: NextRequest) {
               } catch (parseError) {
                 console.error("Error parsing or saving QBO data:", parseError);
               }
-            } catch (saveError) {
-              console.error("Error saving chat history:", saveError);
-            }
+            // Error handling for chat history saving removed
           },
         }),
         timeoutPromise,
@@ -181,17 +170,10 @@ export async function POST(req: NextRequest) {
           system: systemPrompt,
           prompt: jobsPrompt,
           async onFinish({ text, usage, finishReason }) {
-            // Store chat history
-            const messages = [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: jobsPrompt },
-              { role: "assistant", content: text },
-            ];
-            try {
-              await chatService.saveChatHistory(userId, chatId, messages);
-              console.log("Jobs chat saved with ID:", chatId);
+            // Chat history saving removed
+            console.log("Jobs processing - chat history saving removed");
 
-              // Process jobs data here if needed (similar to outcomes)
+            // Process jobs data here if needed (similar to outcomes)
               try {
                 // Extract JSON from the response text
                 const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -280,9 +262,7 @@ export async function POST(req: NextRequest) {
               } catch (parseError) {
                 console.error("Error parsing jobs data:", parseError);
               }
-            } catch (saveError) {
-              console.error("Error saving jobs chat history:", saveError);
-            }
+            // Error handling for jobs chat history saving removed
           },
         }),
         timeoutPromise,
