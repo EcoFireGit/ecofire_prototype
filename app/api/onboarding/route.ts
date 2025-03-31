@@ -100,10 +100,13 @@ export async function POST(req: NextRequest) {
                 // Extract JSON from the response text
                 const jsonMatch = text.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                  // Get the JSON string and replace any single quotes with double quotes to ensure valid JSON
+                  // Get the JSON string and fix potential issues
                   let jsonStr = jsonMatch[0];
+                  // Replace single quotes with double quotes
                   jsonStr = jsonStr.replace(/'/g, '"');
-
+                  // Fix escaped quotes in strings (like word"s)
+                  jsonStr = jsonStr.replace(/(\w)"(\w)/g, '$1\'$2');
+                  
                   try {
                     const outcomeData = JSON.parse(jsonStr);
 
@@ -178,10 +181,13 @@ export async function POST(req: NextRequest) {
                 // Extract JSON from the response text
                 const jsonMatch = text.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                  // Get the JSON string and replace any single quotes with double quotes
+                  // Get the JSON string and fix potential issues
                   let jsonStr = jsonMatch[0];
+                  // Replace single quotes with double quotes
                   jsonStr = jsonStr.replace(/'/g, '"');
-
+                  // Fix escaped quotes in strings (like word"s)
+                  jsonStr = jsonStr.replace(/(\w)"(\w)/g, '$1\'$2');
+                  
                   try {
                     const jobsData = JSON.parse(jsonStr);
                     console.log("Jobs data parsed successfully");
