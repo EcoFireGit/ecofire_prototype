@@ -2,7 +2,6 @@
 
 import { Task } from "@/lib/models/task.model";
 
-
 import { useCompletion } from "@ai-sdk/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -642,17 +641,20 @@ export default function OnboardingPage() {
                       if (jsonMatch) {
                         let jsonStr = jsonMatch[0];
                         // First, fix possessive apostrophes with a specific pattern
-                        jsonStr = jsonStr.replace(/(\w+)\."s/g, '$1\'s');
+                        jsonStr = jsonStr.replace(/(\w+)\."s/g, "$1's");
                         // Replace single quotes with double quotes (for JSON validity)
                         jsonStr = jsonStr.replace(/'/g, '"');
                         // Fix escaped quotes in strings (like word"s)
                         jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
                         // Fix company names with apostrophes
-                        jsonStr = jsonStr.replace(/"([^"]+)"s mission"/g, '"$1\'s mission"');
-                        
+                        jsonStr = jsonStr.replace(
+                          /"([^"]+)"s mission"/g,
+                          '"$1\'s mission"',
+                        );
+
                         // Handle any other known patterns that cause issues
                         jsonStr = jsonStr.replace(/\."/g, '."');
-                        
+
                         const jobsData = JSON.parse(jsonStr);
                         return (
                           <div className="space-y-6">
@@ -681,21 +683,23 @@ export default function OnboardingPage() {
                                           Tasks:
                                         </h5>
                                         <div className="pl-4 border-l-2 border-gray-200 space-y-2">
-                                          {job.tasks.map((task: Task, index: number) => (
-                                            <div
-                                              key={index}
-                                              className="bg-gray-50 p-2 rounded"
-                                            >
-                                              <p className="font-medium text-sm">
-                                                {task.title}
-                                              </p>
-                                              {task.notes && (
-                                                <p className="text-xs text-gray-600 mt-1">
-                                                  {task.notes}
+                                          {job.tasks.map(
+                                            (task: Task, index: number) => (
+                                              <div
+                                                key={index}
+                                                className="bg-gray-50 p-2 rounded"
+                                              >
+                                                <p className="font-medium text-sm">
+                                                  {task.title}
                                                 </p>
-                                              )}
-                                            </div>
-                                          ))}
+                                                {task.notes && (
+                                                  <p className="text-xs text-gray-600 mt-1">
+                                                    {task.notes}
+                                                  </p>
+                                                )}
+                                              </div>
+                                            ),
+                                          )}
                                         </div>
                                       </div>
                                     )}
@@ -710,9 +714,12 @@ export default function OnboardingPage() {
                       // Show the error for easier debugging
                       return (
                         <div>
-                          <p className="text-red-500">Error parsing jobs data: {e.message}</p>
+                          <p className="text-red-500">
+                            Error parsing jobs data: {e as Error.message}
+                          </p>
                           <p className="text-gray-500 mt-2">
-                            Try refreshing the page or returning to the previous step.
+                            Try refreshing the page or returning to the previous
+                            step.
                           </p>
                         </div>
                       );
