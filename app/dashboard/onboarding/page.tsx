@@ -503,7 +503,8 @@ export default function OnboardingPage() {
                         let jsonStr = jsonMatch[0];
                         jsonStr = jsonStr.replace(/'/g, '"');
                         const outcomeData = JSON.parse(jsonStr);
-
+                        // Fix escaped quotes in strings (like word"s)
+                        jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
                         return (
                           <div className="space-y-4">
                             {Object.keys(outcomeData).map((key) => {
@@ -638,8 +639,9 @@ export default function OnboardingPage() {
                       if (jsonMatch) {
                         let jsonStr = jsonMatch[0];
                         jsonStr = jsonStr.replace(/'/g, '"');
+                        // Fix escaped quotes in strings (like word"s)
+                        jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
                         const jobsData = JSON.parse(jsonStr);
-
                         return (
                           <div className="space-y-6">
                             {Object.keys(jobsData).map((key) => {
