@@ -428,12 +428,7 @@ export async function POST(req: NextRequest) {
                     }
                   }
                   
-                  // After creating/updating PIs, also update job impact values
-                  // This will calculate the relationships between jobs and PIs
-                  const { updateJobImpactValues } = await import(
-                    "@/lib/services/job-impact.service"
-                  );
-                  await updateJobImpactValues(userId);
+                  // Job impact calculation removed as requested
                   
                 } catch (error) {
                   console.error(
