@@ -1,20 +1,17 @@
 import { authenticate } from '@google-cloud/local-auth';
 import { OAuth2Client } from 'google-auth-library';
-import { calendar, google,  } from 'googleapis';
-import { NextResponse } from 'next/server';
+import { google,  } from 'googleapis';
 import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
-import { GaxiosResponse } from 'gaxios'; // Import GaxiosResponse
 import { Schema$CalendarListEntry } from 'googleapis';
 
 import dbConnect from '../mongodb';
-import { GaxiosPromise } from 'googleapis/build/src/apis/abusiveexperiencereport';
 
 
-const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
-const TOKEN_PATH = path.join(process.cwd(), 'token.json');
-const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
-
+const scopes = [
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/calendar'
+];
 
 const clientId = process.env.GOOGLE_CLIENT_ID!;
 
@@ -22,6 +19,7 @@ const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
 
 const redirectUri = process.env.GOOGLE_REDIRECT_URI!;
 
+const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
 // async function loadSavedCredentials(): Promise<OAuth2Client | null> {
 //   try {
@@ -54,13 +52,7 @@ const redirectUri = process.env.GOOGLE_REDIRECT_URI!;
 
 export async function generateAuthUrl() : Promise<string> {
     try {
-        const scopes = [
-        'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/calendar.events',
-        ];
 
-        let oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-        
         const authUrl = oauth2Client.generateAuthUrl({ 
           access_type: 'offline',
           scope: scopes
@@ -73,14 +65,37 @@ export async function generateAuthUrl() : Promise<string> {
     }
 }
 
+export async function getRefreshToken(userId: string) {
+  try {
+    await dbConnect();
+    const gcalAuth = await GCalAuth.findOne({ userId: userId });
+    if (!gcalAuth) {
+      return '';
+    }
+    return gcalAuth.auth.refresh_token || '';
+  }catch(error){
+    console.log("Error in getRefreshToken: " + error);
+    throw error
+  }
+}
+
 async function processAuthCode(userId: string, code: string) {
   try {
-    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     //get tokens from code
     const { tokens } = await oauth2Client.getToken(code);
-    //save tokens
-    await saveCredentials(userId, tokens);
-    //get calendars
+
+    //save only if refresh token is received from Google. It is a MUST to make future requests
+    if(tokens.refresh_token !== undefined ){
+      await saveCredentials(userId, tokens);
+      return;
+    }    
+    //does refresh token exist in db?
+    const refreshTokenExists = getRefreshToken(userId);
+    if(tokens.refresh_token === undefined && !refreshTokenExists){ 
+      //is tehre a refresh token saved in the db?
+      throw new Error('No refresh token found. Please ensure there is a refresh token saved in the db');
+    }
+    return
   }catch(error){
       console.log("Error in processAuthCode: " + error);
       throw new Error('Error getting tokens from auth code');
@@ -90,11 +105,18 @@ async function processAuthCode(userId: string, code: string) {
 async function saveCredentials(userId: string, client: Record<string, any> ) {
   try {
     await dbConnect();
-    const gcalAuth = new GCalAuth({
-      userId: userId,
-      auth: client
-    });
-    gcalAuth.save();
+    const gcalAuthExists = await GCalAuth.findOne({ userId: userId });
+    if(gcalAuthExists){
+      gcalAuthExists.auth = client;
+      gcalAuthExists.save();
+    }else {
+      const gcalAuth = new GCalAuth({
+        userId: userId,
+        auth: client
+      });
+      const savedAuth = await gcalAuth.save();
+    }
+
  }catch(error){
       console.log("Error in saveCredentials" + error);
       throw new Error('Error saving credentials');
@@ -111,7 +133,6 @@ export async function saveAuthorizedCalendars(userId: string, calendars: any) {
     if (!gcalAuth) {
       throw new Error('No credentials found');
     }
-    console.log('gcalAuth:', gcalAuth.calendars);
     gcalAuth.calendars = calendars;
     const savedAuth = gcalAuth.save();
     return JSON.parse(JSON.stringify(savedAuth));
@@ -134,67 +155,19 @@ export async function getCalendarsFromGoogle(userId: string): Promise<Schema$Cal
     }
 
     const auth = gcalAuth.auth;
-    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     oauth2Client.setCredentials(auth);
 
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    
+    oauth2Client.setCredentials(credentials);
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
     const res = await calendar.calendarList.list();
-  
     return res.data.items || [];
-    
   }
   catch (error) {
-    console.log("Error in getUserCalendars" + error);
+    console.log("Error in getCalendarsFromGoogle" + error);
     throw new Error('Error getting user calendars');
   }
 }
  
 export default processAuthCode
-
-
-// export async function authorize() {
-//   try {
-//     client = await loadSavedCredentials();
-//     if (client) return client;
-
-//     let client = await authenticate({
-//       scopes: SCOPES,
-//       keyfilePath: CREDENTIALS_PATH,
-//     });
-
-//     if (client.credentials) {
-//       await saveCredentials(client);
-//     }
-//     return client;
-//   } catch (error) {
-//     console.error('Authorization error:', error);
-//     throw error; // Re-throw to be caught by the API route
-//   }
-// }
-
-
-// export async function getCalendars() {
-//   const auth = await authorize();
-//   const calendar = google.calendar({ version: 'v3', auth });
-//   const res = await calendar.calendarList.list();
-//   return res.data.items;
-// }
-
-// export async function getCalendarEvents(calendarIds: string[]) {
-//   const auth = await authorize();
-//   const calendar = google.calendar({ version: 'v3', auth });
-//   const allEvents = [];
-
-//   for (const calendarId of calendarIds) {
-//     const res = await calendar.events.list({
-//       calendarId,
-//       timeMin: new Date().toISOString(),
-//       maxResults: 10,
-//       singleEvents: true,
-//       orderBy: 'startTime',
-//     });
-//     allEvents.push(...(res.data.items || []));
-//   }
-
-//   return allEvents;
-// }

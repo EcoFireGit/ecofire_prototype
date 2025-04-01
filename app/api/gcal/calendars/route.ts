@@ -16,6 +16,8 @@ export async function GET() {
     }
 
     const calendars = await getCalendarsFromGoogle(userId);
+    // console.log('fetched calendars:', calendars);
+
     return NextResponse.json({
       success: true,
       data: calendars

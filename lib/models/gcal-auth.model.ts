@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 
 export interface GCalAuth extends mongoose.Document {
   _id: string;
@@ -16,15 +16,14 @@ const GCalAuthSchema = new mongoose.Schema<GCalAuth>({
     index: true
   },
   auth: {
-    type: Schema.Types.Mixed,
+    type: mongoose.Schema.Types.Mixed,
     required: [true, "Please provide google calendar auth object"],
   },
   calendars: [{
-    type: Schema.Types.Mixed, 
+    type: mongoose.Schema.Types.Mixed, 
   }]  
 },
 { timestamps: true });
 
 
-export default mongoose.models.GCalAuth || 
-  mongoose.model<GCalAuth>("google_calendar_auths", GCalAuthSchema);
+export default mongoose.models.GCalAuth || mongoose.model<GCalAuth>("google_calendar_auths", GCalAuthSchema);

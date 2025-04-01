@@ -5,9 +5,11 @@ import useCalendar from '@/hooks/use-calendar';
 export default function CalendarAuth() {
   const {
     isAuthorizing,
+    isGetting,
     calendars,
     selectedCalendars,
     handleAuth,
+    handleGetCalenders,
     handleCalendarSelect,
     handleGetEvents,
     events
@@ -19,8 +21,15 @@ export default function CalendarAuth() {
         onClick={handleAuth}
         disabled={isAuthorizing}
       >
-        {isAuthorizing ? 'Authorizing...' : 'Connect Google Calendar'}
+        {isAuthorizing ? 'Authorizing...' : 'Authorize Google Calendar'}
       </Button>
+
+      <Button 
+        onClick={handleGetCalenders}
+        disabled={isGetting}
+      >
+        {isGetting ? 'Getting...' : 'Get Calendars'}
+      </Button>      
 
       {calendars.length > 0 && (
         <div className="space-y-2">

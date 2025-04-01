@@ -1,9 +1,7 @@
 // pages/api/auth/callback/google.js
 
-import processAuthCode, { getUserCalendars } from '@/lib/services/gcal.service';
-import { google } from 'googleapis';
+import processAuthCode from '@/lib/services/gcal.service';
 import { NextResponse, NextRequest } from 'next/server';
-import { decodeJwt } from 'jose';
 import { use } from 'react';
 import { CustomError } from '@/utils/CustomError';
 import { ErrorCodes } from '@/utils/ErrorCodes';
@@ -38,9 +36,9 @@ export async function GET(req: NextRequest) {
         );
       }
       await processAuthCode(userId, code);
-      const serverUrl = process.env.SERVER_URL;
-      return NextResponse.redirect(new URL(serverUrl + '/api/gcal/calendars', req.url));
-
+      // const serverUrl = process.env.SERVER_URL;
+      // return NextResponse.redirect(new URL(serverUrl + '/api/gcal/calendars', req.url));
+      return NextResponse.json('Calendar connected');
     } catch (error) {
         
         console.error('Error in GET /api/gcal/auth/callback:', error);

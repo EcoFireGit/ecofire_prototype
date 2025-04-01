@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 export default function useCalendar() {
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [isGetting, setIsGetting] = useState(false);
   const [calendars, setCalendars] = useState<any[]>([]);
   const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -25,6 +26,27 @@ export default function useCalendar() {
       console.error('Authorization failed:', error);
     } finally {
       setIsAuthorizing(false);
+    }
+  };
+
+  const handleGetCalenders = async () => {
+    setIsGetting(true);
+    try {
+      const response = await fetch('/api/gcal/calendars');
+      
+      if (response.ok) {
+        const data = await response.json();
+
+        console.log("response: " + JSON.stringify(data.data));
+        //console.log("Console: use-calendar" + response.json().authUrl);
+        // const calendarsResponse = await fetch('/api/gcal/calendars');
+        // const calendarsData = await calendarsResponse.json();
+     //  setCalendars(calendarsData);
+      }
+    } catch (error) {
+      console.error('Error pulling Calendars failed:', error);
+    } finally {
+      setIsGetting(false);
     }
   };
 
@@ -52,10 +74,12 @@ export default function useCalendar() {
 
   return {
     isAuthorizing,
+    isGetting,
     calendars,
     selectedCalendars,
     events,
     handleAuth,
+    handleGetCalenders,
     handleCalendarSelect,
     handleGetEvents
   };
