@@ -4,6 +4,7 @@ import { useState } from 'react';
 export default function useCalendar() {
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [isGetting, setIsGetting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [calendars, setCalendars] = useState<any[]>([]);
   const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -50,6 +51,31 @@ export default function useCalendar() {
     }
   };
 
+
+  const handleCreatePrioriCalendar = async () => {
+    setIsCreating(true);
+    try {
+
+      const response = await fetch('/api/gcal/calendars/prioriwise', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: { name: 'Prioriwise' } }),
+      });      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("response: " + JSON.stringify(data.data));
+
+      }
+    } catch (error) {
+      console.error('Error Creating  Prioriwise failed:', error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+    
+
   const handleCalendarSelect = (calendarId: string) => {
     setSelectedCalendars(prev => 
       prev.includes(calendarId)
@@ -75,11 +101,13 @@ export default function useCalendar() {
   return {
     isAuthorizing,
     isGetting,
+    isCreating,
     calendars,
     selectedCalendars,
     events,
     handleAuth,
     handleGetCalenders,
+    handleCreatePrioriCalendar,
     handleCalendarSelect,
     handleGetEvents
   };

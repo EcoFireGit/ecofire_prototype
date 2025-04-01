@@ -6,10 +6,12 @@ export default function CalendarAuth() {
   const {
     isAuthorizing,
     isGetting,
+    isCreating,
     calendars,
     selectedCalendars,
     handleAuth,
     handleGetCalenders,
+    handleCreatePrioriCalendar,
     handleCalendarSelect,
     handleGetEvents,
     events
@@ -30,6 +32,13 @@ export default function CalendarAuth() {
       >
         {isGetting ? 'Getting...' : 'Get Calendars'}
       </Button>      
+
+      <Button 
+        onClick={handleCreatePrioriCalendar}
+        disabled={isCreating}
+      >
+        {isCreating ? 'Creating...' : 'Create Prioriwise Calendar'}
+      </Button>  
 
       {calendars.length > 0 && (
         <div className="space-y-2">

@@ -1,6 +1,6 @@
 import { authenticate } from '@google-cloud/local-auth';
 import { OAuth2Client } from 'google-auth-library';
-import { google,  } from 'googleapis';
+import { google} from 'googleapis';
 import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
 import { Schema$CalendarListEntry } from 'googleapis';
@@ -170,4 +170,60 @@ export async function getCalendarsFromGoogle(userId: string): Promise<Schema$Cal
   }
 }
  
+export async function createPrioriCalendar(userId: string): Promise<Schema$CalendarListEntry.data> {
+  try {
+    await dbConnect();
+
+    //load refresh token from
+    const gcalAuth = await GCalAuth.findOne({ userId: userId });
+    if (!gcalAuth) {
+      throw new Error('No credentials found');
+    }
+
+    const auth = gcalAuth.auth;
+    oauth2Client.setCredentials(auth);
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    oauth2Client.setCredentials(credentials);
+
+    //does prioriwise calendar exist?
+
+
+    const calendarData = {
+      summary: 'Prioriwise',
+      description: 'Prioriwise Calendar to manage your business jobs',
+      etag: 'Prioriwise',
+      timeZone: 'America/Los_Angeles',
+    };
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const res = await calendar.calendars.insert({
+        requestBody: calendarData
+    });
+    console.log('res:', res.data);
+
+    gcalAuth.prioriwiseCalendar = res.data;
+    const savedAuth = gcalAuth.save();
+
+    return savedAuth.prioriwiseCalendar;
+  }
+  catch (error) {
+    console.log("Error in createPrioriCalendar" , error);
+    throw new Error('Error creating calendar');
+  }
+}
+
+async function doesCalendarExist(oauth2Client: OAuth2Client, calendarId: string) {
+  try {
+      const priorCalExists = await google.calendar({ version: 'v3', auth: oauth2Client }).calendars.get({
+        calendarId: calendarId
+      });
+      if(priorCalExists && priorCalExists.data){
+        return priorCalExists.data;
+      }
+    }  
+    catch (error) {
+      return null;
+    }
+}
+
 export default processAuthCode
