@@ -24,7 +24,6 @@ interface ChatResponse {
 }
 
 export default function Chat() {
-  const [missionStatement, setMissionStatement] = useState('');
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -45,7 +44,6 @@ export default function Chat() {
     setMessages,
   } = useChat({
     id: selectedChatId || undefined,
-    body: { missionStatement },
     onFinish(message, { usage, finishReason }) {
       console.log('Usage', usage);
       console.log('FinishReason', finishReason);
@@ -225,12 +223,6 @@ export default function Chat() {
         )}
 
         <div className="fixed bottom-0 w-full max-w-4xl mb-8">
-          <input
-            className="w-full p-2 mb-2 border border-gray-300 rounded shadow-xl"
-            value={missionStatement}
-            placeholder="What is your mission statement?"
-            onChange={(e) => setMissionStatement(e.target.value)}
-          />
           <form onSubmit={handleSubmit}>
             <input
               className="w-full p-2 border border-gray-300 rounded shadow-xl"
