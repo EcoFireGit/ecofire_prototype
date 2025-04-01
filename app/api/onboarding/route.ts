@@ -4,6 +4,8 @@ import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
 import crypto from 'crypto';
+import { BusinessInfoService } from "@/lib/services/business-info.service";
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
