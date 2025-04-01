@@ -3,9 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
-import crypto from 'crypto';
-import { BusinessInfoService } from "@/lib/services/business-info.service";
-import crypto from 'crypto';
+import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,7 +42,7 @@ export async function POST(req: NextRequest) {
     // Update the business info with the business description as mission statement
     try {
       await businessInfoService.updateBusinessInfo(userId, {
-        missionStatement: businessDescription
+        missionStatement: businessDescription,
       });
       console.log("Business info updated with mission statement");
     } catch (updateError) {
@@ -130,20 +128,18 @@ export async function POST(req: NextRequest) {
 
                     // Check if QBO with same name already exists
                     const existingQBOs = await qboService.getAllQBOs(userId);
-                    const existingQBO = existingQBOs.find(qbo => qbo.name === outcome.name);
+                    const existingQBO = existingQBOs.find(
+                      (qbo) => qbo.name === outcome.name,
+                    );
 
                     if (existingQBO) {
                       // Update the existing QBO
-                      await qboService.updateQBO(
-                        existingQBO._id,
-                        userId,
-                        {
-                          targetValue: outcome.targetValue,
-                          deadline: deadlineDate,
-                          points: outcome.points,
-                          notes: `Updated during onboarding for ${businessName}`,
-                        }
-                      );
+                      await qboService.updateQBO(existingQBO._id, userId, {
+                        targetValue: outcome.targetValue,
+                        deadline: deadlineDate,
+                        points: outcome.points,
+                        notes: `Updated during onboarding for ${businessName}`,
+                      });
                       console.log(`QBO updated for outcome: ${outcome.name}`);
                     } else {
                       // Create a new QBO
@@ -208,17 +204,23 @@ export async function POST(req: NextRequest) {
                 // Get the JSON string and fix potential issues
                 let jsonStr = jsonMatch[0];
                 // First, fix possessive apostrophes with a specific pattern
-                jsonStr = jsonStr.replace(/(\w+)\."s/g, '$1\'s');
+                jsonStr = jsonStr.replace(/(\w+)\."s/g, "$1's");
                 // Replace single quotes with double quotes (for JSON validity)
                 jsonStr = jsonStr.replace(/'/g, '"');
                 // Fix escaped quotes in strings (like word"s)
                 jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
                 // Fix company names with apostrophes
-                jsonStr = jsonStr.replace(/"([^"]+)"s mission"/g, '"$1\'s mission"');
+                jsonStr = jsonStr.replace(
+                  /"([^"]+)"s mission"/g,
+                  '"$1\'s mission"',
+                );
                 // Handle any other known patterns that cause issues
                 jsonStr = jsonStr.replace(/\."/g, '."');
-                
-                console.log("Cleaned JSON string:", jsonStr.substring(0, 100) + "...");
+
+                console.log(
+                  "Cleaned JSON string:",
+                  jsonStr.substring(0, 100) + "...",
+                );
 
                 try {
                   const jobsData = JSON.parse(jsonStr);
@@ -238,25 +240,27 @@ export async function POST(req: NextRequest) {
 
                   // Get all existing jobs
                   const existingJobs = await jobService.getAllJobs(userId);
-                  
+
                   // Save each job to Job table and create associated tasks
                   for (const key in jobsData) {
                     const job = jobsData[key];
-                    
+
                     // Check if job with same title already exists
-                    const existingJob = existingJobs.find(j => j.title === job.title);
+                    const existingJob = existingJobs.find(
+                      (j) => j.title === job.title,
+                    );
                     let jobId;
-                    
+
                     if (existingJob) {
                       // Use the existing job
                       jobId = existingJob._id;
                       console.log(`Job already exists: ${job.title}`);
-                      
+
                       // Update the job notes if needed
                       await jobService.updateJob(jobId, userId, {
                         notes: `Updated during onboarding for ${businessName}`,
                       });
-                      
+
                       // Clear existing tasks to replace with new ones
                       if (existingJob.tasks && existingJob.tasks.length > 0) {
                         // Optional: Delete existing tasks if you want to replace them
@@ -273,7 +277,7 @@ export async function POST(req: NextRequest) {
                         },
                         userId,
                       );
-                      
+
                       jobId = createdJob._id;
                       console.log(`Job created: ${job.title}`);
                     }
@@ -309,10 +313,12 @@ export async function POST(req: NextRequest) {
                       // Update the job with the task IDs
                       if (taskIds.length > 0) {
                         // For existing jobs, we append the new tasks to any existing ones
-                        const jobToUpdate = existingJobs.find(j => j._id === jobId);
+                        const jobToUpdate = existingJobs.find(
+                          (j) => j._id === jobId,
+                        );
                         const existingTaskIds = jobToUpdate?.tasks || [];
                         const allTaskIds = [...existingTaskIds, ...taskIds];
-                        
+
                         await jobService.updateJob(jobId, userId, {
                           tasks: allTaskIds,
                           // Set the first task as the next task if no next task is set
