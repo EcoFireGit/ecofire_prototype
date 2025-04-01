@@ -715,7 +715,7 @@ export default function OnboardingPage() {
                       return (
                         <div>
                           <p className="text-red-500">
-                            Error parsing jobs data: {e as Error.message}
+                            Error parsing jobs data: {(e as Error).message}
                           </p>
                           <p className="text-gray-500 mt-2">
                             Try refreshing the page or returning to the previous
