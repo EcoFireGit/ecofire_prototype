@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
       });
 
       console.log("Stream response generated, sending back to client");
-      return result.toDataStreamResponse();
+      return (result as any).toDataStreamResponse(); // Type assertion here
     } else if (step === "jobs") {
       // Second step - jobs to be done
       const result = await Promise.race([
@@ -286,7 +287,7 @@ export async function POST(req: NextRequest) {
       });
 
       console.log("Jobs stream response generated, sending back to client");
-      return result.toDataStreamResponse();
+      return (result as any).toDataStreamResponse(); // Type assertion here
     } else {
       return new Response(
         JSON.stringify({
