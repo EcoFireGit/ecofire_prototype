@@ -1,5 +1,8 @@
 "use client";
 
+import { Task } from "@/lib/models/task.model";
+
+
 import { useCompletion } from "@ai-sdk/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -669,7 +672,7 @@ export default function OnboardingPage() {
                                           Tasks:
                                         </h5>
                                         <div className="pl-4 border-l-2 border-gray-200 space-y-2">
-                                          {job.tasks.map((task, index) => (
+                                          {job.tasks.map((task: Task, index: number) => (
                                             <div
                                               key={index}
                                               className="bg-gray-50 p-2 rounded"
