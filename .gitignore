@@ -45,3 +45,7 @@ next-env.d.ts
 /.clerk/
 
 credentials.json
+tests/gcal.http
+.gitignore
+.vscode/launch.json
+tests/search.http

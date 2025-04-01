@@ -1,6 +1,6 @@
 import { authenticate } from '@google-cloud/local-auth';
 import { OAuth2Client } from 'google-auth-library';
-import { google} from 'googleapis';
+import { google } from 'googleapis';
 import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
 import { Schema$CalendarListEntry } from 'googleapis';
@@ -186,7 +186,10 @@ export async function createPrioriCalendar(userId: string): Promise<Schema$Calen
     oauth2Client.setCredentials(credentials);
 
     //does prioriwise calendar exist?
-
+    const prioriwiseCalendar = await doesCalendarExist(oauth2Client, gcalAuth.prioriwiseCalendar.id);
+    if(prioriwiseCalendar){
+      return prioriwiseCalendar;
+    }
 
     const calendarData = {
       summary: 'Prioriwise',
@@ -199,8 +202,6 @@ export async function createPrioriCalendar(userId: string): Promise<Schema$Calen
     const res = await calendar.calendars.insert({
         requestBody: calendarData
     });
-    console.log('res:', res.data);
-
     gcalAuth.prioriwiseCalendar = res.data;
     const savedAuth = gcalAuth.save();
 
@@ -222,6 +223,9 @@ async function doesCalendarExist(oauth2Client: OAuth2Client, calendarId: string)
       }
     }  
     catch (error) {
+      if(error.code !== 404){
+        console.log("Error in doesCalendarExist: ", error);
+      }
       return null;
     }
 }
