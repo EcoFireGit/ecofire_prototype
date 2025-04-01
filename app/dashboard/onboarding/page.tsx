@@ -125,6 +125,46 @@ export default function OnboardingPage() {
     },
   });
 
+  // Third hook for PI completion
+  const {
+    complete: completePIs,
+    completion: piCompletion,
+    error: piError,
+    isLoading: isPILoading,
+    stop: stopPIs,
+  } = useCompletion({
+    id: "pi-completion",
+    api: "/api/onboarding",
+    onResponse(response) {
+      console.log("PIs response received:", response.status);
+      if (!response.ok) {
+        console.error("PIs API response not OK:", response.status);
+        stopPIs();
+        toast({
+          title: "Error",
+          description: `Server error: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    },
+    onFinish(result, completion) {
+      console.log("PI generation completed");
+      // After PIs are generated, redirect to dashboard
+      router.push("/dashboard");
+    },
+    onError(error) {
+      console.error("PIs completion error:", error);
+      toast({
+        title: "Error",
+        description:
+          "An error occurred while generating PIs, but you can still return to dashboard.",
+        variant: "destructive",
+      });
+      // Still redirect to dashboard even if there's an error
+      router.push("/dashboard");
+    },
+  });
+
   // Handler for "Create Jobs To Be Done" button
   const handleCreateJobs = async () => {
     setStep(4); // Move to the jobs step
@@ -150,6 +190,39 @@ export default function OnboardingPage() {
         description: "There was a problem generating jobs. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleReturnToDashboard = async () => {
+    // Show a toast to inform the user that PIs are being generated
+    toast({
+      title: "Generating Progress Indicators",
+      description: "Please wait while we create PIs based on your jobs...",
+    });
+
+    try {
+      // Call the API with the step parameter set to "pis"
+      await completePIs("", {
+        body: {
+          businessName: businessName.trim(),
+          businessIndustry: businessIndustry.trim(),
+          businessDescription: input.trim(),
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          annualRevenue: annualRevenue,
+          growthStage: growthStage,
+          step: "pis", // Indicate this is the PIs step
+        },
+      });
+    } catch (err) {
+      console.error("Error during PI generation:", err);
+      toast({
+        title: "PI Generation Error",
+        description: "There was a problem generating PIs, but you can still return to dashboard.",
+        variant: "destructive",
+      });
+      // Still redirect to dashboard even if there's an error
+      router.push("/dashboard");
     }
   };
 
@@ -757,8 +830,13 @@ export default function OnboardingPage() {
               </Button>
             )}
 
-            <Button onClick={() => router.push("/dashboard")}>
-              Return to Dashboard
+            <Button 
+              onClick={handleReturnToDashboard} 
+              disabled={isPILoading}
+              className="flex items-center gap-2"
+            >
+              {isPILoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isPILoading ? "Generating PIs..." : "Return to Dashboard"}
             </Button>
           </div>
         </div>

@@ -77,6 +77,9 @@ export async function POST(req: NextRequest) {
 
     const jobsPrompt =
       'Please generate the 10 most important jobs to be done in my business for achieving my mission statement. For each job, also generate up to 3 specific tasks that need to be completed to accomplish that job. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "notes": "Description of what needs to be done", "tasks": [{"title": "Task 1 Title", "notes": "Description of the task"}, {"title": "Task 2 Title", "notes": "Description of the task"}, {"title": "Task 3 Title", "notes": "Description of the task"}] } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
+      
+    const pisPrompt = 
+      'Considering all of my jobs to be done, what are all the quantifiable metrics I can use to track my progress on each of them? It is not necessary for every job to be done to be associated with a unique metric. Minimize the total number of distinct metrics I can use to track my progress on my jobs to be done. Avoid outcome metrics. Output your result in the form of a JSON in the following format: { "pi1": { "name": "PI 1", "targetValue": 100, "deadline": "2025-12-31"} }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     // Set a timeout for the OpenAI API call
     const timeoutPromise = new Promise((_, reject) => {
@@ -354,6 +357,109 @@ export async function POST(req: NextRequest) {
       });
 
       console.log("Jobs stream response generated, sending back to client");
+      return (result as any).toDataStreamResponse(); // Type assertion here
+    } else if (step === "pis") {
+      // Third step - Progress Indicators (PIs)
+      const result = await Promise.race([
+        streamText({
+          model: openai("gpt-4o"),
+          system: systemPrompt,
+          prompt: pisPrompt,
+          async onFinish({ text, usage, finishReason }) {
+            console.log("PIs processing");
+
+            // Process and save PIs
+            try {
+              // Extract JSON from the response text
+              const jsonMatch = text.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                // Get the JSON string and fix potential issues
+                let jsonStr = jsonMatch[0];
+                // Replace single quotes with double quotes
+                jsonStr = jsonStr.replace(/'/g, '"');
+                // Fix escaped quotes in strings (like word"s)
+                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
+                
+                try {
+                  const piData = JSON.parse(jsonStr);
+                  
+                  // Import PI service
+                  const { PIService } = await import(
+                    "@/lib/services/pi.service"
+                  );
+                  const piService = new PIService();
+                  
+                  // Get existing PIs to check for duplicates
+                  const existingPIs = await piService.getAllPIs(userId);
+                  
+                  // Save each PI
+                  for (const key in piData) {
+                    const pi = piData[key];
+                    
+                    // Format the date as an actual Date object
+                    const deadlineDate = new Date(pi.deadline);
+                    
+                    // Check if PI with same name already exists
+                    const existingPI = existingPIs.find(
+                      (existingPI) => existingPI.name === pi.name
+                    );
+                    
+                    if (existingPI) {
+                      // Update the existing PI
+                      await piService.updatePI(existingPI._id, userId, {
+                        targetValue: pi.targetValue,
+                        deadline: deadlineDate,
+                        notes: `Updated during onboarding for ${businessName}`,
+                      });
+                      console.log(`PI updated: ${pi.name}`);
+                    } else {
+                      // Create a new PI
+                      await piService.createPI(
+                        {
+                          name: pi.name,
+                          beginningValue: 0, // Initial value
+                          targetValue: pi.targetValue,
+                          deadline: deadlineDate,
+                          notes: `Auto-generated from onboarding for ${businessName}`,
+                        },
+                        userId
+                      );
+                      console.log(`PI created: ${pi.name}`);
+                    }
+                  }
+                  
+                  // After creating/updating PIs, also update job impact values
+                  // This will calculate the relationships between jobs and PIs
+                  const { updateJobImpactValues } = await import(
+                    "@/lib/services/job-impact.service"
+                  );
+                  await updateJobImpactValues(userId);
+                  
+                } catch (error) {
+                  console.error(
+                    "Error parsing PI JSON:",
+                    error,
+                    "Input string:",
+                    jsonStr
+                  );
+                }
+              } else {
+                console.error("No JSON format found in AI response for PIs");
+              }
+            } catch (parseError) {
+              console.error("Error parsing or saving PI data:", parseError);
+            }
+          },
+        }),
+        timeoutPromise,
+      ]).catch((error) => {
+        console.error("API timeout or error for PIs:", error.message);
+        throw new Error(
+          "Request timeout - GPT API is taking too long to respond"
+        );
+      });
+      
+      console.log("PIs stream response generated, sending back to client");
       return (result as any).toDataStreamResponse(); // Type assertion here
     } else {
       return new Response(
