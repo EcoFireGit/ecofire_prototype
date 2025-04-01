@@ -186,10 +186,18 @@ export async function POST(req: NextRequest) {
               if (jsonMatch) {
                 // Get the JSON string and fix potential issues
                 let jsonStr = jsonMatch[0];
-                // Replace single quotes with double quotes
+                // First, fix possessive apostrophes with a specific pattern
+                jsonStr = jsonStr.replace(/(\w+)\."s/g, '$1\'s');
+                // Replace single quotes with double quotes (for JSON validity)
                 jsonStr = jsonStr.replace(/'/g, '"');
                 // Fix escaped quotes in strings (like word"s)
                 jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
+                // Fix company names with apostrophes
+                jsonStr = jsonStr.replace(/"([^"]+)"s mission"/g, '"$1\'s mission"');
+                // Handle any other known patterns that cause issues
+                jsonStr = jsonStr.replace(/\."/g, '."');
+                
+                console.log("Cleaned JSON string:", jsonStr.substring(0, 100) + "...");
 
                 try {
                   const jobsData = JSON.parse(jsonStr);

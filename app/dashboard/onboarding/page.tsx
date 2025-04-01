@@ -641,9 +641,18 @@ export default function OnboardingPage() {
                       const jsonMatch = jobsCompletion.match(/\{[\s\S]*\}/);
                       if (jsonMatch) {
                         let jsonStr = jsonMatch[0];
+                        // First, fix possessive apostrophes with a specific pattern
+                        jsonStr = jsonStr.replace(/(\w+)\."s/g, '$1\'s');
+                        // Replace single quotes with double quotes (for JSON validity)
                         jsonStr = jsonStr.replace(/'/g, '"');
                         // Fix escaped quotes in strings (like word"s)
                         jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
+                        // Fix company names with apostrophes
+                        jsonStr = jsonStr.replace(/"([^"]+)"s mission"/g, '"$1\'s mission"');
+                        
+                        // Handle any other known patterns that cause issues
+                        jsonStr = jsonStr.replace(/\."/g, '."');
+                        
                         const jobsData = JSON.parse(jsonStr);
                         return (
                           <div className="space-y-6">
@@ -698,6 +707,15 @@ export default function OnboardingPage() {
                       }
                     } catch (e) {
                       console.error("Error parsing jobs data for display:", e);
+                      // Show the error for easier debugging
+                      return (
+                        <div>
+                          <p className="text-red-500">Error parsing jobs data: {e.message}</p>
+                          <p className="text-gray-500 mt-2">
+                            Try refreshing the page or returning to the previous step.
+                          </p>
+                        </div>
+                      );
                     }
                     return (
                       <p className="text-gray-500">
