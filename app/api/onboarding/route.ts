@@ -220,10 +220,10 @@ export async function POST(req: NextRequest) {
                 // Handle any other known patterns that cause issues
                 jsonStr = jsonStr.replace(/\."/g, '."');
 
-                console.log(
-                  "Cleaned JSON string:",
-                  jsonStr.substring(0, 100) + "...",
-                );
+                // console.log(
+                //   "Cleaned JSON string:",
+                //   jsonStr.substring(0, 100) + "...",
+                // );
 
                 try {
                   const jobsData = JSON.parse(jsonStr);
