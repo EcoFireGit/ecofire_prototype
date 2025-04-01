@@ -59,9 +59,9 @@ export default function OnboardingPage() {
         });
       }
     },
-    onFinish(result, { usage, finishReason }) {
-      console.log("Usage", usage);
-      console.log("FinishReason", finishReason);
+    onFinish(result, completion) {
+      // console.log("Usage", usage);
+      // console.log("FinishReason", finishReason);
       console.log("Result content length:", result.length);
       // Add the completion to messages for display
       setMessages([...messages, { role: "assistant", content: result }]);
@@ -102,10 +102,10 @@ export default function OnboardingPage() {
         });
       }
     },
-    onFinish(result, { usage, finishReason }) {
-      console.log("Jobs usage", usage);
-      console.log("Jobs finishReason", finishReason);
-      console.log("Jobs result JSON:", result); // Added debugging output
+    onFinish(result, completion) {
+      // console.log("Jobs usage", usage);
+      // console.log("Jobs finishReason", finishReason);
+      // console.log("Jobs result JSON:", result); // Added debugging output
       // Add the completion to jobs messages for display
       setJobsMessages([
         ...jobsMessages,
