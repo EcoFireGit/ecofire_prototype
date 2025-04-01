@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { openai } from "@ai-sdk/openai";
-import { createDataStreamResponse, streamText, StreamTextResponse } from "ai";
+import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
 
 export async function POST(req: NextRequest) {
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     // Choose which flow to execute based on the step parameter
     if (step === "outcomes") {
       // First step - outcomes
-      const result: StreamTextResponse = await Promise.race([
+      const result = await Promise.race([
         streamText({
           model: openai("gpt-4o"),
           system: systemPrompt,
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
       return result.toDataStreamResponse();
     } else if (step === "jobs") {
       // Second step - jobs to be done
-      const result: StreamTextResponse = await Promise.race([
+      const result = await Promise.race([
         streamText({
           model: openai("gpt-4o"),
           system: systemPrompt,
