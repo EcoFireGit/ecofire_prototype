@@ -1,8 +1,10 @@
+
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { JobService } from "@/lib/services/job.service";
 import { auth } from "@clerk/nextjs/server";
 import { ChatService } from "@/lib/services/chat.service";
+import { BusinessInfoService } from "@/lib/services/business-info.service";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -12,15 +14,13 @@ export async function POST(req: Request) {
   const { messages, id } = await req.json();
   const chatId = id || crypto.randomUUID(); // Use provided ID or generate a new one
 
-  // Get mission statement from business-info using BusinessInfoService
-  const { BusinessInfoService } = await import(
-    "@/lib/services/business-info.service"
-  );
+  // Get user ID from auth
   const { userId } = await auth();
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Get mission statement from business-info
   const businessInfoService = new BusinessInfoService();
   const businessInfo = await businessInfoService.getBusinessInfo(userId);
   const missionStatement = businessInfo?.missionStatement || "";

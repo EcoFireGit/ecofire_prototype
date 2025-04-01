@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
-import { MissionService } from "@/lib/services/mission.service";
+import { BusinessInfoService } from "@/lib/services/business-info.service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,15 +36,17 @@ export async function POST(req: NextRequest) {
     }
 
     const chatId = crypto.randomUUID(); // Generate a new chat ID for this session (still needed for reference)
-    const missionService = new MissionService();
+    const businessInfoService = new BusinessInfoService();
 
-    // Update the mission with the business description
+    // Update the business info with the business description as mission statement
     try {
-      await missionService.updateMission(businessDescription);
-      console.log("Mission updated with business description");
-    } catch (missionError) {
-      console.error("Error updating mission:", missionError);
-      // Continue even if mission update fails
+      await businessInfoService.updateBusinessInfo(userId, {
+        missionStatement: businessDescription
+      });
+      console.log("Business info updated with mission statement");
+    } catch (updateError) {
+      console.error("Error updating business info:", updateError);
+      // Continue even if business info update fails
     }
 
     // Common system prompt for both steps
