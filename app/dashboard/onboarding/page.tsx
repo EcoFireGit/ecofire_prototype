@@ -149,8 +149,7 @@ export default function OnboardingPage() {
     },
     onFinish(result, completion) {
       console.log("PI generation completed");
-      // After PIs are generated, redirect to dashboard
-      router.push("/dashboard");
+      // Don't redirect yet, will do job-PI mappings next
     },
     onError(error) {
       console.error("PIs completion error:", error);
@@ -158,6 +157,46 @@ export default function OnboardingPage() {
         title: "Error",
         description:
           "An error occurred while generating PIs, but you can still return to dashboard.",
+        variant: "destructive",
+      });
+      // Still redirect to dashboard even if there's an error
+      router.push("/dashboard");
+    },
+  });
+  
+  // Fourth hook for Job-PI mappings completion
+  const {
+    complete: completeMappings,
+    completion: mappingsCompletion,
+    error: mappingsError,
+    isLoading: isMappingsLoading,
+    stop: stopMappings,
+  } = useCompletion({
+    id: "mappings-completion",
+    api: "/api/onboarding",
+    onResponse(response) {
+      console.log("Mappings response received:", response.status);
+      if (!response.ok) {
+        console.error("Mappings API response not OK:", response.status);
+        stopMappings();
+        toast({
+          title: "Error",
+          description: `Server error: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    },
+    onFinish(result, completion) {
+      console.log("Job-PI mappings generation completed");
+      // After mappings are generated, redirect to dashboard
+      router.push("/dashboard");
+    },
+    onError(error) {
+      console.error("Mappings completion error:", error);
+      toast({
+        title: "Error",
+        description:
+          "An error occurred while generating Job-PI mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
       // Still redirect to dashboard even if there's an error
@@ -214,11 +253,31 @@ export default function OnboardingPage() {
           step: "pis", // Indicate this is the PIs step
         },
       });
-    } catch (err) {
-      console.error("Error during PI generation:", err);
+      
+      // After PIs are generated, generate Job-PI mappings
       toast({
-        title: "PI Generation Error",
-        description: "There was a problem generating PIs, but you can still return to dashboard.",
+        title: "Generating Job-PI Mappings",
+        description: "Please wait while we create mappings between jobs and PIs...",
+      });
+      
+      // Call the API with the step parameter set to "mappings"
+      await completeMappings("", {
+        body: {
+          businessName: businessName.trim(),
+          businessIndustry: businessIndustry.trim(),
+          businessDescription: input.trim(),
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          annualRevenue: annualRevenue,
+          growthStage: growthStage,
+          step: "mappings", // Indicate this is the mappings step
+        },
+      });
+    } catch (err) {
+      console.error("Error during PI or mapping generation:", err);
+      toast({
+        title: "Generation Error",
+        description: "There was a problem generating PIs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
       // Still redirect to dashboard even if there's an error
@@ -832,11 +891,13 @@ export default function OnboardingPage() {
 
             <Button 
               onClick={handleReturnToDashboard} 
-              disabled={isPILoading}
+              disabled={isPILoading || isMappingsLoading}
               className="flex items-center gap-2"
             >
-              {isPILoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isPILoading ? "Generating PIs..." : "Return to Dashboard"}
+              {(isPILoading || isMappingsLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isPILoading ? "Generating PIs..." : 
+               isMappingsLoading ? "Generating Mappings..." : 
+               "Return to Dashboard"}
             </Button>
           </div>
         </div>

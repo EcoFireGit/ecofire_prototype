@@ -455,6 +455,125 @@ export async function POST(req: NextRequest) {
 
       console.log("PIs stream response generated, sending back to client");
       return (result as any).toDataStreamResponse(); // Type assertion here
+    } else if (step === "mappings") {
+      // Fourth step - Generate Job-PI Mappings
+      // First, fetch all jobs and PIs to provide to the AI
+      const { JobService } = await import("@/lib/services/job.service");
+      const { PIService } = await import("@/lib/services/pi.service");
+      const jobService = new JobService();
+      const piService = new PIService();
+      
+      let jobs = await jobService.getAllJobs(userId);
+      let pis = await piService.getAllPIs(userId);
+      
+      // Create a context string with jobs and PIs information for the AI
+      const jobsContext = jobs.map(job => `Job ID: ${job._id}, Title: ${job.title}`).join('\n');
+      const pisContext = pis.map(pi => `PI ID: ${pi._id}, Name: ${pi.name}, Target Value: ${pi.targetValue}`).join('\n');
+      
+      // Create a custom prompt for mapping generation
+      const mappingsPrompt = 
+        `Based on the mission statement of the business and the following Jobs and Progress Indicators (PIs), create mappings between jobs and PIs that make sense. ` +
+        `\n\nJOBS:\n${jobsContext}\n\nPROGRESS INDICATORS:\n${pisContext}\n\n` +
+        `Generate mappings between jobs and PIs where each job can impact one or more PIs. ` +
+        `For each mapping, you need to specify how much impact a job has on a specific PI using a piImpactValue. ` +
+        `The piImpactValue should not exceed the targetValue for that PI. ` +
+        `Output your result in the form of a JSON in the following format: ` +
+        `{ "mapping1": { "jobId": "job-id-here", "jobName": "Job Title Here", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here } }. ` +
+        `Each mapping should follow the JobPiMapping interface. ` +
+        `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
+      
+      const result = await Promise.race([
+        streamText({
+          model: openai("gpt-4o"),
+          system: systemPrompt,
+          prompt: mappingsPrompt,
+          async onFinish({ text, usage, finishReason }) {
+            console.log("Mappings processing");
+            
+            // Process and save mappings
+            try {
+              // Extract JSON from the response text
+              const jsonMatch = text.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                // Get the JSON string and fix potential issues
+                let jsonStr = jsonMatch[0];
+                // Replace single quotes with double quotes
+                jsonStr = jsonStr.replace(/'/g, '"');
+                // Fix escaped quotes in strings
+                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
+                
+                try {
+                  const mappingsData = JSON.parse(jsonStr);
+                  
+                  // Import MappingService
+                  const { MappingService } = await import(
+                    "@/lib/services/pi-job-mapping.service"
+                  );
+                  const mappingService = new MappingService();
+                  
+                  // Get existing mappings to check for duplicates
+                  const existingMappings = await mappingService.getAllMappingJP(userId);
+                  
+                  // Save each mapping
+                  for (const key in mappingsData) {
+                    const mapping = mappingsData[key];
+                    
+                    // Check if mapping with same jobId and piId already exists
+                    const existingMapping = existingMappings.find(
+                      (m) => m.jobId === mapping.jobId && m.piId === mapping.piId
+                    );
+                    
+                    if (existingMapping) {
+                      // Update the existing mapping
+                      await mappingService.updateMappingJP(existingMapping._id, userId, {
+                        piImpactValue: mapping.piImpactValue,
+                        piTarget: mapping.piTarget,
+                        notes: `Updated during onboarding for ${businessName}`,
+                      });
+                      console.log(`Mapping updated: ${mapping.jobName} -> ${mapping.piName}`);
+                    } else {
+                      // Create a new mapping
+                      await mappingService.CreateMapping(
+                        {
+                          jobId: mapping.jobId,
+                          jobName: mapping.jobName,
+                          piId: mapping.piId,
+                          piName: mapping.piName,
+                          piImpactValue: mapping.piImpactValue,
+                          piTarget: mapping.piTarget,
+                          notes: `Auto-generated from onboarding for ${businessName}`,
+                        },
+                        userId
+                      );
+                      console.log(`Mapping created: ${mapping.jobName} -> ${mapping.piName}`);
+                    }
+                  }
+                } catch (error) {
+                  console.error(
+                    "Error parsing Mappings JSON:",
+                    error,
+                    "Input string:",
+                    jsonStr
+                  );
+                }
+              } else {
+                console.error("No JSON format found in AI response for Mappings");
+              }
+            } catch (parseError) {
+              console.error("Error parsing or saving mapping data:", parseError);
+            }
+          },
+        }),
+        timeoutPromise,
+      ]).catch((error) => {
+        console.error("API timeout or error for Mappings:", error.message);
+        throw new Error(
+          "Request timeout - GPT API is taking too long to respond"
+        );
+      });
+      
+      console.log("Mappings stream response generated, sending back to client");
+      return (result as any).toDataStreamResponse(); // Type assertion here
     } else {
       return new Response(
         JSON.stringify({
