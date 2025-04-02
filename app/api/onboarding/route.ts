@@ -597,7 +597,7 @@ export async function POST(req: NextRequest) {
         `For each mapping, you need to specify how much impact a PI has on a specific QBO using a qboImpactValue. ` +
         `The qboImpactValue should not exceed the targetValue for that QBO. ` +
         `Output your result in the form of a JSON in the following format: ` +
-        `{ "mapping1": { "piId": "pi-id-here", "piName": "PI Name Here", "qboId": "qbo-id-here", "qboName": "QBO Name Here", "piTarget": pi-target-value-here, "qboTarget": qbo-target-value-here, "qboImpactValue": 10 } }. ` +
+        `{ "mapping1": { "piId": "pi-id-here", "piName": "PI Name Here", "qboId": "qbo-id-here", "qboName": "QBO Name Here", "piTarget": pi-target-value-here, "qboTarget": qbo-target-value-here, "qboImpact": 10 } }. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
       
       const result = await Promise.race([
@@ -646,7 +646,7 @@ export async function POST(req: NextRequest) {
                       await piQboMappingService.updateMapping(existingMapping._id, userId, {
                         piTarget: mapping.piTarget,
                         qboTarget: mapping.qboTarget,
-                        qboImpactValue: mapping.qboImpact || mapping.qboImpactValue,
+                        qboImpact: mapping.qboImpact || mapping.qboImpactValue,
                         notes: `Updated during onboarding for ${businessName}`,
                       });
                       console.log(`PI-QBO Mapping updated: ${mapping.piName} -> ${mapping.qboName}`);
@@ -660,7 +660,7 @@ export async function POST(req: NextRequest) {
                           qboName: mapping.qboName,
                           piTarget: mapping.piTarget,
                           qboTarget: mapping.qboTarget,
-                          qboImpactValue: mapping.qboImpact || mapping.qboImpactValue,
+                          qboImpact: mapping.qboImpact || mapping.qboImpactValue,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
                         userId
