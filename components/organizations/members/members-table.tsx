@@ -1,18 +1,40 @@
 // components/organizations/members/members-table.tsx
-'use client'
+"use client";
 
-import { useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Trash } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Member {
   _id: string;
   userId: string;
   organizationId: string;
-  role: 'admin' | 'member';
+  role: "admin" | "member";
   joinedAt: string;
 }
 
@@ -25,28 +47,34 @@ interface MembersTableProps {
 export function MembersTable({
   members,
   organizationId,
-  onMemberUpdate
+  onMemberUpdate,
 }: MembersTableProps) {
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const handleRoleChange = async (memberId: string, newRole: 'admin' | 'member') => {
+  const handleRoleChange = async (
+    memberId: string,
+    newRole: "admin" | "member"
+  ) => {
     try {
-      const response = await fetch(`/api/organizations/${organizationId}/members/${memberId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole })
-      });
-      
+      const response = await fetch(
+        `/api/organizations/${organizationId}/members/${memberId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: newRole }),
+        }
+      );
+
       const data = await response.json();
-      
+
       if (data.success) {
         onMemberUpdate();
       } else {
-        console.error('Error updating member role:', data.error);
+        console.error("Error updating member role:", data.error);
       }
     } catch (error) {
-      console.error('Error updating member role:', error);
+      console.error("Error updating member role:", error);
     }
   };
 
@@ -61,18 +89,18 @@ export function MembersTable({
     try {
       const response = await fetch(
         `/api/organizations/${organizationId}/members/${memberToDelete._id}`,
-        { method: 'DELETE' }
+        { method: "DELETE" }
       );
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         onMemberUpdate();
       } else {
-        console.error('Error removing member:', data.error);
+        console.error("Error removing member:", data.error);
       }
     } catch (error) {
-      console.error('Error removing member:', error);
+      console.error("Error removing member:", error);
     } finally {
       setIsDeleteDialogOpen(false);
     }
@@ -103,7 +131,7 @@ export function MembersTable({
                 <TableCell>
                   <Select
                     defaultValue={member.role}
-                    onValueChange={(value: 'admin' | 'member') => 
+                    onValueChange={(value: "admin" | "member") =>
                       handleRoleChange(member._id, value)
                     }
                   >
@@ -135,7 +163,10 @@ export function MembersTable({
       </Table>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Member</AlertDialogTitle>

@@ -47,13 +47,9 @@ export class UserOrganizationService {
     return !!result;
   }
   
-  async updateUserRole(
-    userId: string, 
-    organizationId: string, 
-    role: 'admin' | 'member'
-  ) {
-    return await UserOrganization.findOneAndUpdate(
-      { userId, organizationId },
+  async updateUserRole(memberDocId: string, role: 'admin' | 'member') {
+    return await UserOrganization.findByIdAndUpdate(
+      memberDocId,
       { role },
       { new: true }
     );
