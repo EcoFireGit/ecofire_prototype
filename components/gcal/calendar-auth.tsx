@@ -1,6 +1,13 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import useCalendar from '@/hooks/use-calendar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function CalendarAuth() {
   const {

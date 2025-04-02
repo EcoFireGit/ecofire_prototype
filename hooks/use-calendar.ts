@@ -37,11 +37,10 @@ export default function useCalendar() {
       if (response.ok) {
         const data = await response.json();
 
+        //here
+        
         console.log("response: " + JSON.stringify(data.data));
-        //console.log("Console: use-calendar" + response.json().authUrl);
-        // const calendarsResponse = await fetch('/api/gcal/calendars');
-        // const calendarsData = await calendarsResponse.json();
-     //  setCalendars(calendarsData);
+        
       }
     } catch (error) {
       console.error('Error pulling Calendars failed:', error);
@@ -51,6 +50,7 @@ export default function useCalendar() {
   };
 
   const handleCalendarSelect = (calendarId: string) => {
+
     setSelectedCalendars(prev => 
       prev.includes(calendarId)
         ? prev.filter(id => id !== calendarId)

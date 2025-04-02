@@ -16,14 +16,16 @@ export async function GET() {
     }
 
     const calendars = await getCalendarsFromGoogle(userId);
-    // console.log('fetched calendars:', calendars);
+    console.log('fetched calendars:', calendars);
 
     return NextResponse.json({
       success: true,
       data: calendars
     }, { status: 200 });  } 
     catch (error) {
+      
       return NextResponse.json(
+        
         { error: 'Failed to fetch calendars' },
         { status: 500 }
       );
