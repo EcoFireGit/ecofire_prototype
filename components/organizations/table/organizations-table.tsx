@@ -23,14 +23,15 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
     const { setOrganizationView } = useView();
     const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    // const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
+    // const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
     const handleEdit = (org: Organization) => {
       setEditingOrg(org);
       setIsEditDialogOpen(true);
     };
   
+    // removing the delete functionality for now
     // const handleDelete = (org: Organization) => {
     //   setOrgToDelete(org);
     //   setIsDeleteDialogOpen(true);
