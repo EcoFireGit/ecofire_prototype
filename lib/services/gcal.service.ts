@@ -179,18 +179,21 @@ export async function createPrioriCalendar(userId: string): Promise<Schema$Calen
     if (!gcalAuth) {
       throw new Error('No credentials found');
     }
-
+    //set credentials
     const auth = gcalAuth.auth;
     oauth2Client.setCredentials(auth);
     const { credentials } = await oauth2Client.refreshAccessToken();
     oauth2Client.setCredentials(credentials);
 
-    //does prioriwise calendar exist?
-    const prioriwiseCalendar = await doesCalendarExist(oauth2Client, gcalAuth.prioriwiseCalendar.id);
-    if(prioriwiseCalendar){
-      return prioriwiseCalendar;
+    //does prioriwise calendar exist in google?
+    if(gcalAuth.prioriCalendar && gcalAuth.prioriCalendar.id ) {
+      const prioriwiseCalendar = await doesCalendarExist(oauth2Client, gcalAuth.prioriwiseCalendar.id);
+      if(prioriwiseCalendar){
+        return prioriwiseCalendar;
+      }
     }
 
+    //create calendar on google
     const calendarData = {
       summary: 'Prioriwise',
       description: 'Prioriwise Calendar to manage your business jobs',
@@ -203,8 +206,9 @@ export async function createPrioriCalendar(userId: string): Promise<Schema$Calen
         requestBody: calendarData
     });
     gcalAuth.prioriwiseCalendar = res.data;
-    const savedAuth = gcalAuth.save();
 
+    //save to db
+    const savedAuth = gcalAuth.save();
     return savedAuth.prioriwiseCalendar;
   }
   catch (error) {
