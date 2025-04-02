@@ -574,6 +574,124 @@ export async function POST(req: NextRequest) {
       
       console.log("Mappings stream response generated, sending back to client");
       return (result as any).toDataStreamResponse(); // Type assertion here
+    } else if (step === "pi-qbo-mappings") {
+      // Fifth step - Generate PI-QBO Mappings
+      // First, fetch all PIs and QBOs to provide to the AI
+      const { PIService } = await import("@/lib/services/pi.service");
+      const { QBOService } = await import("@/lib/services/qbo.service");
+      const piService = new PIService();
+      const qboService = new QBOService();
+      
+      let pis = await piService.getAllPIs(userId);
+      let qbos = await qboService.getAllQBOs(userId);
+      
+      // Create a context string with PIs and QBOs information for the AI
+      const pisContext = pis.map(pi => `PI ID: ${pi._id}, Name: ${pi.name}, Target Value: ${pi.targetValue}`).join('\n');
+      const qbosContext = qbos.map(qbo => `QBO ID: ${qbo._id}, Name: ${qbo.name}, Target Value: ${qbo.targetValue}`).join('\n');
+      
+      // Create a custom prompt for PI-QBO mapping generation
+      const piQboMappingsPrompt = 
+        `Based on the mission statement of the business and the following Progress Indicators (PIs) and Quarterly Business Objectives (QBOs), create mappings between PIs and QBOs that make sense. ` +
+        `\n\nPROGRESS INDICATORS:\n${pisContext}\n\nQUARTERLY BUSINESS OBJECTIVES:\n${qbosContext}\n\n` +
+        `Generate mappings between PIs and QBOs where each PI can impact one or more QBOs. ` +
+        `For each mapping, you need to specify how much impact a PI has on a specific QBO using a qboImpactValue. ` +
+        `The qboImpactValue should not exceed the targetValue for that QBO. ` +
+        `Output your result in the form of a JSON in the following format: ` +
+        `{ "mapping1": { "piId": "pi-id-here", "piName": "PI Name Here", "qboId": "qbo-id-here", "qboName": "QBO Name Here", "piTarget": pi-target-value-here, "qboTarget": qbo-target-value-here, "qboImpact": 10 } }. ` +
+        `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
+      
+      const result = await Promise.race([
+        streamText({
+          model: openai("gpt-4o"),
+          system: systemPrompt,
+          prompt: piQboMappingsPrompt,
+          async onFinish({ text, usage, finishReason }) {
+            console.log("PI-QBO Mappings processing");
+            
+            // Process and save PI-QBO mappings
+            try {
+              // Extract JSON from the response text
+              const jsonMatch = text.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                // Get the JSON string and fix potential issues
+                let jsonStr = jsonMatch[0];
+                // Replace single quotes with double quotes
+                jsonStr = jsonStr.replace(/'/g, '"');
+                // Fix escaped quotes in strings
+                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
+                
+                try {
+                  const mappingsData = JSON.parse(jsonStr);
+                  
+                  // Import PIQBOMappingService
+                  const { PIQBOMappingService } = await import(
+                    "@/lib/services/pi-qbo-mapping.service"
+                  );
+                  const piQboMappingService = new PIQBOMappingService();
+                  
+                  // Get existing mappings to check for duplicates
+                  const existingMappings = await piQboMappingService.getAllMappings(userId);
+                  
+                  // Save each mapping
+                  for (const key in mappingsData) {
+                    const mapping = mappingsData[key];
+                    
+                    // Check if mapping with same piId and qboId already exists
+                    const existingMapping = existingMappings.find(
+                      (m) => m.piId === mapping.piId && m.qboId === mapping.qboId
+                    );
+                    
+                    if (existingMapping) {
+                      // Update the existing mapping
+                      await piQboMappingService.updateMapping(existingMapping._id, userId, {
+                        piTarget: mapping.piTarget,
+                        qboTarget: mapping.qboTarget,
+                        qboImpact: mapping.qboImpact,
+                        notes: `Updated during onboarding for ${businessName}`,
+                      });
+                      console.log(`PI-QBO Mapping updated: ${mapping.piName} -> ${mapping.qboName}`);
+                    } else {
+                      // Create a new mapping
+                      await piQboMappingService.createMapping(
+                        {
+                          piId: mapping.piId,
+                          qboId: mapping.qboId,
+                          piTarget: mapping.piTarget,
+                          qboTarget: mapping.qboTarget,
+                          qboImpact: mapping.qboImpact,
+                          notes: `Auto-generated from onboarding for ${businessName}`,
+                        },
+                        userId
+                      );
+                      console.log(`PI-QBO Mapping created: ${mapping.piName} -> ${mapping.qboName}`);
+                    }
+                  }
+                } catch (error) {
+                  console.error(
+                    "Error parsing PI-QBO Mappings JSON:",
+                    error,
+                    "Input string:",
+                    jsonStr
+                  );
+                }
+              } else {
+                console.error("No JSON format found in AI response for PI-QBO Mappings");
+              }
+            } catch (parseError) {
+              console.error("Error parsing or saving PI-QBO mapping data:", parseError);
+            }
+          },
+        }),
+        timeoutPromise,
+      ]).catch((error) => {
+        console.error("API timeout or error for PI-QBO Mappings:", error.message);
+        throw new Error(
+          "Request timeout - GPT API is taking too long to respond"
+        );
+      });
+      
+      console.log("PI-QBO Mappings stream response generated, sending back to client");
+      return (result as any).toDataStreamResponse(); // Type assertion here
     } else {
       return new Response(
         JSON.stringify({
