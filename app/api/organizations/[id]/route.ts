@@ -7,15 +7,15 @@ const orgService = new OrganizationService();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authResult = await validateAuth();
-  
+  const { id } = await params
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
   
-  const org = await orgService.getOrganizationById(params.id);
+  const org = await orgService.getOrganizationById(id);
   
   if (!org) {
     return NextResponse.json(
@@ -32,10 +32,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authResult = await validateAuth();
-  
+  const { id } = await params
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
@@ -45,7 +45,7 @@ export async function PUT(
   
   const data = await request.json();
   const updatedOrg = await orgService.updateOrganization(
-    params.id, 
+    id, 
     userId!, 
     data
   );
@@ -68,10 +68,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }:{ params: Promise<{ id: string }> }
 ) {
   const authResult = await validateAuth();
-  
+  const { id } = await params
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
@@ -79,7 +79,7 @@ export async function DELETE(
   // Get the actual user ID, not the view ID
   const userId = authResult.actualUserId;
   
-  const deleted = await orgService.deleteOrganization(params.id, userId!);
+  const deleted = await orgService.deleteOrganization(id, userId!);
   
   if (!deleted) {
     return NextResponse.json(

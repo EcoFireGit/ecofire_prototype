@@ -7,15 +7,15 @@ const userOrgService = new UserOrganizationService();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authResult = await validateAuth();
-  
+  const { id } = await params
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
   
-  const members = await userOrgService.getUsersInOrganization(params.id);
+  const members = await userOrgService.getUsersInOrganization(id);
   
   return NextResponse.json({
     success: true,
@@ -25,10 +25,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authResult = await validateAuth();
-  
+  const { id } = await params
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
@@ -37,7 +37,7 @@ export async function POST(
   const userId = authResult.actualUserId;
   
   // Check if user is an admin of this organization
-  const userRole = await userOrgService.getUserRole(userId!, params.id);
+  const userRole = await userOrgService.getUserRole(userId!, id);
   
   if (userRole !== 'admin') {
     return NextResponse.json(
@@ -53,7 +53,7 @@ export async function POST(
   
   const member = await userOrgService.addUserToOrganization(
     memberId, 
-    params.id, 
+    id, 
     role
   );
   
