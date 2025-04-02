@@ -4,9 +4,11 @@ export interface PIQBOMapping extends mongoose.Document {
   _id: string;
   piId: string;
   qboId: string;
+  piName?: string;
+  qboName?: string;
   piTarget: number;
   qboTarget: number;
-  qboImpact: number;
+  qboImpactValue: number;
   notes?: string;
   userId: string;
 }
@@ -28,6 +30,14 @@ const PIQBOMappingSchema = new mongoose.Schema<PIQBOMapping>({
     required: [true, "QBO ID is required"],
     index: true
   },
+  piName: {
+    type: String,
+    required: false,
+  },
+  qboName: {
+    type: String,
+    required: false,
+  },
   piTarget: {
     type: Number,
     required: [true, "Please provide a PI target value."],
@@ -36,7 +46,7 @@ const PIQBOMappingSchema = new mongoose.Schema<PIQBOMapping>({
     type: Number,
     required: [true, "Please provide a QBO target value."],
   },
-  qboImpact: {
+  qboImpactValue: {
     type: Number,
     required: [true, "Please provide a QBO impact value."],
   },

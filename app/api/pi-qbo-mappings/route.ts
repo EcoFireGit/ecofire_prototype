@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
     
     // Validate required fields
-    if (!data.piId || !data.qboId || data.qboImpact === undefined) {
+    if (!data.piId || !data.qboId || data.qboImpactValue === undefined) {
       return NextResponse.json(
         { 
           success: false,
