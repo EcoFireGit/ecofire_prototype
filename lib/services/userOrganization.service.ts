@@ -1,9 +1,10 @@
 // lib/services/userOrganization.service.ts
 import UserOrganization from '@/lib/models/userOrganization.model';
-import mongoose from 'mongoose';
+import dbConnect from "../mongodb";
 
 export class UserOrganizationService {
   async getUserOrganizations(userId: string) {
+    await dbConnect();
     return await UserOrganization.find({ userId });
   }
   
@@ -12,14 +13,14 @@ export class UserOrganizationService {
     organizationId: string, 
     role: 'admin' | 'member' = 'member'
   ) {
-    // Check if mapping already exists
+    await dbConnect();
+    
     const existing = await UserOrganization.findOne({ 
       userId, 
       organizationId 
     });
     
     if (existing) {
-      // Update role if different
       if (existing.role !== role) {
         existing.role = role;
         return await existing.save();
@@ -27,7 +28,6 @@ export class UserOrganizationService {
       return existing;
     }
     
-    // Create new mapping
     const userOrg = new UserOrganization({
       userId,
       organizationId,
@@ -39,6 +39,8 @@ export class UserOrganizationService {
   }
   
   async removeUserFromOrganization(userId: string, organizationId: string) {
+    await dbConnect();
+    
     const result = await UserOrganization.findOneAndDelete({
       userId,
       organizationId
@@ -48,6 +50,7 @@ export class UserOrganizationService {
   }
   
   async updateUserRole(memberDocId: string, role: 'admin' | 'member') {
+    await dbConnect();
     return await UserOrganization.findByIdAndUpdate(
       memberDocId,
       { role },
@@ -56,10 +59,12 @@ export class UserOrganizationService {
   }
   
   async getUsersInOrganization(organizationId: string) {
+    await dbConnect();
     return await UserOrganization.find({ organizationId });
   }
   
   async isUserInOrganization(userId: string, organizationId: string) {
+    await dbConnect();
     const userOrg = await UserOrganization.findOne({
       userId,
       organizationId
@@ -69,6 +74,7 @@ export class UserOrganizationService {
   }
   
   async getUserRole(userId: string, organizationId: string) {
+    await dbConnect();
     const userOrg = await UserOrganization.findOne({
       userId,
       organizationId
@@ -80,5 +86,6 @@ export class UserOrganizationService {
 
 // Helper function to use in auth-utils
 export async function getUserOrganizations(userId: string) {
+  await dbConnect();
   return await UserOrganization.find({ userId });
 }
