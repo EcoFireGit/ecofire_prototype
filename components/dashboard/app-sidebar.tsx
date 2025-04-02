@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon } from "lucide-react"
+import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon, BriefcaseBusinessIcon } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -60,7 +60,12 @@ const items = [
     title: "Search",
     url: "/dashboard/search",
     icon: Search,
-  }  
+  },
+  {
+    title: "Organizations",
+    url: "/dashboard/organizations",
+    icon: BriefcaseBusinessIcon,
+  }
 ]
 
 // Backstage sub-items
