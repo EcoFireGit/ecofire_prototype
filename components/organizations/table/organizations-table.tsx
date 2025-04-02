@@ -31,31 +31,31 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
       setIsEditDialogOpen(true);
     };
   
-    const handleDelete = (org: Organization) => {
-      setOrgToDelete(org);
-      setIsDeleteDialogOpen(true);
-    };
+    // const handleDelete = (org: Organization) => {
+    //   setOrgToDelete(org);
+    //   setIsDeleteDialogOpen(true);
+    // };
   
-    const confirmDelete = async () => {
-      if (!orgToDelete) return;
+    // const confirmDelete = async () => {
+    //   if (!orgToDelete) return;
   
-      try {
-        const response = await fetch(`/api/organizations/${orgToDelete._id}`, {
-          method: 'DELETE'
-        });
+    //   try {
+    //     const response = await fetch(`/api/organizations/${orgToDelete._id}`, {
+    //       method: 'DELETE'
+    //     });
   
-        const data = await response.json();
+    //     const data = await response.json();
   
-        if (data.success) {
-          // Refresh the page to update the list
-          window.location.reload();
-        } else {
-          console.error('Error deleting organization:', data.error);
-        }
-      } catch (error) {
-        console.error('Error deleting organization:', error);
-      }
-    };
+    //     if (data.success) {
+    //       // Refresh the page to update the list
+    //       window.location.reload();
+    //     } else {
+    //       console.error('Error deleting organization:', data.error);
+    //     }
+    //   } catch (error) {
+    //     console.error('Error deleting organization:', error);
+    //   }
+    // };
   
     const switchToOrg = async (orgId: string) => {
       const success = await setOrganizationView(orgId);
@@ -101,19 +101,21 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
+                      {/* 
+                      remove the delete button for now
                       <Button 
                         variant="ghost" 
                         size="icon"
                         onClick={() => handleDelete(org)}
                       >
                         <Trash className="h-4 w-4" />
-                      </Button>
+                      </Button> */}
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="default"
                         onClick={() => window.location.href = `/dashboard/organizations/${org._id}/members`}
                       >
-                        <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4" /> Add members
                       </Button>
                     </div>
                   </TableCell>
@@ -138,7 +140,7 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
         )}
   
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        {/* <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -155,7 +157,7 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
-        </AlertDialog>
+        </AlertDialog> */}
       </div>
     );
   }
