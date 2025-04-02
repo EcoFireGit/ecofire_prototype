@@ -1,20 +1,19 @@
 
 import { NextResponse } from "next/server";
 import { updateJobImpactValues } from "@/lib/services/job-impact.service";
-import { auth } from "@clerk/nextjs/server";
+import { validateAuth } from "@/lib/utils/auth-utils";
 
 export async function POST() {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const authResult = await validateAuth();
+        
+        if (!authResult.isAuthorized) {
+          return authResult.response;
+        }
+        
+        const userId = authResult.userId;
 
-    const result = await updateJobImpactValues(userId);
+    const result = await updateJobImpactValues(userId!);
     
     if (result.success) {
       return NextResponse.json(result);

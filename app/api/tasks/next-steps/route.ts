@@ -1,22 +1,22 @@
 // app/api/tasks/next-steps/route.ts
 import { NextResponse } from 'next/server';
 import { TaskService } from '@/lib/services/task.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 const taskService = new TaskService();
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
 
     // Add a new method to your TaskService to get all next tasks
-    const tasks = await taskService.getNextTasks(userId);
+    const tasks = await taskService.getNextTasks(userId!);
    
     return NextResponse.json({
       success: true,

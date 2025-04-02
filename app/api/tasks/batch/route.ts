@@ -1,18 +1,18 @@
 // app/api/tasks/batch/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { validateAuth } from '@/lib/utils/auth-utils';
 import Task from "@/lib/models/task.model";
 import connectMongo from "@/lib/mongodb";
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
 
     // Get task IDs from query parameters
     const url = new URL(request.url);

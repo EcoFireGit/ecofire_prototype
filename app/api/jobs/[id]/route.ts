@@ -2,7 +2,8 @@
 // description: Get job by id
 import { NextRequest, NextResponse } from 'next/server';
 import { JobService } from '@/lib/services/job.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
+
 const jobService = new JobService();
 
 export async function GET(
@@ -10,19 +11,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+    
     const id = (await params).id;
-    const job = await jobService.getJobById(id, userId);
+    const job = await jobService.getJobById(id, userId!);
  
     if (!job) {
       return NextResponse.json(
@@ -54,20 +52,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     
     const id = (await params).id;
     const updateData = await request.json();
-    const updatedJob = await jobService.updateJob(id, userId, updateData);
+    const updatedJob = await jobService.updateJob(id, userId!, updateData);
     
     if (!updatedJob) {
       return NextResponse.json(
@@ -99,19 +94,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+    
     const id = (await params).id;
-    const deleted = await jobService.deleteJob(id, userId);
+    const deleted = await jobService.deleteJob(id, userId!);
     
     if (!deleted) {
       return NextResponse.json(

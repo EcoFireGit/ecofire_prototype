@@ -1,25 +1,25 @@
 import { NextResponse } from 'next/server';
 import { ChatService } from '@/lib/services/chat.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     
     // Use the Stack Overflow solution to correctly await the chatId
     const chatId = (await params).chatId;
    
     const chatService = new ChatService();
-    const chatHistory = await chatService.getChatById(userId, chatId);
+    const chatHistory = await chatService.getChatById(userId!, chatId);
    
     if (!chatHistory) {
       return NextResponse.json(

@@ -1,20 +1,17 @@
 
-import { auth } from "@clerk/nextjs/server";
+import { validateAuth } from '@/lib/utils/auth-utils';
 import { ChatService } from "@/lib/services/chat.service";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   try {
-    const { userId } = await auth();
+    const authResult = await validateAuth();
     
-    if (!userId) {
-      return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
 
     // Get pagination parameters from URL
     const url = new URL(request.url);
@@ -22,8 +19,8 @@ export async function GET(request: Request) {
     const skip = parseInt(url.searchParams.get('skip') || '0', 10);
     
     const chatService = new ChatService();
-    const recentChats = await chatService.getRecentChats(userId, limit, skip);
-    const totalChats = await chatService.getTotalChatCount(userId);
+    const recentChats = await chatService.getRecentChats(userId!, limit, skip);
+    const totalChats = await chatService.getTotalChatCount(userId!);
     
     return NextResponse.json({
       chats: recentChats,

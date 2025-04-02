@@ -1,22 +1,19 @@
 import { SearchService } from "@/lib/services/search.service"
 import { NextResponse } from "next/server";
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 
 const searchService = new SearchService();
 
 export async function GET(request: Request) {
     try {
-        const { userId } = await auth();
-        if (!userId) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Unauthorized'
-            },
-            { status: 401 }
-          );
-        }
+      const authResult = await validateAuth();
+    
+      if (!authResult.isAuthorized) {
+        return authResult.response;
+      }
+      
+      const userId = authResult.userId;
     
         // Parse query parameters from the request URL
         const url = new URL(request.url);
@@ -40,7 +37,7 @@ export async function GET(request: Request) {
           const parsedFilters = filters ? JSON.parse(filters) : undefined;
       
           // Call the search service to get results
-          const results = await searchService.search(query, userId, {
+          const results = await searchService.search(query, userId!, {
             limit: parseInt(limit, 10),
             offset: parseInt(offset, 10),
             filters: parsedFilters,

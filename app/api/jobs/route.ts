@@ -2,23 +2,20 @@
 // description: Get all jobs
 import { NextResponse } from 'next/server';
 import { JobService } from '@/lib/services/job.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 const jobService = new JobService();
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
-    const jobs = await jobService.getAllJobs(userId);
+    
+    const userId = authResult.userId;
+    const jobs = await jobService.getAllJobs(userId!);
    
     return NextResponse.json({
       success: true,
@@ -39,19 +36,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
 
     const jobData = await request.json();
-    const job = await jobService.createJob(jobData, userId);
+    const job = await jobService.createJob(jobData, userId!);
 
     return NextResponse.json({
       success: true,

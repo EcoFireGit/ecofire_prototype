@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { validateAuth } from '@/lib/utils/auth-utils';
 import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
@@ -7,10 +7,13 @@ import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new Response("Unauthorized", { status: 401 });
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
 
     const params = await req.json();
     const {
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     // Update the business info with the business description as mission statement
     try {
-      await businessInfoService.updateBusinessInfo(userId, {
+      await businessInfoService.updateBusinessInfo(userId!, {
         missionStatement: businessDescription
       });
       console.log("Business info updated with mission statement");
@@ -136,7 +139,7 @@ export async function POST(req: NextRequest) {
                         points: outcome.points,
                         notes: `Auto-generated from onboarding for ${businessName}`,
                       },
-                      userId,
+                      userId!,
                     );
 
                     console.log(`QBO created for outcome: ${outcome.name}`);
@@ -219,7 +222,7 @@ export async function POST(req: NextRequest) {
                         notes: `Auto-generated from onboarding for ${businessName}`,
                         tasks: [], // Initialize empty tasks array
                       },
-                      userId,
+                      userId!,
                     );
 
                     console.log(`Job created: ${job.title}`);
@@ -241,7 +244,7 @@ export async function POST(req: NextRequest) {
                             jobId: createdJob._id, // Associate with the job
                             completed: false,
                           },
-                          userId,
+                          userId!,
                         );
 
                         taskIds.push(task._id);
@@ -252,7 +255,7 @@ export async function POST(req: NextRequest) {
 
                       // Update the job with the task IDs
                       if (taskIds.length > 0) {
-                        await jobService.updateJob(createdJob._id, userId, {
+                        await jobService.updateJob(createdJob._id, userId!, {
                           tasks: taskIds,
                           // Set the first task as the next task
                           nextTaskId: taskIds[0],

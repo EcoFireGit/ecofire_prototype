@@ -1,7 +1,7 @@
 // app/api/tasks/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskService } from '@/lib/services/task.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 const taskService = new TaskService();
 
 export async function GET(
@@ -9,19 +9,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+    
     const id = (await params).id;
-    const task = await taskService.getTaskById(id, userId);
+    const task = await taskService.getTaskById(id, userId!);
  
     if (!task) {
       return NextResponse.json(
@@ -54,20 +51,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     
     const id = (await params).id;
     const updateData = await request.json();
-    const updatedTask = await taskService.updateTask(id, userId, updateData);
+    const updatedTask = await taskService.updateTask(id, userId!, updateData);
    
     if (!updatedTask) {
       return NextResponse.json(
@@ -100,19 +94,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+    
     const id = (await params).id;
-    const deleted = await taskService.deleteTask(id, userId);
+    const deleted = await taskService.deleteTask(id, userId!);
    
     if (!deleted) {
       return NextResponse.json(

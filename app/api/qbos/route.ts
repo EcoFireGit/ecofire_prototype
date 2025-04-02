@@ -3,24 +3,21 @@
 
 import { NextResponse } from 'next/server';
 import { QBOService } from '@/lib/services/qbo.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const qboService = new QBOService();
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
-    const qbos = await qboService.getAllQBOs(userId);
+    
+    const userId = authResult.userId;
+    const qbos = await qboService.getAllQBOs(userId!);
    
     return NextResponse.json({
       success: true,
@@ -41,19 +38,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     const qboData = await request.json();
-    const qbo = await qboService.createQBO(qboData, userId);
-    await updateJobImpactValues(userId);
+    const qbo = await qboService.createQBO(qboData, userId!);
+    await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
       data: qbo

@@ -1,18 +1,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { BusinessInfoService } from '@/lib/services/business-info.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 // GET - retrieve businessInfo for the current user
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
 
     const businessInfoService = new BusinessInfoService();
-    const businessInfo = await businessInfoService.getBusinessInfo(userId);
+    const businessInfo = await businessInfoService.getBusinessInfo(userId!);
 
     return NextResponse.json(businessInfo || {});
   } catch (error) {
@@ -27,15 +30,18 @@ export async function GET() {
 // POST - update businessInfo for the current user
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
 
     const data = await req.json();
     const businessInfoService = new BusinessInfoService();
     
-    const updatedBusinessInfo = await businessInfoService.updateBusinessInfo(userId, data);
+    const updatedBusinessInfo = await businessInfoService.updateBusinessInfo(userId!, data);
     
     return NextResponse.json(updatedBusinessInfo);
   } catch (error) {

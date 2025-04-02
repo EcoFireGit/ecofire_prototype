@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { BusinessFunctionService } from '@/lib/services/business-function.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 const businessFunctionService = new BusinessFunctionService();
 
@@ -9,23 +9,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
-   
+    
+    const userId = authResult.userId;
     // Use the Stack Overflow solution to correctly await the ID
     const id = (await params).id;
     
     const deleted = await businessFunctionService.deleteBusinessFunction(
       id,
-      userId
+      userId!
     );
    
     if (!deleted) {
@@ -60,16 +56,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
    
     // Use the Stack Overflow solution to correctly await the ID
     const id = (await params).id;
@@ -89,7 +82,7 @@ export async function PATCH(
     const updatedFunction = await businessFunctionService.updateBusinessFunction(
       id,
       name,
-      userId
+      userId!
     );
    
     if (!updatedFunction) {

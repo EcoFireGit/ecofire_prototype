@@ -2,9 +2,9 @@
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { JobService } from "@/lib/services/job.service";
-import { auth } from "@clerk/nextjs/server";
 import { ChatService } from "@/lib/services/chat.service";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
+import { validateAuth } from "@/lib/utils/auth-utils";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -15,14 +15,17 @@ export async function POST(req: Request) {
   const chatId = id || crypto.randomUUID(); // Use provided ID or generate a new one
 
   // Get user ID from auth
-  const { userId } = await auth();
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const authResult = await validateAuth();
+      
+      if (!authResult.isAuthorized) {
+        return authResult.response;
+      }
+      
+      const userId = authResult.userId;
 
   // Get mission statement from business-info
   const businessInfoService = new BusinessInfoService();
-  const businessInfo = await businessInfoService.getBusinessInfo(userId);
+  const businessInfo = await businessInfoService.getBusinessInfo(userId!);
   const missionStatement = businessInfo?.missionStatement || "";
 
   const systemPrompt_initial =
@@ -30,7 +33,7 @@ export async function POST(req: Request) {
     missionStatement +
     '" based on cross-industry best practices. This entrepreneur has a list of jobs to be done as follows:\n';
   const jobService = new JobService();
-  const allJobs = await jobService.getAllJobs(userId);
+  const allJobs = await jobService.getAllJobs(userId!);
   const undoneJobs = allJobs
     .filter((job) => !job.isDone)
     .map((job) => job.title)
@@ -50,7 +53,7 @@ export async function POST(req: Request) {
       async onFinish({ text, toolCalls, toolResults, usage, finishReason }) {
         // Store chat history
         const allMessages = [...messages, { role: "assistant", content: text }];
-        await chatService.saveChatHistory(userId, chatId, allMessages);
+        await chatService.saveChatHistory(userId!, chatId, allMessages);
       },
     });
 

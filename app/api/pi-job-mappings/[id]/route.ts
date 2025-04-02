@@ -2,7 +2,7 @@
 // description: Get PI by id
 import { NextResponse } from 'next/server';
 import { MappingService } from '@/lib/services/pi-job-mapping.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 const mappingService = new MappingService();
 
@@ -11,19 +11,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+    
     const id = (await params).id;
-    const JP = await mappingService.getMappingById(id, userId);
+    const JP = await mappingService.getMappingById(id, userId!);
  
     if (!JP) {
       return NextResponse.json(
@@ -55,20 +52,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     
     const id = (await params).id;
     const updateData = await request.json();
-    const updatedMapping = await mappingService.updateMappingJP(id, userId, updateData);
+    const updatedMapping = await mappingService.updateMappingJP(id, userId!, updateData);
     
     if (!updatedMapping) {
       return NextResponse.json(
@@ -79,7 +73,7 @@ export async function PUT(
         { status: 404 }
       );
     }
-    await updateJobImpactValues(userId);
+    await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
       data: updatedMapping
@@ -101,19 +95,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+    
     const id = (await params).id;
-    const deleted = await mappingService.deleteMappingJP(id, userId);
+    const deleted = await mappingService.deleteMappingJP(id, userId!);
     
     if (!deleted) {
       return NextResponse.json(
@@ -124,7 +115,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    await updateJobImpactValues(userId);
+    await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
       message: 'Mapping deleted successfully'
