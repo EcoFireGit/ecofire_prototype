@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import Link from "next/link"
+import { OrganizationSwitcher } from "./organization-switcher"
 
 // Menu items.
 const items = [
@@ -130,6 +131,9 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+                <OrganizationSwitcher />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton size={"lg"} asChild>
               <a href="#">
