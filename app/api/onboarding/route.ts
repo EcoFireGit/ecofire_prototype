@@ -462,16 +462,23 @@ export async function POST(req: NextRequest) {
       const { PIService } = await import("@/lib/services/pi.service");
       const jobService = new JobService();
       const piService = new PIService();
-      
+
       let jobs = await jobService.getAllJobs(userId);
       let pis = await piService.getAllPIs(userId);
-      
+
       // Create a context string with jobs and PIs information for the AI
-      const jobsContext = jobs.map(job => `Job ID: ${job._id}, Title: ${job.title}`).join('\n');
-      const pisContext = pis.map(pi => `PI ID: ${pi._id}, Name: ${pi.name}, Target Value: ${pi.targetValue}`).join('\n');
-      
+      const jobsContext = jobs
+        .map((job) => `Job ID: ${job._id}, Title: ${job.title}`)
+        .join("\n");
+      const pisContext = pis
+        .map(
+          (pi) =>
+            `PI ID: ${pi._id}, Name: ${pi.name}, Target Value: ${pi.targetValue}`,
+        )
+        .join("\n");
+
       // Create a custom prompt for mapping generation
-      const mappingsPrompt = 
+      const mappingsPrompt =
         `Based on the mission statement of the business and the following Jobs and Progress Indicators (PIs), create mappings between jobs and PIs that make sense. ` +
         `\n\nJOBS:\n${jobsContext}\n\nPROGRESS INDICATORS:\n${pisContext}\n\n` +
         `Generate mappings between jobs and PIs where each job can impact one or more PIs. ` +
@@ -481,7 +488,7 @@ export async function POST(req: NextRequest) {
         `{ "mapping1": { "jobId": "job-id-here", "jobName": "Job Title Here", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here } }. ` +
         `Each mapping should follow the JobPiMapping interface. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
-      
+
       const result = await Promise.race([
         streamText({
           model: openai("gpt-4o"),
@@ -489,7 +496,7 @@ export async function POST(req: NextRequest) {
           prompt: mappingsPrompt,
           async onFinish({ text, usage, finishReason }) {
             console.log("Mappings processing");
-            
+
             // Process and save mappings
             try {
               // Extract JSON from the response text
@@ -501,36 +508,44 @@ export async function POST(req: NextRequest) {
                 jsonStr = jsonStr.replace(/'/g, '"');
                 // Fix escaped quotes in strings
                 jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
-                
+
                 try {
                   const mappingsData = JSON.parse(jsonStr);
-                  
+
                   // Import MappingService
                   const { MappingService } = await import(
                     "@/lib/services/pi-job-mapping.service"
                   );
                   const mappingService = new MappingService();
-                  
+
                   // Get existing mappings to check for duplicates
-                  const existingMappings = await mappingService.getAllMappingJP(userId);
-                  
+                  const existingMappings =
+                    await mappingService.getAllMappingJP(userId);
+
                   // Save each mapping
                   for (const key in mappingsData) {
                     const mapping = mappingsData[key];
-                    
+
                     // Check if mapping with same jobId and piId already exists
                     const existingMapping = existingMappings.find(
-                      (m) => m.jobId === mapping.jobId && m.piId === mapping.piId
+                      (m) =>
+                        m.jobId === mapping.jobId && m.piId === mapping.piId,
                     );
-                    
+
                     if (existingMapping) {
                       // Update the existing mapping
-                      await mappingService.updateMappingJP(existingMapping._id, userId, {
-                        piImpactValue: mapping.piImpactValue,
-                        piTarget: mapping.piTarget,
-                        notes: `Updated during onboarding for ${businessName}`,
-                      });
-                      console.log(`Mapping updated: ${mapping.jobName} -> ${mapping.piName}`);
+                      await mappingService.updateMappingJP(
+                        existingMapping._id,
+                        userId,
+                        {
+                          piImpactValue: mapping.piImpactValue,
+                          piTarget: mapping.piTarget,
+                          notes: `Updated during onboarding for ${businessName}`,
+                        },
+                      );
+                      console.log(
+                        `Mapping updated: ${mapping.jobName} -> ${mapping.piName}`,
+                      );
                     } else {
                       // Create a new mapping
                       await mappingService.CreateMapping(
@@ -543,9 +558,11 @@ export async function POST(req: NextRequest) {
                           piTarget: mapping.piTarget,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId
+                        userId,
                       );
-                      console.log(`Mapping created: ${mapping.jobName} -> ${mapping.piName}`);
+                      console.log(
+                        `Mapping created: ${mapping.jobName} -> ${mapping.piName}`,
+                      );
                     }
                   }
                 } catch (error) {
@@ -553,14 +570,19 @@ export async function POST(req: NextRequest) {
                     "Error parsing Mappings JSON:",
                     error,
                     "Input string:",
-                    jsonStr
+                    jsonStr,
                   );
                 }
               } else {
-                console.error("No JSON format found in AI response for Mappings");
+                console.error(
+                  "No JSON format found in AI response for Mappings",
+                );
               }
             } catch (parseError) {
-              console.error("Error parsing or saving mapping data:", parseError);
+              console.error(
+                "Error parsing or saving mapping data:",
+                parseError,
+              );
             }
           },
         }),
@@ -568,10 +590,10 @@ export async function POST(req: NextRequest) {
       ]).catch((error) => {
         console.error("API timeout or error for Mappings:", error.message);
         throw new Error(
-          "Request timeout - GPT API is taking too long to respond"
+          "Request timeout - GPT API is taking too long to respond",
         );
       });
-      
+
       console.log("Mappings stream response generated, sending back to client");
       return (result as any).toDataStreamResponse(); // Type assertion here
     } else if (step === "pi-qbo-mappings") {
@@ -581,25 +603,35 @@ export async function POST(req: NextRequest) {
       const { QBOService } = await import("@/lib/services/qbo.service");
       const piService = new PIService();
       const qboService = new QBOService();
-      
+
       let pis = await piService.getAllPIs(userId);
       let qbos = await qboService.getAllQBOs(userId);
-      
+
       // Create a context string with PIs and QBOs information for the AI
-      const pisContext = pis.map(pi => `PI ID: ${pi._id}, Name: ${pi.name}, Target Value: ${pi.targetValue}`).join('\n');
-      const qbosContext = qbos.map(qbo => `QBO ID: ${qbo._id}, Name: ${qbo.name}, Target Value: ${qbo.targetValue}`).join('\n');
-      
+      const pisContext = pis
+        .map(
+          (pi) =>
+            `PI ID: ${pi._id}, Name: ${pi.name}, Target Value: ${pi.targetValue}`,
+        )
+        .join("\n");
+      const qbosContext = qbos
+        .map(
+          (qbo) =>
+            `QBO ID: ${qbo._id}, Name: ${qbo.name}, Target Value: ${qbo.targetValue}`,
+        )
+        .join("\n");
+
       // Create a custom prompt for PI-QBO mapping generation
-      const piQboMappingsPrompt = 
+      const piQboMappingsPrompt =
         `Based on the mission statement of the business and the following Progress Indicators (PIs) and Quarterly Business Objectives (QBOs), create mappings between PIs and QBOs that make sense. ` +
         `\n\nPROGRESS INDICATORS:\n${pisContext}\n\nQUARTERLY BUSINESS OBJECTIVES:\n${qbosContext}\n\n` +
         `Generate mappings between PIs and QBOs where each PI can impact one or more QBOs. ` +
-        `For each mapping, you need to specify how much impact a PI has on a specific QBO using a qboImpactValue. ` +
-        `The qboImpactValue should not exceed the targetValue for that QBO. ` +
+        `For each mapping, you need to specify how much impact a PI has on a specific QBO using a qboImpact. ` +
+        `The value for qboImpact should not exceed the targetValue for that QBO. ` +
         `Output your result in the form of a JSON in the following format: ` +
         `{ "mapping1": { "piId": "pi-id-here", "piName": "PI Name Here", "qboId": "qbo-id-here", "qboName": "QBO Name Here", "piTarget": pi-target-value-here, "qboTarget": qbo-target-value-here, "qboImpact": 10 } }. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
-      
+
       const result = await Promise.race([
         streamText({
           model: openai("gpt-4o"),
@@ -607,7 +639,7 @@ export async function POST(req: NextRequest) {
           prompt: piQboMappingsPrompt,
           async onFinish({ text, usage, finishReason }) {
             console.log("PI-QBO Mappings processing");
-            
+
             // Process and save PI-QBO mappings
             try {
               // Extract JSON from the response text
@@ -619,37 +651,45 @@ export async function POST(req: NextRequest) {
                 jsonStr = jsonStr.replace(/'/g, '"');
                 // Fix escaped quotes in strings
                 jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
-                
+
                 try {
                   const mappingsData = JSON.parse(jsonStr);
-                  
+
                   // Import PIQBOMappingService
                   const { PIQBOMappingService } = await import(
                     "@/lib/services/pi-qbo-mapping.service"
                   );
                   const piQboMappingService = new PIQBOMappingService();
-                  
+
                   // Get existing mappings to check for duplicates
-                  const existingMappings = await piQboMappingService.getAllMappings(userId);
-                  
+                  const existingMappings =
+                    await piQboMappingService.getAllMappings(userId);
+
                   // Save each mapping
                   for (const key in mappingsData) {
                     const mapping = mappingsData[key];
-                    
+
                     // Check if mapping with same piId and qboId already exists
                     const existingMapping = existingMappings.find(
-                      (m) => m.piId === mapping.piId && m.qboId === mapping.qboId
+                      (m) =>
+                        m.piId === mapping.piId && m.qboId === mapping.qboId,
                     );
-                    
+
                     if (existingMapping) {
                       // Update the existing mapping
-                      await piQboMappingService.updateMapping(existingMapping._id, userId, {
-                        piTarget: mapping.piTarget,
-                        qboTarget: mapping.qboTarget,
-                        qboImpact: mapping.qboImpact || mapping.qboImpactValue,
-                        notes: `Updated during onboarding for ${businessName}`,
-                      });
-                      console.log(`PI-QBO Mapping updated: ${mapping.piName} -> ${mapping.qboName}`);
+                      await piQboMappingService.updateMapping(
+                        existingMapping._id,
+                        userId,
+                        {
+                          piTarget: mapping.piTarget,
+                          qboTarget: mapping.qboTarget,
+                          qboImpact: mapping.qboImpact,
+                          notes: `Updated during onboarding for ${businessName}`,
+                        },
+                      );
+                      console.log(
+                        `PI-QBO Mapping updated: ${mapping.piName} -> ${mapping.qboName}`,
+                      );
                     } else {
                       // Create a new mapping
                       await piQboMappingService.createMapping(
@@ -660,12 +700,14 @@ export async function POST(req: NextRequest) {
                           qboName: mapping.qboName,
                           piTarget: mapping.piTarget,
                           qboTarget: mapping.qboTarget,
-                          qboImpact: mapping.qboImpact || mapping.qboImpactValue,
+                          qboImpact: mapping.qboImpact,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId
+                        userId,
                       );
-                      console.log(`PI-QBO Mapping created: ${mapping.piName} -> ${mapping.qboName}`);
+                      console.log(
+                        `PI-QBO Mapping created: ${mapping.piName} -> ${mapping.qboName}`,
+                      );
                     }
                   }
                 } catch (error) {
@@ -673,26 +715,36 @@ export async function POST(req: NextRequest) {
                     "Error parsing PI-QBO Mappings JSON:",
                     error,
                     "Input string:",
-                    jsonStr
+                    jsonStr,
                   );
                 }
               } else {
-                console.error("No JSON format found in AI response for PI-QBO Mappings");
+                console.error(
+                  "No JSON format found in AI response for PI-QBO Mappings",
+                );
               }
             } catch (parseError) {
-              console.error("Error parsing or saving PI-QBO mapping data:", parseError);
+              console.error(
+                "Error parsing or saving PI-QBO mapping data:",
+                parseError,
+              );
             }
           },
         }),
         timeoutPromise,
       ]).catch((error) => {
-        console.error("API timeout or error for PI-QBO Mappings:", error.message);
+        console.error(
+          "API timeout or error for PI-QBO Mappings:",
+          error.message,
+        );
         throw new Error(
-          "Request timeout - GPT API is taking too long to respond"
+          "Request timeout - GPT API is taking too long to respond",
         );
       });
-      
-      console.log("PI-QBO Mappings stream response generated, sending back to client");
+
+      console.log(
+        "PI-QBO Mappings stream response generated, sending back to client",
+      );
       return (result as any).toDataStreamResponse(); // Type assertion here
     } else {
       return new Response(
