@@ -46,7 +46,7 @@ const PIQBOMappingSchema = new mongoose.Schema<PIQBOMapping>({
     type: Number,
     required: [true, "Please provide a QBO target value."],
   },
-  qboImpactValue: {
+  qboImpact: {
     type: Number,
     required: [true, "Please provide a QBO impact value."],
   },
