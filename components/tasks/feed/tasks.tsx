@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Calendar,
   Clock,
@@ -9,12 +9,14 @@ import {
   Circle,
   Smile,
   FileText,
+  PawPrint
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
 interface NextTasksProps {
   tasks: any[];
@@ -43,7 +45,9 @@ export function NextTasks({
   onDeleteTask,
   isNextTask,
 }: NextTasksProps) {
-  // Format date
+  const router = useRouter();
+  const [isHovered, setIsHovered] = useState<Record<string, boolean>>({});
+
   const formatDate = (dateString?: Date | string) => {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -54,23 +58,19 @@ export function NextTasks({
     });
   };
 
-  // Get owner name
   const getOwnerName = (ownerId?: string) => {
     if (!ownerId) return "Unassigned";
     return ownerMap[ownerId] || "Unassigned";
   };
 
-  // Get job title
   const getJobTitle = (jobId?: string) => {
     if (!jobId || !jobs[jobId]) return "Unknown project";
     return jobs[jobId].title || "Unknown project";
   };
 
-  // Get business function name from ID
   const getBusinessFunctionName = (jobId?: string) => {
     if (!jobId || !jobs[jobId]) return null;
 
-    // First check if we have a name in our business function map
     if (businessFunctionMap && jobs[jobId].businessFunctionId) {
       const businessFunctionId = jobs[jobId].businessFunctionId;
       if (businessFunctionMap[businessFunctionId]) {
@@ -78,18 +78,15 @@ export function NextTasks({
       }
     }
 
-    // Check if we have a business function name directly
     if (jobs[jobId].businessFunctionName) {
       return jobs[jobId].businessFunctionName;
     }
 
-    // Return null if we can't find a name
     return null;
   };
 
-  // Get focus level display color
   const getFocusLevelColor = (level?: string) => {
-    if (!level) return "text-orange-500"; // Default to medium
+    if (!level) return "text-orange-500";
     switch (level) {
       case "High":
         return "text-red-500";
@@ -102,9 +99,8 @@ export function NextTasks({
     }
   };
 
-  // Get joy level display color
   const getJoyLevelColor = (level?: string) => {
-    if (!level) return "text-gray-500"; // Default to medium
+    if (!level) return "text-gray-500";
     switch (level) {
       case "High":
         return "text-amber-500";
@@ -117,7 +113,6 @@ export function NextTasks({
     }
   };
 
-  // Get job impact score (for debugging)
   const getJobImpact = (jobId?: string) => {
     if (!jobId || !jobs[jobId]) return 0;
     return jobs[jobId].impact || 0;
@@ -131,9 +126,7 @@ export function NextTasks({
     return (
       <Card className="w-full">
         <CardContent className="p-6 flex flex-col items-center justify-center min-h-40">
-          <p className="text-muted-foreground">
-            No tasks found
-          </p>
+          <p className="text-muted-foreground">No tasks found</p>
         </CardContent>
       </Card>
     );
@@ -152,9 +145,7 @@ export function NextTasks({
           >
             <CardContent className="p-4">
               <div className="flex flex-col">
-                {/* Top row with checkbox, title, and action buttons */}
                 <div className="flex items-start gap-3 mb-5">
-                  {/* Checkbox */}
                   <div className="pt-1">
                     <Checkbox
                       checked={task.completed === true}
@@ -163,7 +154,6 @@ export function NextTasks({
                     />
                   </div>
 
-                  {/* Content - title and job */}
                   <div
                     className="flex-1 cursor-pointer group"
                     onClick={(e) => {
@@ -171,7 +161,6 @@ export function NextTasks({
                       onViewTask(task);
                     }}
                   >
-                    {/* Task title */}
                     <div className="mb-3 flex justify-between items-start">
                       <div className="flex items-center">
                         <h3 className="text-base font-semibold group-hover:text-primary transition-colors">
@@ -186,21 +175,14 @@ export function NextTasks({
                       <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
 
-                    {/* Parent job info */}
                     <div className="flex items-center gap-2">
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Briefcase className="h-3 w-3 mr-1" />
                         <span>{getJobTitle(task.jobId)}</span>
-                        {/* {taskIsNext && task.jobId && jobs[task.jobId]?.impact !== undefined && (
-                          <span className="ml-2 text-xs text-gray-500">
-                            (Impact: {jobs[task.jobId].impact})
-                          </span>
-                        )} */}
                       </div>
                     </div>
                   </div>
 
-                  {/* Action buttons */}
                   <div className="flex">
                     {onAddToCalendar && (
                       <Button
@@ -217,7 +199,6 @@ export function NextTasks({
                       </Button>
                     )}
                     <div className="flex flex-col gap-2">
-                      {/* Notes button */}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -246,6 +227,19 @@ export function NextTasks({
                         </Button>
                       )}
 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`);
+                        }}
+                        title="Ask Jija about this task"
+                      >
+                        <PawPrint className="h-4 w-4" />
+                      </Button>
+
                       {onDeleteTask && (
                         <Button
                           variant="ghost"
@@ -270,9 +264,7 @@ export function NextTasks({
                   </div>
                 </div>
 
-                {/* Bottom row with business function and task details */}
                 <div className="flex justify-between items-center gap-16 pl-4">
-                  {/* Business function badge on left */}
                   <div>
                     {getBusinessFunctionName(task.jobId) && (
                       <Badge variant="secondary">
@@ -281,9 +273,7 @@ export function NextTasks({
                     )}
                   </div>
 
-                  {/* Task details on right */}
                   <div className="flex flex-wrap gap-4 text-sm">
-                    {/* Focus Level */}
                     {task.focusLevel && (
                       <div className="flex items-center">
                         <Circle
@@ -298,7 +288,6 @@ export function NextTasks({
                       </div>
                     )}
 
-                    {/* Joy Level */}
                     {task.joyLevel && (
                       <div className="flex items-center">
                         <Smile
@@ -310,7 +299,6 @@ export function NextTasks({
                       </div>
                     )}
 
-                    {/* Date */}
                     {task.date && (
                       <div className="flex items-center text-muted-foreground">
                         <Calendar className="h-4 w-4 mr-1" />
@@ -318,7 +306,6 @@ export function NextTasks({
                       </div>
                     )}
 
-                    {/* Hours */}
                     {task.requiredHours !== undefined && (
                       <div className="flex items-center text-muted-foreground">
                         <Clock className="h-4 w-4 mr-1" />
@@ -327,7 +314,6 @@ export function NextTasks({
                         </span>
                       </div>
                     )}
-                    {/* Owner */}
                     <div className="flex items-center">
                       <div className="h-6 w-6 rounded-full bg-secondary overflow-hidden flex items-center justify-center text-xs font-medium mr-2">
                         {getOwnerName(task.owner).charAt(0).toUpperCase()}
