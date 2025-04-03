@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, Clock, Calendar } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -34,6 +35,7 @@ export function TaskCard({
     onComplete,
     ownerMap
 }: TaskCardProps) {
+    const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
     const { refreshJobProgress } = useTaskContext(); // Use the task context
 
@@ -177,6 +179,19 @@ export function TaskCard({
                             onClick={() => onEdit(task)}
                         >
                             <Edit className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Ask Jija about this task"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`);
+                            }}
+                        >
+                            <PawPrint className="h-4 w-4" />
                         </Button>
 
                         <AlertDialog>

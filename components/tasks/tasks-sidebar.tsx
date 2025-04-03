@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Plus, PawPrint } from "lucide-react";
 import { TaskDialog } from "./tasks-dialog";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
@@ -19,6 +19,7 @@ import { NextTaskSelector } from "./next-task-selector";
 import { TaskProvider } from "@/hooks/task-context"; // Import the TaskProvider
 import { TaskCard } from "./tasks-card"; // Make sure to import the updated TaskCard
 import { useTaskContext } from "@/hooks/task-context";
+import { useRouter } from "next/navigation";
 
 // Owner interface
 interface Owner {
@@ -51,6 +52,7 @@ export function TasksSidebar({
 
   const { toast } = useToast();
   const { refreshJobOwner } = useTaskContext();
+  const router = useRouter();
 
   // Fetch owners from API
   useEffect(() => {
@@ -205,7 +207,7 @@ export function TasksSidebar({
           // Clear the next task since it's now completed
           await updateJobNextTask("none");
         }
-  
+
         // Use the function form of setState to ensure you're working with the latest state
         setTasks(prevTasks => {
           return prevTasks.map(task => {
@@ -221,7 +223,7 @@ export function TasksSidebar({
             return task;
           });
         });
-        
+
       } else {
         toast({
           title: "Error",
@@ -241,11 +243,11 @@ export function TasksSidebar({
 
   const handleNextTaskChange = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
-  
+
     try {
       // Update the job with the new next task ID
       const taskIdToSave = taskId === "none" ? null : taskId;
-  
+
       const response = await fetch(`/api/jobs/${selectedJob.id}`, {
         method: "PUT",
         headers: {
@@ -253,14 +255,14 @@ export function TasksSidebar({
         },
         body: JSON.stringify({ nextTaskId: taskIdToSave }),
       });
-  
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
-  
+
       // Update local state
       setNextTaskId(taskIdToSave || undefined);
-  
+
       // Update isNextTask flag for all tasks
       setTasks(
         tasks.map((task) => ({
@@ -268,13 +270,13 @@ export function TasksSidebar({
           isNextTask: task.id === taskIdToSave,
         }))
       );
-  
+
       // Set the flag in the parent component to indicate a refresh is needed
       // But don't actually refresh yet - wait until sidebar is closed
       if (typeof onRefreshJobs === "function") {
         onRefreshJobs();
       }
-  
+
       toast({
         title: "Success",
         description: "Next task updated successfully",
@@ -288,14 +290,14 @@ export function TasksSidebar({
       });
     }
   };
-  
+
 
   const updateJobNextTask = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
-  
+
     try {
       const taskIdToSave = taskId === "none" ? null : taskId;
-  
+
       const response = await fetch(`/api/jobs/${selectedJob.id}`, {
         method: "PUT",
         headers: {
@@ -303,13 +305,13 @@ export function TasksSidebar({
         },
         body: JSON.stringify({ nextTaskId: taskIdToSave }),
       });
-  
+
       const result = await response.json();
-  
+
       if (result.success) {
         // Update local state
         setNextTaskId(taskIdToSave || undefined);
-  
+
         // Update isNextTask flag for all tasks
         setTasks(
           tasks.map((task) => ({
@@ -317,7 +319,7 @@ export function TasksSidebar({
             isNextTask: task.id === taskIdToSave,
           }))
         );
-        
+
         // Set flag for refresh on close
         if (typeof onRefreshJobs === "function") {
           onRefreshJobs();
@@ -330,7 +332,7 @@ export function TasksSidebar({
       throw error;
     }
   };
-  
+
   const handleTaskSubmit = async (taskData: Partial<Task>) => {
     try {
       // Make sure tags is always defined as an array
@@ -371,7 +373,7 @@ export function TasksSidebar({
           // Add task ID to job's tasks array
           if (selectedJob) {
             await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
-            
+
             // Trigger a refresh of the job progress since we added a new task
             const event = new CustomEvent('job-progress-update', { 
               detail: { jobId: selectedJob.id } 

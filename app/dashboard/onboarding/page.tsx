@@ -125,6 +125,124 @@ export default function OnboardingPage() {
     },
   });
 
+  // Third hook for PI completion
+  const {
+    complete: completePIs,
+    completion: piCompletion,
+    error: piError,
+    isLoading: isPILoading,
+    stop: stopPIs,
+  } = useCompletion({
+    id: "pi-completion",
+    api: "/api/onboarding",
+    onResponse(response) {
+      console.log("PIs response received:", response.status);
+      if (!response.ok) {
+        console.error("PIs API response not OK:", response.status);
+        stopPIs();
+        toast({
+          title: "Error",
+          description: `Server error: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    },
+    onFinish(result, completion) {
+      console.log("PI generation completed");
+      // Don't redirect yet, will do job-PI mappings next
+    },
+    onError(error) {
+      console.error("PIs completion error:", error);
+      toast({
+        title: "Error",
+        description:
+          "An error occurred while generating PIs, but you can still return to dashboard.",
+        variant: "destructive",
+      });
+      // Still redirect to dashboard even if there's an error
+      router.push("/dashboard");
+    },
+  });
+  
+  // Fourth hook for Job-PI mappings completion
+  const {
+    complete: completeMappings,
+    completion: mappingsCompletion,
+    error: mappingsError,
+    isLoading: isMappingsLoading,
+    stop: stopMappings,
+  } = useCompletion({
+    id: "mappings-completion",
+    api: "/api/onboarding",
+    onResponse(response) {
+      console.log("Mappings response received:", response.status);
+      if (!response.ok) {
+        console.error("Mappings API response not OK:", response.status);
+        stopMappings();
+        toast({
+          title: "Error",
+          description: `Server error: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    },
+    onFinish(result, completion) {
+      console.log("Job-PI mappings generation completed");
+      // Continue to PI-QBO mappings step
+    },
+    onError(error) {
+      console.error("Mappings completion error:", error);
+      toast({
+        title: "Error",
+        description:
+          "An error occurred while generating Job-PI mappings, but you can still return to dashboard.",
+        variant: "destructive",
+      });
+      // Still redirect to dashboard even if there's an error
+      router.push("/dashboard");
+    },
+  });
+  
+  // Fifth hook for PI-QBO mappings completion
+  const {
+    complete: completePiQboMappings,
+    completion: piQboMappingsCompletion,
+    error: piQboMappingsError,
+    isLoading: isPiQboMappingsLoading,
+    stop: stopPiQboMappings,
+  } = useCompletion({
+    id: "pi-qbo-mappings-completion",
+    api: "/api/onboarding",
+    onResponse(response) {
+      console.log("PI-QBO Mappings response received:", response.status);
+      if (!response.ok) {
+        console.error("PI-QBO Mappings API response not OK:", response.status);
+        stopPiQboMappings();
+        toast({
+          title: "Error",
+          description: `Server error: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    },
+    onFinish(result, completion) {
+      console.log("PI-QBO mappings generation completed");
+      // After all mappings are generated, redirect to dashboard
+      router.push("/dashboard");
+    },
+    onError(error) {
+      console.error("PI-QBO Mappings completion error:", error);
+      toast({
+        title: "Error",
+        description:
+          "An error occurred while generating PI-QBO mappings, but you can still return to dashboard.",
+        variant: "destructive",
+      });
+      // Still redirect to dashboard even if there's an error
+      router.push("/dashboard");
+    },
+  });
+
   // Handler for "Create Jobs To Be Done" button
   const handleCreateJobs = async () => {
     setStep(4); // Move to the jobs step
@@ -150,6 +268,80 @@ export default function OnboardingPage() {
         description: "There was a problem generating jobs. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleReturnToDashboard = async () => {
+    // Show a toast to inform the user that PIs are being generated
+    toast({
+      title: "Generating Progress Indicators",
+      description: "Please wait while we create PIs based on your jobs...",
+    });
+
+    try {
+      // Call the API with the step parameter set to "pis"
+      await completePIs("", {
+        body: {
+          businessName: businessName.trim(),
+          businessIndustry: businessIndustry.trim(),
+          businessDescription: input.trim(),
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          annualRevenue: annualRevenue,
+          growthStage: growthStage,
+          step: "pis", // Indicate this is the PIs step
+        },
+      });
+      
+      // After PIs are generated, generate Job-PI mappings
+      toast({
+        title: "Generating Job-PI Mappings",
+        description: "Please wait while we create mappings between jobs and PIs...",
+      });
+      
+      // Call the API with the step parameter set to "mappings"
+      await completeMappings("", {
+        body: {
+          businessName: businessName.trim(),
+          businessIndustry: businessIndustry.trim(),
+          businessDescription: input.trim(),
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          annualRevenue: annualRevenue,
+          growthStage: growthStage,
+          step: "mappings", // Indicate this is the mappings step
+        },
+      });
+      
+      // After Job-PI mappings are generated, generate PI-QBO mappings
+      toast({
+        title: "Generating PI-QBO Mappings",
+        description: "Please wait while we create mappings between PIs and QBOs...",
+      });
+      
+      // Call the API with the step parameter set to "pi-qbo-mappings"
+      await completePiQboMappings("", {
+        body: {
+          businessName: businessName.trim(),
+          businessIndustry: businessIndustry.trim(),
+          businessDescription: input.trim(),
+          monthsInBusiness:
+            monthsInBusiness === "" ? 0 : Number(monthsInBusiness),
+          annualRevenue: annualRevenue,
+          growthStage: growthStage,
+          step: "pi-qbo-mappings", // Indicate this is the PI-QBO mappings step
+        },
+      });
+      
+    } catch (err) {
+      console.error("Error during PI or mapping generation:", err);
+      toast({
+        title: "Generation Error",
+        description: "There was a problem generating PIs or mappings, but you can still return to dashboard.",
+        variant: "destructive",
+      });
+      // Still redirect to dashboard even if there's an error
+      router.push("/dashboard");
     }
   };
 
@@ -757,8 +949,16 @@ export default function OnboardingPage() {
               </Button>
             )}
 
-            <Button onClick={() => router.push("/dashboard")}>
-              Return to Dashboard
+            <Button 
+              onClick={handleReturnToDashboard} 
+              disabled={isPILoading || isMappingsLoading || isPiQboMappingsLoading}
+              className="flex items-center gap-2"
+            >
+              {(isPILoading || isMappingsLoading || isPiQboMappingsLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isPILoading ? "Generating PIs..." : 
+               isMappingsLoading ? "Generating Job-PI Mappings..." : 
+               isPiQboMappingsLoading ? "Generating PI-QBO Mappings..." :
+               "Return to Dashboard"}
             </Button>
           </div>
         </div>
