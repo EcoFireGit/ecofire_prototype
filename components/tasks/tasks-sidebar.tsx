@@ -580,7 +580,6 @@ export function TasksSidebar({
                       onDelete={handleDeleteTask}
                       onComplete={handleCompleteTask}
                       ownerMap={ownerMap}
-                      router={router} // Pass router prop to TaskCard
                     />
                   ))
                 ) : (
