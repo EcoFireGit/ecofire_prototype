@@ -17,7 +17,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
     // Use the Stack Overflow solution to correctly await the ID
-    const id = (await params).id;
+    const { id } = await params;
     
     const deleted = await businessFunctionService.deleteBusinessFunction(
       id,
@@ -65,7 +65,7 @@ export async function PATCH(
     const userId = authResult.userId;
    
     // Use the Stack Overflow solution to correctly await the ID
-    const id = (await params).id;
+    const { id } = await params;
     
     const { name } = await request.json();
    

@@ -19,7 +19,7 @@ export async function GET(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const JP = await mappingService.getMappingById(id, userId!);
  
     if (!JP) {
@@ -60,7 +60,7 @@ export async function PUT(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const updateData = await request.json();
     const updatedMapping = await mappingService.updateMappingJP(id, userId!, updateData);
     
@@ -103,7 +103,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const deleted = await mappingService.deleteMappingJP(id, userId!);
     
     if (!deleted) {

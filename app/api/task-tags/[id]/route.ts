@@ -19,7 +19,7 @@ export async function GET(
     const userId = authResult.userId;
     
     await connectMongo();
-    const id = (await params).id;
+    const { id } = await params;
     let tag;
     
     // Check if id is a MongoDB ObjectId or a tag name
@@ -64,7 +64,7 @@ export async function DELETE(
     const userId = authResult.userId;
     
     await connectMongo();
-    const id = (await params).id;
+    const { id } = await params;
    
     // Delete the tag
     const result = await TaskTag.findOneAndDelete({ _id: id, userId });

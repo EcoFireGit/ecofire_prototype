@@ -19,7 +19,7 @@ export async function GET(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const pi = await piService.getPIById(id, userId!);
  
     if (!pi) {
@@ -60,7 +60,7 @@ export async function PUT(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const updateData = await request.json();
     const updatedPI = await piService.updatePI(id, userId!, updateData);
     
@@ -103,7 +103,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const deleted = await piService.deletePI(id, userId!);
     
     if (!deleted) {

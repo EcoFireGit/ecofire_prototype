@@ -19,7 +19,7 @@ export async function GET(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const qbo = await qboService.getQBOById(id, userId!);
  
     if (!qbo) {
@@ -60,7 +60,7 @@ export async function PUT(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const updateData = await request.json();
     const updatedQBO = await qboService.updateQBO(id, userId!, updateData);
     
@@ -103,7 +103,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const deleted = await qboService.deleteQBO(id, userId!);
     
     if (!deleted) {

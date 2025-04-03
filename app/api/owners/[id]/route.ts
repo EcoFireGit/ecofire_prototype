@@ -15,7 +15,7 @@ export async function PUT(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const body = await request.json();
     const { name } = body;
     
@@ -58,7 +58,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const success = await ownerService.deleteOwner(id, userId!);
    
     if (!success) {

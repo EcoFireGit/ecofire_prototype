@@ -18,7 +18,7 @@ export async function GET(
     
     const userId = authResult.userId;
    
-    const id = (await params).id;
+    const { id } = await params;
     const mapping = await mappingService.getMappingById(id, userId!);
    
     if (!mapping) {
@@ -61,7 +61,7 @@ export async function PUT(
     
     const userId = authResult.userId;
    
-    const id = (await params).id;
+    const { id } = await params;
     const updateData = await request.json();
     const updatedMapping = await mappingService.updateMapping(id, userId!, updateData);
    
@@ -105,7 +105,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
    
-    const id = (await params).id;
+    const { id } = await params;
     const deleted = await mappingService.deleteMapping(id, userId!);
    
     if (!deleted) {

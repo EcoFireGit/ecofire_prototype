@@ -17,7 +17,7 @@ export async function GET(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const task = await taskService.getTaskById(id, userId!);
  
     if (!task) {
@@ -59,7 +59,7 @@ export async function PUT(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const updateData = await request.json();
     const updatedTask = await taskService.updateTask(id, userId!, updateData);
    
@@ -102,7 +102,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const deleted = await taskService.deleteTask(id, userId!);
    
     if (!deleted) {

@@ -19,7 +19,7 @@ export async function GET(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const job = await jobService.getJobById(id, userId!);
  
     if (!job) {
@@ -60,7 +60,7 @@ export async function PUT(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const updateData = await request.json();
     const updatedJob = await jobService.updateJob(id, userId!, updateData);
     
@@ -102,7 +102,7 @@ export async function DELETE(
     
     const userId = authResult.userId;
     
-    const id = (await params).id;
+    const { id } = await params;
     const deleted = await jobService.deleteJob(id, userId!);
     
     if (!deleted) {
