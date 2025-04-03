@@ -59,7 +59,7 @@ export default function Chat() {
   // Set prefilled input when jobTitle is present
   useEffect(() => {
     if (jobTitle) {
-      setInput(`Can you help me with how to do the job "${jobTitle}?"`);
+      setInput(`Can you help me with doing "${jobTitle}?"`);
     }
   }, [jobTitle, setInput]);
 
