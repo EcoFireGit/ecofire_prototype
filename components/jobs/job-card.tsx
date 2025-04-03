@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, PawPrint } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,7 @@ export function JobCard({
   isSelected,
   taskOwnerMap
 }: JobCardProps) {
+  const router = useRouter();
   const [progress, setProgress] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [taskCounts, setTaskCounts] = useState<TaskCounts>({ total: 0, completed: 0 });
@@ -273,6 +275,19 @@ export function JobCard({
           }}
         >
           <Edit className="h-4 w-4" />
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          title="Ask Jija about this job"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
+          }}
+        >
+          <PawPrint className="h-4 w-4" />
         </Button>
 
         <AlertDialog>

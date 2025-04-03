@@ -4,6 +4,7 @@
 import { useChat } from '@ai-sdk/react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { useSearchParams } from 'next/navigation';
 
 interface ChatSession {
   _id: string;
@@ -31,6 +32,8 @@ export default function Chat() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const LIMIT = 3;
   const { userId } = useAuth();
+  const searchParams = useSearchParams();
+  const jobTitle = searchParams.get('jobTitle');
 
   const {
     error,
@@ -42,6 +45,7 @@ export default function Chat() {
     reload,
     stop,
     setMessages,
+    setInput
   } = useChat({
     id: selectedChatId || undefined,
     onFinish(message, { usage, finishReason }) {
@@ -52,6 +56,13 @@ export default function Chat() {
       fetchRecentChats(0); 
     },
   });
+
+  // Set prefilled input when jobTitle is present
+  useEffect(() => {
+    if (jobTitle) {
+      setInput(`How can I help you with ${jobTitle}?`);
+    }
+  }, [jobTitle, setInput]);
 
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
