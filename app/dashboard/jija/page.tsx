@@ -1,17 +1,16 @@
+"use client";
 
-'use client';
-
-import { useChat } from '@ai-sdk/react';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@clerk/nextjs';
-import { useSearchParams } from 'next/navigation';
+import { useChat } from "@ai-sdk/react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { useSearchParams } from "next/navigation";
 
 interface ChatSession {
   _id: string;
   userId: string;
   chatId: string;
   messages: {
-    role: 'user' | 'assistant';
+    role: "user" | "assistant";
     content: string;
   }[];
   createdAt: string;
@@ -33,7 +32,7 @@ export default function Chat() {
   const LIMIT = 3;
   const { userId } = useAuth();
   const searchParams = useSearchParams();
-  const jobTitle = searchParams.get('jobTitle');
+  const jobTitle = searchParams.get("jobTitle");
 
   const {
     error,
@@ -45,53 +44,55 @@ export default function Chat() {
     reload,
     stop,
     setMessages,
-    setInput
+    setInput,
   } = useChat({
     id: selectedChatId || undefined,
     onFinish(message, { usage, finishReason }) {
-      console.log('Usage', usage);
-      console.log('FinishReason', finishReason);
+      console.log("Usage", usage);
+      console.log("FinishReason", finishReason);
       // Reset pagination and fetch fresh chats
       setPage(0);
-      fetchRecentChats(0); 
+      fetchRecentChats(0);
     },
   });
 
   // Set prefilled input when jobTitle is present
   useEffect(() => {
     if (jobTitle) {
-      setInput(`How can I help you with ${jobTitle}?`);
+      setInput(`Can you help me with how to do the job "${jobTitle}?"`);
     }
   }, [jobTitle, setInput]);
 
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
-    
+
     try {
       const skip = pageToFetch * LIMIT;
-      const response = await fetch(`/api/recent-chats?limit=${LIMIT}&skip=${skip}`);
-      
+      const response = await fetch(
+        `/api/recent-chats?limit=${LIMIT}&skip=${skip}`,
+      );
+
       if (response.ok) {
-        const data = await response.json() as ChatResponse;
-        
+        const data = (await response.json()) as ChatResponse;
+
         if (pageToFetch === 0) {
           // First page - replace current chats
           setRecentChats(data.chats);
         } else {
           // Additional pages - append to current chats
-          setRecentChats(prev => [...prev, ...data.chats]);
+          setRecentChats((prev) => [...prev, ...data.chats]);
         }
-        
+
         setHasMoreChats(data.hasMore);
       }
     } catch (error) {
-      console.error('Error fetching recent chats:', error);
+      console.error("Error fetching recent chats:", error);
     }
   };
 
   const loadMoreChats = async () => {
     if (isLoadingMore || !hasMoreChats) return;
-    
+
     setIsLoadingMore(true);
     const nextPage = page + 1;
     setPage(nextPage);
@@ -104,24 +105,26 @@ export default function Chat() {
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
-        
+
         // Set the selected chat ID
         setSelectedChatId(chatId);
-        
+
         // Set the chat messages to continue the conversation
         if (data && data.messages && data.messages.length > 0) {
           // Create messages in the format expected by useChat
-          const formattedMessages = data.messages.map((msg: any, index: number) => ({
-            id: `msg-${index}`,
-            role: msg.role,
-            content: msg.content
-          }));
-          
+          const formattedMessages = data.messages.map(
+            (msg: any, index: number) => ({
+              id: `msg-${index}`,
+              role: msg.role,
+              content: msg.content,
+            }),
+          );
+
           setMessages(formattedMessages);
         }
       }
     } catch (error) {
-      console.error('Error loading chat session:', error);
+      console.error("Error loading chat session:", error);
     }
   };
 
@@ -131,12 +134,21 @@ export default function Chat() {
 
   // Get a preview of the conversation (first user message and assistant response)
   const getChatPreview = (chat: ChatSession) => {
-    const userMessage = chat.messages.find(m => m.role === 'user')?.content || 'No message';
-    const aiResponse = chat.messages.find(m => m.role === 'assistant')?.content || 'No response';
-    
+    const userMessage =
+      chat.messages.find((m) => m.role === "user")?.content || "No message";
+    const aiResponse =
+      chat.messages.find((m) => m.role === "assistant")?.content ||
+      "No response";
+
     return {
-      userMessage: userMessage.length > 60 ? `${userMessage.substring(0, 60)}...` : userMessage,
-      aiResponse: aiResponse.length > 60 ? `${aiResponse.substring(0, 60)}...` : aiResponse,
+      userMessage:
+        userMessage.length > 60
+          ? `${userMessage.substring(0, 60)}...`
+          : userMessage,
+      aiResponse:
+        aiResponse.length > 60
+          ? `${aiResponse.substring(0, 60)}...`
+          : aiResponse,
     };
   };
 
@@ -147,7 +159,7 @@ export default function Chat() {
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Jija Assistant</h1>
-      
+
       {/* Recent Chats Section */}
       {recentChats.length > 0 && (
         <div className="mb-8">
@@ -156,12 +168,12 @@ export default function Chat() {
             {recentChats.map((chat) => {
               const preview = getChatPreview(chat);
               return (
-                <div 
-                  key={chat._id} 
+                <div
+                  key={chat._id}
                   className={`border rounded-lg p-4 shadow-sm cursor-pointer transition-colors ${
-                    selectedChatId === chat.chatId 
-                    ? 'bg-blue-50 border-blue-500' 
-                    : 'hover:bg-gray-50'
+                    selectedChatId === chat.chatId
+                      ? "bg-blue-50 border-blue-500"
+                      : "hover:bg-gray-50"
                   }`}
                   onClick={() => loadChatSession(chat.chatId)}
                 >
@@ -182,7 +194,7 @@ export default function Chat() {
               );
             })}
           </div>
-          
+
           {/* Load More Button */}
           {hasMoreChats && (
             <div className="mt-4 text-center">
@@ -191,7 +203,7 @@ export default function Chat() {
                 disabled={isLoadingMore}
                 className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-blue-300"
               >
-                {isLoadingMore ? 'Loading...' : 'Load More Conversations'}
+                {isLoadingMore ? "Loading..." : "Load More Conversations"}
               </button>
             </div>
           )}
@@ -200,16 +212,21 @@ export default function Chat() {
 
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
-        {messages.map(m => (
-          <div key={m.id} className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50">
-            <span className="font-medium">{m.role === 'user' ? 'You: ' : 'Jija: '}</span>
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50"
+          >
+            <span className="font-medium">
+              {m.role === "user" ? "You: " : "Jija: "}
+            </span>
             {m.content}
           </div>
         ))}
 
-        {(status === 'submitted' || status === 'streaming') && (
+        {(status === "submitted" || status === "streaming") && (
           <div className="mt-4 text-gray-500">
-            {status === 'submitted' && <div>Loading...</div>}
+            {status === "submitted" && <div>Loading...</div>}
             <button
               type="button"
               className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
@@ -240,7 +257,7 @@ export default function Chat() {
               value={input}
               placeholder="Ask Jija something..."
               onChange={handleInputChange}
-              disabled={status !== 'ready'}
+              disabled={status !== "ready"}
             />
           </form>
         </div>
