@@ -36,7 +36,7 @@ export default function useCalendar() {
       
       if (response.ok) {
         const data = await response.json();
-
+        window.location.reload();
         //here
         
         console.log("response: " + JSON.stringify(data.data));
