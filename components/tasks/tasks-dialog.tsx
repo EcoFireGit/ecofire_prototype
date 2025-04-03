@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Task, FocusLevel, JoyLevel } from "./types";
 import { TagInput } from "@/components/tasks/tag-input";
+import { saveTags } from "@/lib/services/task-tags.service";
 
 // Define Owner interface to match MongoDB document
 interface Owner {
@@ -58,7 +59,7 @@ export function TaskDialog({
   const [notes, setNotes] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
-  
+
   // State for owners fetched from API
   const [owners, setOwners] = useState<Owner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
@@ -69,14 +70,14 @@ export function TaskDialog({
     const fetchOwners = async () => {
       setIsLoadingOwners(true);
       setOwnerError(null);
-      
+
       try {
-        const response = await fetch('/api/owners');
-        
+        const response = await fetch("/api/owners");
+
         if (!response.ok) {
           throw new Error(`Failed to fetch owners: ${response.status}`);
         }
-        
+
         const ownersData = await response.json();
         setOwners(ownersData);
       } catch (error) {
@@ -86,7 +87,7 @@ export function TaskDialog({
         setIsLoadingOwners(false);
       }
     };
-    
+
     if (open) {
       fetchOwners();
     }
@@ -145,6 +146,9 @@ export function TaskDialog({
       if (tags.length > 0) task.tags = tags;
 
       await onSubmit(task);
+      if (tags.length > 0) {
+        await saveTags(tags);
+      }
       onOpenChange(false);
 
       // Reset form if creating new task
@@ -204,7 +208,13 @@ export function TaskDialog({
                   disabled={isLoadingOwners}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder={isLoadingOwners ? "Loading owners..." : "Select an owner"} />
+                    <SelectValue
+                      placeholder={
+                        isLoadingOwners
+                          ? "Loading owners..."
+                          : "Select an owner"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
@@ -215,7 +225,9 @@ export function TaskDialog({
                     ))}
                   </SelectContent>
                 </Select>
-                {ownerError && <p className="text-sm text-red-500 mt-1">{ownerError}</p>}
+                {ownerError && (
+                  <p className="text-sm text-red-500 mt-1">{ownerError}</p>
+                )}
               </div>
             </div>
 
@@ -322,7 +334,7 @@ export function TaskDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 items-start gap-4">
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tags" className="text-right">
                 Tags
               </Label>

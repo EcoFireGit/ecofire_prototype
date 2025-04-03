@@ -21,16 +21,20 @@ export type Job = {
   notes?: string;
   businessFunctionId?: string;
   businessFunctionName?: string;
-  owner?: string;
   dueDate?: string;
   isDone: boolean;
+  nextTaskId?: string;  // Added field to track the next task
+  tasks?: string[];     // Added field to store task IDs
+  // Owner field removed as it's now derived from next task
+  impact?: number;
 };
 
 export const columns = (
   onEdit: (job: Job) => void,
   onDelete: (id: string) => void,
   onSelect: (jobId: string, checked: boolean) => void,
-  onOpenTasksSidebar: (job: Job) => void
+  onOpenTasksSidebar: (job: Job) => void,
+  taskOwnerMap?: Record<string, string> // Map of task ID to owner name
 ): ColumnDef<Job>[] => [
   {
     id: "select",
@@ -73,8 +77,19 @@ export const columns = (
     },
   },
   {
-    accessorKey: "owner",
+    id: "owner",
     header: "Owner",
+    cell: ({ row }) => {
+      const job = row.original;
+      const nextTaskId = job.nextTaskId;
+      
+      // If we have both a next task ID and a task owner mapping
+      if (nextTaskId && taskOwnerMap && taskOwnerMap[nextTaskId]) {
+        return taskOwnerMap[nextTaskId];
+      }
+      
+      return "Not assigned";
+    },
   },
   {
     accessorKey: "businessFunctionName",
@@ -106,6 +121,14 @@ export const columns = (
         month: "short",
         day: "numeric",
       });
+    },
+  },
+  {
+    accessorKey: "impact",
+    header: "Impact",
+    cell: ({ row }) => {
+      const value = row.getValue("impact") as number | undefined;
+      return value !== undefined ? value.toString() : "N/A";
     },
   },
   {
