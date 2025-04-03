@@ -3,18 +3,9 @@ import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-  } from "@/components/ui/alert-dialog";
-
-  import { GCalAuth } from "@/lib/models/gcal-auth.model";
+  AlertDialog,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export type Gcal = {
   id: string;
@@ -22,28 +13,27 @@ export type Gcal = {
   summary: string;
   timeZone: string;
 };
+
 export function convertGcalsToTableData(GCalAuth: Gcal[]): Gcal[] {
-  return GCalAuth.map(Gcal => ({
+  return GCalAuth.map((Gcal) => ({
     id: Gcal.id,
     etag: Gcal.etag,
     summary: Gcal.summary,
     timeZone: Gcal.timeZone,
-   
   }));
 }
 
-
 export const columns = (
-  
   onSelect: (gcalId: string, checked: boolean) => void
- 
 ): ColumnDef<Gcal>[] => [
   {
     id: "select",
     header: ({ table }) => (
       <Checkbox
         checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        onCheckedChange={(value) =>
+          table.toggleAllPageRowsSelected(!!value)
+        }
         aria-label="Select all"
       />
     ),
@@ -62,23 +52,20 @@ export const columns = (
   },
   {
     accessorKey: "id",
-    header: "Id",
+    header: "Id", // Use a string directly for static headers
   },
   {
     accessorKey: "etag",
-    header: "Etag",
+    header: "Etag", // Use a string directly for static headers
   },
   {
     accessorKey: "summary",
-    header: "Summary",
+    header: "Summary", // Use a string directly for static headers
   },
   {
     accessorKey: "timeZone",
-    header: "Timezone",
+    header: "Timezone", // Use a string directly for static headers
   },
-
-
- 
   {
     id: "actions",
     cell: ({ row }) => {
@@ -86,14 +73,12 @@ export const columns = (
 
       return (
         <div className="flex items-center gap-2">
-         
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
-            
           </AlertDialog>
         </div>
       );
