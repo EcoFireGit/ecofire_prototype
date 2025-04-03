@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users } from "lucide-react"
+import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon, BriefcaseBusinessIcon } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import Link from "next/link"
+import { OrganizationSwitcher } from "./organization-switcher"
 
 // Menu items.
 const items = [
@@ -19,6 +20,11 @@ const items = [
     title: "Dashboard",
     url: "/dashboard",
     icon: Home,
+  },
+  {
+    title: "Onboarding",
+    url: "/dashboard/onboarding",
+    icon: ClipboardCheck,
   },
   {
     title: "Quick Guide",
@@ -36,15 +42,30 @@ const items = [
     icon: Search,
   },
   {
+    title: "Business Info",
+    url: "/dashboard/business-info",
+    icon: BarChart2,
+  },
+  {
     title: "Team",
     url: "/dashboard/owners",
     icon: Users,
   },
   {
     title: "Jija",
-    url: "#",
+    url: "/dashboard/jija",
     icon: Dog,
   },
+  {
+    title: "Search",
+    url: "/dashboard/search",
+    icon: Search,
+  },
+  {
+    title: "Organizations",
+    url: "/dashboard/organizations",
+    icon: BriefcaseBusinessIcon,
+  }
 ]
 
 // Backstage sub-items
@@ -94,7 +115,7 @@ export function AppSidebar() {
               <Collapsible defaultOpen className="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent">
-                    <Search className="mr-2 h-4 w-4" />
+                    <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
                     <span>Backstage</span>
                     <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                   </CollapsibleTrigger>
@@ -120,6 +141,9 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+                <OrganizationSwitcher />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton size={"lg"} asChild>
               <a href="#">

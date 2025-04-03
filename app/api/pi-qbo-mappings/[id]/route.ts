@@ -1,28 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIQBOMappingService } from "@/lib/services/pi-qbo-mapping.service";
-import { auth } from '@clerk/nextjs/server';
-
+import { validateAuth } from '@/lib/utils/auth-utils';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 const mappingService = new PIQBOMappingService();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
-    const mapping = await mappingService.getMappingById(params.id, userId);
-    
+    const userId = authResult.userId;
+   
+    const { id } = await params;
+    const mapping = await mappingService.getMappingById(id, userId!);
+   
     if (!mapping) {
       return NextResponse.json(
         {
@@ -32,13 +30,13 @@ export async function GET(
         { status: 404 }
       );
     }
-    
+   
     return NextResponse.json({
       success: true,
       data: mapping
     });
   } catch (error) {
-    console.error(`Error in GET /api/pi-qbo-mappings/${params.id}:`, error);
+    console.error('Error in GET /api/pi-qbo-mappings:', error);
     return NextResponse.json(
       {
         success: false,
@@ -51,24 +49,22 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+   
+    const { id } = await params;
     const updateData = await request.json();
-    const updatedMapping = await mappingService.updateMapping(params.id, userId, updateData);
-    
+    const updatedMapping = await mappingService.updateMapping(id, userId!, updateData);
+   
     if (!updatedMapping) {
       return NextResponse.json(
         {
@@ -78,13 +74,13 @@ export async function PUT(
         { status: 404 }
       );
     }
-    
+    await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
       data: updatedMapping
     });
   } catch (error) {
-    console.error(`Error in PUT /api/pi-qbo-mappings/${params.id}:`, error);
+    console.error('Error in PUT /api/pi-qbo-mappings:', error);
     return NextResponse.json(
       {
         success: false,
@@ -97,23 +93,21 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
-    const deleted = await mappingService.deleteMapping(params.id, userId);
-    
+    const userId = authResult.userId;
+   
+    const { id } = await params;
+    const deleted = await mappingService.deleteMapping(id, userId!);
+   
     if (!deleted) {
       return NextResponse.json(
         {
@@ -123,13 +117,13 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
+    await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
       message: 'Mapping deleted successfully'
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/pi-qbo-mappings/${params.id}:`, error);
+    console.error('Error in DELETE /api/pi-qbo-mappings:', error);
     return NextResponse.json(
       {
         success: false,

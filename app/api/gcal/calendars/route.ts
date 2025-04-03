@@ -1,78 +1,81 @@
 import { NextResponse } from 'next/server';
 import { getCalendarsFromGoogle, saveAuthorizedCalendars } from '@/lib/services/gcal.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
-export async function GET() {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id?: string }> } // Pattern for future param usage
+) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
-
-    const calendars = await getCalendarsFromGoogle(userId);
-    console.log('fetched calendars:', calendars);
+    
+    const userId = authResult.userId;
+    
+    // Example of proper param handling for future endpoints
+    // const {id} = await params; 
+    
+    const calendars = await getCalendarsFromGoogle(userId!);
 
     return NextResponse.json({
       success: true,
       data: calendars
-    }, { status: 200 });  } 
-    catch (error) {
-      
-      return NextResponse.json(
-        
-        { error: 'Failed to fetch calendars' },
-        { status: 500 }
-      );
-    }
+    }, { status: 200 });
+
+  } catch (error) {
+    console.error('Error fetching calendars:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch calendars' },
+      { status: 500 }
+    );
+  }
 }
-// Update the POST handler
+
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return unauthorizedResponse();
-
-    // Parse and validate request body
-    const { calendars } = await request.json();
+    const authResult = await validateAuth();
     
+    if (!authResult.isAuthorized) {
+      return authResult.response;
+    }
+    
+    const userId = authResult.userId;
+    const { calendars } = await request.json();
+
+    // Enhanced validation
     if (!Array.isArray(calendars) || calendars.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'Invalid calendar data' },
+        { success: false, error: 'Payload must contain a non-empty array of calendars' },
         { status: 400 }
       );
     }
 
-    // Validate each calendar object
-    for (const calendar of calendars) {
-      if (!calendar.id || !calendar.etag || !calendar.summary || !calendar.timeZone) {
-        return NextResponse.json(
-          { success: false, error: 'Missing required calendar fields' },
-          { status: 400 }
-        );
-      }
+    const schemaValid = calendars.every(cal => 
+      cal?.id && cal?.etag && cal?.summary && cal?.timeZone
+    );
+
+    if (!schemaValid) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid calendar schema' },
+        { status: 400 }
+      );
     }
 
-    // Save all calendar data
-    const savedCalendars = await saveAuthorizedCalendars(userId, calendars);
+    const savedCalendars = await saveAuthorizedCalendars(userId!, calendars);
     
     return NextResponse.json(
       { success: true, data: savedCalendars },
       { status: 200 }
     );
+
   } catch (error) {
-    console.error('Error:', error);
-    return serverErrorResponse();
+    console.error('Calendar save error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
-
-// Helper functions
-const unauthorizedResponse = () => 
-  NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-
-const serverErrorResponse = () =>
-  NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });

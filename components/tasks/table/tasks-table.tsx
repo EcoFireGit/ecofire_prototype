@@ -22,20 +22,32 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
 }
 
-export function TasksTable<TData extends { completed?: boolean }, TValue>({
+export function TasksTable<TData extends { completed?: boolean; isNextTask?: boolean }, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
-  // Sort data to push completed tasks to the bottom
+  // Sort data to push completed tasks to the bottom and next task to the top
   const sortedData = useMemo(() => {
     // Create a new array to avoid mutating the original data
     return [...data].sort((a, b) => {
-      // Since we've constrained TData to have a completed property, we can safely access it
+      // First, sort by completion status
       const aCompleted = !!a.completed;
       const bCompleted = !!b.completed;
       
-      if (aCompleted === bCompleted) return 0;
-      return aCompleted ? 1 : -1;
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+      
+      // If both have the same completion status, sort by next task status
+      const aIsNextTask = !!a.isNextTask;
+      const bIsNextTask = !!b.isNextTask;
+      
+      if (aIsNextTask !== bIsNextTask) {
+        return aIsNextTask ? -1 : 1;
+      }
+      
+      // If both have the same completion and next task status, keep original order
+      return 0;
     });
   }, [data]);
 
@@ -70,14 +82,21 @@ export function TasksTable<TData extends { completed?: boolean }, TValue>({
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
-              // With our type constraint, we can safely access the completed property
+              // With our type constraint, we can safely access the properties
               const isCompleted = !!row.original.completed;
+              const isNextTask = !!row.original.isNextTask;
+              
+              // Combine classes for different states
+              const rowClassName = [
+                isCompleted ? "bg-muted/50" : "",
+                isNextTask ? "border-2 border-blue-500" : ""
+              ].filter(Boolean).join(" ");
               
               return (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={isCompleted ? "bg-muted/50" : ""}
+                  className={rowClassName}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="overflow-hidden">

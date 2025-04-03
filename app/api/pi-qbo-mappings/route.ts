@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PIQBOMappingService } from "@/lib/services/pi-qbo-mapping.service";
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const mappingService = new PIQBOMappingService();
 
 export async function GET(req: NextRequest) {
   try {
     // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: "Unauthorized" 
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     
     // Get query parameters
     const url = new URL(req.url);
@@ -26,13 +24,13 @@ export async function GET(req: NextRequest) {
     let mappings;
     if (piId) {
       // Get mappings for a specific PI
-      mappings = await mappingService.getMappingsForPI(piId, userId);
+      mappings = await mappingService.getMappingsForPI(piId, userId!);
     } else if (qboId) {
       // Get mappings for a specific QBO
-      mappings = await mappingService.getMappingsForQBO(qboId, userId);
+      mappings = await mappingService.getMappingsForQBO(qboId, userId!);
     } else {
       // Get all mappings
-      mappings = await mappingService.getAllMappings(userId);
+      mappings = await mappingService.getAllMappings(userId!);
     }
     
     return NextResponse.json({
@@ -54,16 +52,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: "Unauthorized" 
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     
     // Get mapping data from request body
     const data = await req.json();
@@ -80,8 +75,8 @@ export async function POST(req: NextRequest) {
     }
     
     // Create mapping
-    const mapping = await mappingService.createMapping(data, userId);
-    
+    const mapping = await mappingService.createMapping(data, userId!);
+    await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
       data: mapping

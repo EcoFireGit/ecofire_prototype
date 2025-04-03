@@ -4,6 +4,8 @@ export interface PIQBOMapping extends mongoose.Document {
   _id: string;
   piId: string;
   qboId: string;
+  piName?: string;
+  qboName?: string;
   piTarget: number;
   qboTarget: number;
   qboImpact: number;
@@ -16,17 +18,25 @@ const PIQBOMappingSchema = new mongoose.Schema<PIQBOMapping>({
   userId: {
     type: String,
     required: [true, "User ID is required"],
-    index: true // Add index for better query performance
+    index: true, // Add index for better query performance
   },
   piId: {
     type: String,
     required: [true, "PI ID is required"],
-    index: true
+    index: true,
   },
   qboId: {
     type: String,
     required: [true, "QBO ID is required"],
-    index: true
+    index: true,
+  },
+  piName: {
+    type: String,
+    required: false,
+  },
+  qboName: {
+    type: String,
+    required: false,
   },
   piTarget: {
     type: Number,
@@ -43,11 +53,11 @@ const PIQBOMappingSchema = new mongoose.Schema<PIQBOMapping>({
   notes: {
     type: String,
     required: false,
-  }
+  },
 });
 
 // Compound index to ensure one PI-QBO mapping per user
 PIQBOMappingSchema.index({ userId: 1, piId: 1, qboId: 1 }, { unique: true });
 
-export default mongoose.models.PIQBOMapping || 
+export default mongoose.models.PIQBOMapping ||
   mongoose.model<PIQBOMapping>("PIQBOMapping", PIQBOMappingSchema);
