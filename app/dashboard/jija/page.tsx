@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
+import { Clipboard } from "lucide-react"; // Added import for Clipboard icon
 
 interface ChatSession {
   _id: string;
@@ -194,15 +195,15 @@ export default function Chat() {
                         navigator.clipboard.writeText(fullMessage);
                         // Optional: Add visual feedback
                         const button = e.currentTarget;
-                        const originalText = button.innerText;
-                        button.innerText = "Copied!";
+                        button.classList.add("text-green-500");
                         setTimeout(() => {
-                          button.innerText = originalText;
+                          button.classList.remove("text-green-500");
                         }, 2000);
                       }}
-                      className="text-xs text-blue-500 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded"
+                      className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1.5 rounded"
+                      title="Copy message"
                     >
-                      Copy
+                      <Clipboard size={16} />
                     </button>
                   </div>
                   <div className="flex justify-between">
@@ -217,15 +218,15 @@ export default function Chat() {
                         navigator.clipboard.writeText(fullMessage);
                         // Optional: Add visual feedback
                         const button = e.currentTarget;
-                        const originalText = button.innerText;
-                        button.innerText = "Copied!";
+                        button.classList.add("text-green-500");
                         setTimeout(() => {
-                          button.innerText = originalText;
+                          button.classList.remove("text-green-500");
                         }, 2000);
                       }}
-                      className="text-xs text-blue-500 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded"
+                      className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1.5 rounded"
+                      title="Copy message"
                     >
-                      Copy
+                      <Clipboard size={16} />
                     </button>
                   </div>
                 </div>
@@ -265,17 +266,17 @@ export default function Chat() {
                   // Optional: Add a visual indication that content was copied
                   const button = document.getElementById(`copy-btn-${m.id}`);
                   if (button) {
-                    const originalText = button.innerText;
-                    button.innerText = "Copied!";
+                    button.classList.add("text-green-500");
                     setTimeout(() => {
-                      button.innerText = originalText;
+                      button.classList.remove("text-green-500");
                     }, 2000);
                   }
                 }}
                 id={`copy-btn-${m.id}`}
-                className="text-xs text-blue-500 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded"
+                className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1.5 rounded"
+                title="Copy message"
               >
-                Copy
+                <Clipboard size={16} />
               </button>
             </div>
             <div className="mt-1">{m.content}</div>
