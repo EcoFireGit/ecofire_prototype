@@ -182,13 +182,51 @@ export default function Chat() {
                       {formatDate(chat.updatedAt)}
                     </span>
                   </div>
-                  <div className="mb-2">
-                    <span className="font-medium">You: </span>
-                    <span>{preview.userMessage}</span>
+                  <div className="mb-2 flex justify-between">
+                    <div>
+                      <span className="font-medium">You: </span>
+                      <span>{preview.userMessage}</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const fullMessage = chat.messages.find(m => m.role === "user")?.content || "";
+                        navigator.clipboard.writeText(fullMessage);
+                        // Optional: Add visual feedback
+                        const button = e.currentTarget;
+                        const originalText = button.innerText;
+                        button.innerText = "Copied!";
+                        setTimeout(() => {
+                          button.innerText = originalText;
+                        }, 2000);
+                      }}
+                      className="text-xs text-blue-500 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded"
+                    >
+                      Copy
+                    </button>
                   </div>
-                  <div>
-                    <span className="font-medium">Jija: </span>
-                    <span>{preview.aiResponse}</span>
+                  <div className="flex justify-between">
+                    <div>
+                      <span className="font-medium">Jija: </span>
+                      <span>{preview.aiResponse}</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const fullMessage = chat.messages.find(m => m.role === "assistant")?.content || "";
+                        navigator.clipboard.writeText(fullMessage);
+                        // Optional: Add visual feedback
+                        const button = e.currentTarget;
+                        const originalText = button.innerText;
+                        button.innerText = "Copied!";
+                        setTimeout(() => {
+                          button.innerText = originalText;
+                        }, 2000);
+                      }}
+                      className="text-xs text-blue-500 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded"
+                    >
+                      Copy
+                    </button>
                   </div>
                 </div>
               );
@@ -215,12 +253,32 @@ export default function Chat() {
         {messages.map((m) => (
           <div
             key={m.id}
-            className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50"
+            className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50 relative"
           >
-            <span className="font-medium">
-              {m.role === "user" ? "You: " : "Jija: "}
-            </span>
-            {m.content}
+            <div className="flex justify-between items-start">
+              <span className="font-medium">
+                {m.role === "user" ? "You: " : "Jija: "}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(m.content);
+                  // Optional: Add a visual indication that content was copied
+                  const button = document.getElementById(`copy-btn-${m.id}`);
+                  if (button) {
+                    const originalText = button.innerText;
+                    button.innerText = "Copied!";
+                    setTimeout(() => {
+                      button.innerText = originalText;
+                    }, 2000);
+                  }
+                }}
+                id={`copy-btn-${m.id}`}
+                className="text-xs text-blue-500 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded"
+              >
+                Copy
+              </button>
+            </div>
+            <div className="mt-1">{m.content}</div>
           </div>
         ))}
 
