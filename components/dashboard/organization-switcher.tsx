@@ -22,7 +22,8 @@ export function OrganizationSwitcher() {
     } else {
       await setOrganizationView(value);
     }
-  };
+    window.location.reload();
+    };
 
   return (
     <div className="p-2">
@@ -41,12 +42,6 @@ export function OrganizationSwitcher() {
           ))}
         </select>
       </div>
-      
-      {isOrganization && currentOrganization && (
-        <div className="mt-1 text-xs text-gray-500">
-          Working in: {currentOrganization.name}
-        </div>
-      )}
     </div>
   );
 }
