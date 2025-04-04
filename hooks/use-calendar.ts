@@ -65,7 +65,7 @@ export default function useCalendar() {
       });      
       if (response.ok) {
         const data = await response.json();
-        console.log("response: " + JSON.stringify(data.data));
+        console.log("response: " + JSON.stringify(data));
 
       }
     } catch (error) {
