@@ -10,7 +10,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Calendar, Clock, User, Briefcase, FileText, BarChart, Heart } from "lucide-react";
 import { TaskDialog } from "@/components/tasks/tasks-dialog";
 import { Task } from "@/components/tasks/types";
 import { useToast } from "@/hooks/use-toast";
@@ -100,6 +101,38 @@ export function TasksSidebar({
   // Format the type for display
   const formatType = (type: string): string => {
     return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
+  // Helper to get badge color for focus level
+  const getFocusLevelColor = (level?: string): string => {
+    if (!level) return "bg-gray-100 text-gray-800";
+    
+    switch(level.toLowerCase()) {
+      case 'high':
+        return "bg-red-100 text-red-800";
+      case 'medium':
+        return "bg-orange-100 text-orange-800";
+      case 'low':
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Helper to get badge color for joy level
+  const getJoyLevelColor = (level?: string): string => {
+    if (!level) return "bg-gray-100 text-gray-800";
+    
+    switch(level.toLowerCase()) {
+      case 'high':
+        return "bg-green-100 text-green-800";
+      case 'medium':
+        return "bg-blue-100 text-blue-800";
+      case 'low':
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   };
 
   // Fetch business functions
@@ -657,7 +690,7 @@ export function TasksSidebar({
 
   // Gets business function name from ID
   const getBusinessFunctionName = (businessFunctionId?: string) => {
-    if (!businessFunctionId) return "None";
+    if (!businessFunctionId || businessFunctionId === "none") return "None";
     return businessFunctionMap[businessFunctionId] || businessFunctionId;
   };
 
@@ -693,94 +726,137 @@ export function TasksSidebar({
             {/* Details Card */}
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>{itemToDisplay.title}</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{itemToDisplay.title}</span>
+                  <Badge 
+                    className={isJob ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"}
+                  >
+                    {displayType}
+                  </Badge>
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent>
+                {/* Notes Section */}
                 {itemToDisplay.notes && (
-                  <div>
-                    <p className="text-sm font-medium">Notes:</p>
-                    <div className="text-sm text-muted-foreground" style={{ whiteSpace: 'pre-wrap', overflowY: 'auto', overflowX: 'hidden', maxHeight: '10rem', wordBreak: 'break-word' }}>
-                      {itemToDisplay.notes}
+                  <div className="mb-4 pb-4 border-b">
+                    <div className="flex items-center mb-2">
+                      <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                      <h3 className="text-sm font-semibold">Notes</h3>
+                    </div>
+                    <div className="pl-6">
+                      <div className="text-sm text-muted-foreground" style={{ whiteSpace: 'pre-wrap', overflowY: 'auto', overflowX: 'hidden', maxHeight: '10rem', wordBreak: 'break-word' }}>
+                        {itemToDisplay.notes}
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Business Function - always show for jobs */}
+                {/* Job Attributes */}
                 {isJob && (
-                  <div>
-                    <p className="text-sm font-medium">Business Function:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedItem.businessFunctionName || getBusinessFunctionName(selectedItem.businessFunctionId)}
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Business Function */}
+                    <div className="flex items-start">
+                      <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                      <div>
+                        <span className="text-xs text-gray-500">Business Function</span>
+                        <p className="text-sm font-medium">
+                          {selectedItem.businessFunctionName || getBusinessFunctionName(selectedItem.businessFunctionId)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Due Date */}
+                    {itemToDisplay.dueDate && (
+                      <div className="flex items-start">
+                        <Calendar className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                        <div>
+                          <span className="text-xs text-gray-500">Due Date</span>
+                          <p className="text-sm font-medium">
+                            {formatDate(itemToDisplay.dueDate)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-                
-                {/* Owner - always show for tasks */}
+
+                {/* Task Attributes */}
                 {!isJob && (
-                  <div>
-                    <p className="text-sm font-medium">Owner:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {getOwnerName(itemToDisplay.owner)}
-                    </p>
+                  <div className="space-y-4">
+                    {/* Top row - Owner and Date */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Owner */}
+                      <div className="flex items-start">
+                        <User className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                        <div>
+                          <span className="text-xs text-gray-500">Owner</span>
+                          <p className="text-sm font-medium">
+                            {getOwnerName(itemToDisplay.owner)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Do Date */}
+                      <div className="flex items-start">
+                        <Calendar className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                        <div>
+                          <span className="text-xs text-gray-500">Do Date</span>
+                          <p className="text-sm font-medium">
+                            {formatDate(itemToDisplay.date)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Middle row - Focus and Joy */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Focus Level */}
+                      <div className="flex items-start">
+                        <BarChart className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                        <div>
+                          <span className="text-xs text-gray-500">Focus Level</span>
+                          <div>
+                            {itemToDisplay.focusLevel ? (
+                              <Badge className={getFocusLevelColor(itemToDisplay.focusLevel)}>
+                                {itemToDisplay.focusLevel}
+                              </Badge>
+                            ) : (
+                              <span className="text-sm text-gray-500">Not set</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Joy Level */}
+                      <div className="flex items-start">
+                        <Heart className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                        <div>
+                          <span className="text-xs text-gray-500">Joy Level</span>
+                          <div>
+                            {itemToDisplay.joyLevel ? (
+                              <Badge className={getJoyLevelColor(itemToDisplay.joyLevel)}>
+                                {itemToDisplay.joyLevel}
+                              </Badge>
+                            ) : (
+                              <span className="text-sm text-gray-500">Not set</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom row - Hours Required */}
+                    <div className="flex items-start">
+                      <Clock className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                      <div>
+                        <span className="text-xs text-gray-500">Hours Required</span>
+                        <p className="text-sm font-medium">
+                          {itemToDisplay.requiredHours ? `${itemToDisplay.requiredHours}h` : "Not set"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
-                
-                {/* Due/Do Date */}
-                {isJob ? (
-                  // Due Date for Jobs
-                  itemToDisplay.dueDate && (
-                    <div>
-                      <p className="text-sm font-medium">Due Date:</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(itemToDisplay.dueDate)}
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  // Do Date for Tasks
-                  <div>
-                    <p className="text-sm font-medium">Do Date:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(itemToDisplay.date)}
-                    </p>
-                  </div>
-                )}
-                
-                {/* Task specific attributes */}
-                {!isJob && (
-                  <>
-                    {/* Focus Level */}
-                    <div>
-                      <p className="text-sm font-medium">Focus Level:</p>
-                      <p className="text-sm text-muted-foreground">
-                        {itemToDisplay.focusLevel || "Not set"}
-                      </p>
-                    </div>
-                    
-                    {/* Joy Level */}
-                    <div>
-                      <p className="text-sm font-medium">Joy Level:</p>
-                      <p className="text-sm text-muted-foreground">
-                        {itemToDisplay.joyLevel || "Not set"}
-                      </p>
-                    </div>
-                    
-                    {/* Required Hours */}
-                    <div>
-                      <p className="text-sm font-medium">Hours Required:</p>
-                      <p className="text-sm text-muted-foreground">
-                        {itemToDisplay.requiredHours ? `${itemToDisplay.requiredHours}h` : "Not set"}
-                      </p>
-                    </div>
-                  </>
-                )}
-                
-                <div>
-                  <p className="text-sm font-medium">Type:</p>
-                  <p className="text-sm text-muted-foreground">
-                    {displayType}
-                  </p>
-                </div>
               </CardContent>
             </Card>
 
