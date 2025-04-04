@@ -1,29 +1,26 @@
 import { NextResponse } from 'next/server';
 import { BusinessFunctionService } from '@/lib/services/business-function.service';
 import { JobCountService } from '@/lib/services/job-count.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 const businessFunctionService = new BusinessFunctionService();
 const jobCountService = new JobCountService();
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
     
+    const userId = authResult.userId;
+    
     // Get all business functions
-    const functions = await businessFunctionService.getAllBusinessFunctions(userId);
+    const functions = await businessFunctionService.getAllBusinessFunctions(userId!);
     
     // Get job counts for all business functions
-    const jobCounts = await jobCountService.getJobCountsByBusinessFunction(userId);
+    const jobCounts = await jobCountService.getJobCountsByBusinessFunction(userId!);
     
     // Merge the job counts with the business functions
     const functionsWithCounts = functions.map(func => ({
@@ -50,20 +47,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     const { name } = await request.json();
     const businessFunction = await businessFunctionService.createBusinessFunction(
       name,
-      userId
+      userId!
     );
     return NextResponse.json({
       success: true,

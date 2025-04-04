@@ -22,4 +22,7 @@ export enum FocusLevel {
     jobId: string;
     completed: boolean;
     tags?: string[];
+    isNextTask: boolean;
   };
+
+  

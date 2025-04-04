@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { BusinessFunction, columns } from "@/components/business-funtions/table/columns";
-import { DataTable } from "@/components/business-funtions/table/business-functions-table";
-import { CreateDialog } from "@/components/business-funtions/create-dialog";
-import { EditDialog } from "@/components/business-funtions/edit-dialog";
+import { BusinessFunction, columns } from "@/components/business-functions/table/columns";
+import { DataTable } from "@/components/business-functions/table/business-functions-table";
+import { CreateDialog } from "@/components/business-functions/create-dialog";
+import { EditDialog } from "@/components/business-functions/edit-dialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";

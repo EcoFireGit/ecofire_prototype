@@ -1,17 +1,14 @@
 import mongoose from "mongoose";
-
 export enum FocusLevel {
   High = "High",
   Medium = "Medium",
   Low = "Low"
 }
-
 export enum JoyLevel {
   High = "High",
   Medium = "Medium",
   Low = "Low"
 }
-
 export interface Task extends mongoose.Document {
   _id: string;
   title: string;
@@ -25,8 +22,8 @@ export interface Task extends mongoose.Document {
   jobId: string;
   userId: string;
   completed: boolean;
+  // nextTask: boolean; // New property to mark task as next
 }
-
 const TaskSchema = new mongoose.Schema<Task>({
   title: {
     type: String,
@@ -77,7 +74,20 @@ const TaskSchema = new mongoose.Schema<Task>({
     type: Boolean,
     default: false,
     required: true
-  }
+  },
+  // nextTask: {
+  //   type: Boolean,
+  //   default: false,
+  //   required: true
+  // }
 });
+
+// Create a compound index to ensure only one task per job is marked as next
+TaskSchema.index({ jobId: 1, nextTask: 1 }, { 
+  unique: true,
+  partialFilterExpression: { nextTask: true }
+});
+
+TaskSchema.index({ title: 'text', notes: 'text', tags: 'text' });
 
 export default mongoose.models.Task || mongoose.model<Task>("Task", TaskSchema);

@@ -49,3 +49,4 @@ tests/gcal.http
 .gitignore
 .vscode/launch.json
 tests/search.http
+.replit

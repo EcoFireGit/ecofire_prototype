@@ -3,23 +3,21 @@
 
 import { NextResponse } from 'next/server';
 import { PIService } from '@/lib/services/pi.service';
-import { auth } from '@clerk/nextjs/server';
+import { validateAuth } from '@/lib/utils/auth-utils';
+import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 
 const PIsService = new PIService();
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
-    const PIs = await PIsService.getAllPIs(userId);
+    
+    const userId = authResult.userId;
+    const PIs = await PIsService.getAllPIs(userId!);
    
     return NextResponse.json({
       success: true,
@@ -40,18 +38,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     const PIData = await request.json();
-    const PI = await PIsService.createPI(PIData, userId);
+    const PI = await PIsService.createPI(PIData, userId!);
+    await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
       data: PI

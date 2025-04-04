@@ -34,7 +34,8 @@ export class QBOService {
       const savedQBO = await qbo.save();
       return JSON.parse(JSON.stringify(savedQBO));
     } catch (error) {
-      throw new Error('Error creating QBO in database');
+      console.error('QBO creation error details:', error);
+      throw new Error(`Error creating QBO in database: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

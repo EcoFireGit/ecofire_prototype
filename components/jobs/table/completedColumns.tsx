@@ -21,7 +21,8 @@ export const completedColumns = (
   onEdit: (job: Job) => void,
   onDelete: (id: string) => void,
   onSelect: (jobId: string, checked: boolean) => void,
-  onOpenTasksSidebar: (job: Job) => void
+  onOpenTasksSidebar: (job: Job) => void,
+  taskOwnerMap?: Record<string, string> // Map of task ID to owner name
 ): ColumnDef<Job>[] => [
   {
     id: "select",
@@ -63,8 +64,19 @@ export const completedColumns = (
     }
   },
   {
-    accessorKey: "owner",
+    id: "owner",
     header: "Owner",
+    cell: ({ row }) => {
+      const job = row.original;
+      const nextTaskId = job.nextTaskId;
+      
+      // If we have both a next task ID and a task owner mapping
+      if (nextTaskId && taskOwnerMap && taskOwnerMap[nextTaskId]) {
+        return taskOwnerMap[nextTaskId];
+      }
+      
+      return "Not assigned";
+    },
   },
   {
     accessorKey: "businessFunctionName",
