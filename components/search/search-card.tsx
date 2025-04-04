@@ -30,7 +30,6 @@ interface SearchResultCardProps {
     date?: string; // For tasks (do date)
   };
   index: number;
-  onSelect?: (id: string, checked: boolean) => void;
   onOpenTasksSidebar: (result: any) => void;
   onEdit?: (result: any) => void;
   onDelete?: (id: string) => void;
@@ -41,7 +40,6 @@ interface SearchResultCardProps {
 export function SearchResultCard({
   result,
   index,
-  onSelect,
   onOpenTasksSidebar,
   onEdit,
   onDelete,
@@ -91,15 +89,6 @@ export function SearchResultCard({
         {/* Top section with checkbox, type badge, and index */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            {onSelect && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={(value) => onSelect(result.id, !!value)}
-                  aria-label="Select item"
-                />
-              </div>
-            )}
             <span className={`px-2 py-1 text-xs font-medium rounded ${getTypeBadgeColor()}`}>
               {result.type || "No type"}
             </span>

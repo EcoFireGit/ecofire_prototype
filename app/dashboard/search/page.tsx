@@ -67,16 +67,6 @@ const SearchPage = () => {
     setSidebarOpen(true);
   };
 
-  // Function to handle selection of items
-  const handleSelectItem = (id: string, checked: boolean) => {
-    const newSelected = new Set(selectedResults);
-    if (checked) {
-      newSelected.add(id);
-    } else {
-      newSelected.delete(id);
-    }
-    setSelectedResults(newSelected);
-  };
   
   // Function to handle editing an item
   const handleEditItem = (item: any) => {
@@ -296,7 +286,6 @@ const SearchPage = () => {
                   onOpenTasksSidebar={handleOpenSidebar}
                   onEdit={handleEditItem}
                   onDelete={handleDeleteItem}
-                  onSelect={handleSelectItem}
                   isSelected={selectedResults.has(result.id || result._id)}
                   taskOwnerMap={taskOwnerMap}
                 />
