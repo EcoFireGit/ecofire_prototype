@@ -31,6 +31,7 @@ interface SearchResultItem {
   nextTaskId?: string;
   jobId?: string;
   tasks?: string[];
+  owner?: string;
 }
 
 // Props interface
@@ -62,6 +63,23 @@ export function TasksSidebar({
   const getId = (item: SearchResultItem | null): string | undefined => {
     if (!item) return undefined;
     return item.id || item._id; // Try both id and _id
+  };
+
+  // Helper function to get item type, safely handling undefined
+  const getItemType = (item: SearchResultItem | null): string => {
+    if (!item || !item.type) return 'Unknown';
+    return item.type;
+  };
+
+  // Helper to check if item is a job
+  const isItemJob = (item: SearchResultItem | null): boolean => {
+    if (!item || !item.type) return false;
+    return item.type.toLowerCase() === 'job';
+  };
+
+  // Format the type for display
+  const formatType = (type: string): string => {
+    return type.charAt(0).toUpperCase() + type.slice(1);
   };
 
   // Fetch owners from API
@@ -113,9 +131,11 @@ export function TasksSidebar({
       console.log("Selected item:", selectedItem);
       console.log("Item ID:", getId(selectedItem));
       
-      fetchTasks();
-      // Set the next task ID from the job
-      setNextTaskId(selectedItem.nextTaskId);
+      if (isItemJob(selectedItem)) {
+        fetchTasks();
+        // Set the next task ID from the job
+        setNextTaskId(selectedItem.nextTaskId);
+      }
     } else {
       setTasks([]);
       setNextTaskId(undefined);
@@ -520,12 +540,20 @@ export function TasksSidebar({
     });
   };
 
+  // Gets owner name from owner ID
+  const getOwnerName = (ownerId?: string) => {
+    if (!ownerId) return "Not assigned";
+    return ownerMap[ownerId] || "Not assigned";
+  };
+
   if (!selectedItem) {
     return null;
   }
 
-  // Check if item is a job
-  const isJob = selectedItem.type?.toLowerCase() === 'job';
+  // Check if item is a job using the helper function
+  const isJob = isItemJob(selectedItem);
+  const itemType = getItemType(selectedItem);
+  const displayType = formatType(itemType);
 
   return (
     <>
@@ -536,10 +564,13 @@ export function TasksSidebar({
         >
           <TaskProvider>
             <SheetHeader className="mb-4">
-              <SheetTitle>Job Tasks</SheetTitle>
-              <SheetDescription>Manage tasks for this job</SheetDescription>
+              <SheetTitle>
+                {isJob ? 'Job Details' : 'Task Details'}
+              </SheetTitle>
+              <SheetDescription>
+                {isJob ? 'View job and related tasks' : 'View task details'}
+              </SheetDescription>
             </SheetHeader>
-
 
             {/* Job Details Card */}
             <Card className="mb-6">
@@ -550,12 +581,14 @@ export function TasksSidebar({
                 {selectedItem.notes && (
                   <div>
                     <p className="text-sm font-medium">Notes:</p>
-                    <p className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground" style={{ whiteSpace: 'pre-wrap', overflowY: 'auto', overflowX: 'hidden', maxHeight: '10rem', wordBreak: 'break-word' }}>
                       {selectedItem.notes}
-                    </p>
+                    </div>
                   </div>
                 )}
-                {selectedItem.businessFunctionName && (
+                {/* Display fields based on type */}
+                {/* Always show business function for jobs */}
+                {isJob && selectedItem.businessFunctionName && (
                   <div>
                     <p className="text-sm font-medium">Business Function:</p>
                     <p className="text-sm text-muted-foreground">
@@ -563,51 +596,81 @@ export function TasksSidebar({
                     </p>
                   </div>
                 )}
+                
+                {/* Always show owner for tasks */}
+                {!isJob && selectedItem.owner && (
+                  <div>
+                    <p className="text-sm font-medium">Owner:</p>
+                    <p className="text-sm text-muted-foreground">
+                      {getOwnerName(selectedItem.owner)}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Show due date (for jobs) or do date (for tasks) */}
                 {selectedItem.dueDate && (
                   <div>
-                    <p className="text-sm font-medium">Due Date:</p>
+                    <p className="text-sm font-medium">{isJob ? "Due Date:" : "Do Date:"}</p>
                     <p className="text-sm text-muted-foreground">
                       {formatDate(selectedItem.dueDate)}
                     </p>
                   </div>
                 )}
+                <div>
+                  <p className="text-sm font-medium">Type:</p>
+                  <p className="text-sm text-muted-foreground">
+                    {displayType}
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Add Task Button */}
-            <div className="mb-4">
-              <Button onClick={handleAddTask} className="w-full">
-                <Plus className="h-4 w-4 mr-2" /> Add Task
-              </Button>
-            </div>
-
-            {/* Tasks List */}
-            {isLoading ? (
-              <div className="flex justify-center p-8">
-                <p>Loading tasks...</p>
+            {/* Add Task Button - only for jobs */}
+            {isJob && (
+              <div className="mb-4">
+                <Button onClick={handleAddTask} className="w-full">
+                  <Plus className="h-4 w-4 mr-2" /> Add Task
+                </Button>
               </div>
-            ) : (
-              <TaskCards
-                data={tasks}
-                onEdit={handleEditTask}
-                onDelete={handleDeleteTask}
-                onComplete={handleCompleteTask}
-                ownerMap={ownerMap}
-              />
+            )}
+
+            {/* Tasks List - only for jobs */}
+            {isJob && (
+              <>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold mb-2">Tasks</h3>
+                </div>
+
+                {isLoading ? (
+                  <div className="flex justify-center p-8">
+                    <p>Loading tasks...</p>
+                  </div>
+                ) : (
+                  <TaskCards
+                    data={tasks}
+                    onEdit={handleEditTask}
+                    onDelete={handleDeleteTask}
+                    onComplete={handleCompleteTask}
+                    ownerMap={ownerMap}
+                  />
+                )}
+              </>
             )}
           </TaskProvider>
         </SheetContent>
       </Sheet>
 
-      {/* Task Dialog for creating/editing tasks */}
-      <TaskDialog
-        mode={dialogMode}
-        open={taskDialogOpen}
-        onOpenChange={setTaskDialogOpen}
-        onSubmit={handleTaskSubmit}
-        initialData={currentTask}
-        jobId={getId(selectedItem) || ""}
-      />
+      {/* Task Dialog for creating/editing tasks - only for jobs */}
+      {isJob && taskDialogOpen && (
+        <TaskDialog
+          mode={dialogMode}
+          open={taskDialogOpen}
+          onOpenChange={setTaskDialogOpen}
+          onSubmit={handleTaskSubmit}
+          initialData={currentTask}
+          jobId={getId(selectedItem) || ""}
+        />
+      )}
     </>
   );
 }

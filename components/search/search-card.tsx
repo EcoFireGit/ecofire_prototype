@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface SearchResultCardProps {
   result: { 
@@ -31,41 +30,7 @@ export function SearchResultCard({
   taskOwnerMap
 }: SearchResultCardProps) {
   const router = useRouter();
-  const [taskCounts, setTaskCounts] = useState({ total: 0, completed: 0 });
   const [loading, setLoading] = useState<boolean>(false);
-
-  // Function to fetch task counts if result type is job
-  const fetchTaskCounts = async () => {
-    if (result.type.toLowerCase() !== 'job') return;
-    
-    try {
-      setLoading(true);
-      const countsResponse = await fetch('/api/jobs/progress', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobId: result.id }),
-      });
-      
-      const countsResult = await countsResponse.json();
-      
-      if (countsResult.success && countsResult.data) {
-        setTaskCounts(countsResult.data);
-      }
-    } catch (error) {
-      console.error("Error fetching task counts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Initial data fetch
-  useEffect(() => {
-    if (result.id && result.type.toLowerCase() === 'job') {
-      fetchTaskCounts();
-    }
-  }, [result.id, result.type]);
 
   // Format date
   const formatDate = (dateString?: string) => {
@@ -87,14 +52,6 @@ export function SearchResultCard({
     return "bg-gray-100 text-gray-800"; // Default color
   };
 
-  // Get task count
-  const getTaskCount = () => {
-    if (result.type.toLowerCase() === 'job') {
-      return `${taskCounts.completed} tasks done`;
-    }
-    return null;
-  };
-
   // Get result type badge color
   const getTypeBadgeColor = () => {
     const type = result.type.toLowerCase();
@@ -105,9 +62,8 @@ export function SearchResultCard({
 
   return (
     <div 
-      style={{ width: '100%', minHeight: '120px' }}
-      className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
-        isSelected ? "ring-2 ring-primary" : ""
+      style={{ width: '70%', minHeight: '120px' }}
+      className={`bg-[#F4F4F4] border rounded-md shadow-sm 
       }`}
       onClick={() => onOpenTasksSidebar(result)}
     >
@@ -115,15 +71,6 @@ export function SearchResultCard({
         {/* Top section with checkbox, type badge, and index */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            {onSelect && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={(value) => onSelect(result.id, !!value)}
-                  aria-label="Select item"
-                />
-              </div>
-            )}
             <span className={`px-2 py-1 text-xs font-medium rounded ${getTypeBadgeColor()}`}>
               {result.type || "No type"}
             </span>
@@ -139,26 +86,25 @@ export function SearchResultCard({
         </div>
         
         {/* Result title */}
-        <div className="mb-6 pl-6">
+        <div className="mb-3 pl-6">
           <h3 className="text-base font-semibold">{result.title}</h3>
         </div>
         
-        {/* Notes preview */}
-        <div className="mb-6 pl-6">
-          <p className="text-sm text-gray-500 line-clamp-2">{result.notes}</p>
+        {/* Notes preview with line clamp for 3 lines */}
+        <div className="mb-3 pl-6">
+          <p className="text-sm text-gray-500 overflow-hidden line-clamp-3">
+            {result.notes}
+          </p>
         </div>
         
         {/* Bottom section with additional info */}
         <div className="flex items-center justify-between pl-6">
           <div className="space-y-1">
-            {getTaskCount() && <p className="text-sm text-gray-500">{getTaskCount()}</p>}
             {result.dueDate && <p className="text-sm text-gray-500">Due date: {formatDate(result.dueDate)}</p>}
             {result.author && <p className="text-sm text-gray-500">By: {result.author}</p>}
           </div>
         </div>
       </div>
-      
-      {/* No action buttons */}
     </div>
   );
 }
