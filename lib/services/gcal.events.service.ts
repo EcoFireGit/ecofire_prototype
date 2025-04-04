@@ -21,7 +21,7 @@ async function createEvent(userId: string, eventData: any) {
     });
     return response.data;
     
-  }catch(error){
+  }catch(error: any){
     if(error.code === 404){
       throw new Error('Calendar not found', error);
     }
@@ -56,7 +56,7 @@ export async function updateEvent(userId: string, eventId: string, updatedEventD
       requestBody: updatedEvent, // The updated event details
     });
     return res.data;
-  } catch(error){
+  } catch(error: any){
     if(error.code === 404){
       throw new Error('Calendar or Event not found', error);
     }

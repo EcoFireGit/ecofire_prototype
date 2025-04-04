@@ -5,7 +5,7 @@ import { validateAuth } from '@/lib/utils/auth-utils';
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) {
   try {
     const authResult = await validateAuth();
@@ -35,7 +35,7 @@ export async function PATCH(
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ) {
   try {
     const { userId } = await auth();
