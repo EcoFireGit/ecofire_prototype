@@ -2,6 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Edit, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SearchResultCardProps {
   result: { 
@@ -13,10 +27,13 @@ interface SearchResultCardProps {
     businessFunctionId?: string;
     businessFunctionName?: string;
     dueDate?: string;
+    date?: string; // For tasks (do date)
   };
   index: number;
   onSelect?: (id: string, checked: boolean) => void;
   onOpenTasksSidebar: (result: any) => void;
+  onEdit?: (result: any) => void;
+  onDelete?: (id: string) => void;
   isSelected?: boolean;
   taskOwnerMap?: Record<string, string>;
 }
@@ -26,6 +43,8 @@ export function SearchResultCard({
   index,
   onSelect,
   onOpenTasksSidebar,
+  onEdit,
+  onDelete,
   isSelected = false,
   taskOwnerMap
 }: SearchResultCardProps) {
@@ -34,7 +53,7 @@ export function SearchResultCard({
 
   // Format date
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "No due date";
+    if (!dateString) return "No date";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -63,7 +82,8 @@ export function SearchResultCard({
   return (
     <div 
       style={{ width: '70%', minHeight: '120px' }}
-      className={`bg-[#F4F4F4] border rounded-md shadow-sm 
+      className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
+        isSelected ? "ring-2 ring-primary" : ""
       }`}
       onClick={() => onOpenTasksSidebar(result)}
     >
@@ -71,6 +91,15 @@ export function SearchResultCard({
         {/* Top section with checkbox, type badge, and index */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
+            {onSelect && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(value) => onSelect(result.id, !!value)}
+                  aria-label="Select item"
+                />
+              </div>
+            )}
             <span className={`px-2 py-1 text-xs font-medium rounded ${getTypeBadgeColor()}`}>
               {result.type || "No type"}
             </span>
@@ -100,10 +129,59 @@ export function SearchResultCard({
         {/* Bottom section with additional info */}
         <div className="flex items-center justify-between pl-6">
           <div className="space-y-1">
-            {result.dueDate && <p className="text-sm text-gray-500">Due date: {formatDate(result.dueDate)}</p>}
+            {/* Show due date for jobs */}
+            {result.type.toLowerCase() === 'job' && result.dueDate && (
+              <p className="text-sm text-gray-500">Due date: {formatDate(result.dueDate)}</p>
+            )}
+            {/* Show do date for tasks */}
+            {result.type.toLowerCase() === 'task' && result.date && (
+              <p className="text-sm text-gray-500">Do date: {formatDate(result.date)}</p>
+            )}
             {result.author && <p className="text-sm text-gray-500">By: {result.author}</p>}
           </div>
         </div>
+      </div>
+      
+      {/* Action buttons */}
+      <div className="flex justify-end p-2 border-t" onClick={(e) => e.stopPropagation()}>
+        {onEdit && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(result);
+            }}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
+
+        {onDelete && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  {result.type} "{result.title}" and remove it from our servers.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDelete(result.id)}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );
