@@ -17,14 +17,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, ChevronDown, Clock, Target, Smile, Users, Briefcase, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, Clock, Target, Smile, Users, Briefcase, X, Tag } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 
 export interface FilterComponentProps {
   onFilterChange: (filters: Record<string, any>) => void;
   businessFunctions?: { id: string; name: string }[];
   owners?: { _id: string; name: string }[];
+  tags?: { _id: string; name: string }[];
   initialFilters?: Record<string, any>;
 }
 
@@ -32,11 +36,15 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
   onFilterChange,
   businessFunctions = [],
   owners = [],
+  tags = [],
   initialFilters = {}
 }) => {
   const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
   const [hoursRange, setHoursRange] = useState<[number, number]>([0, 10]);
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagSearchValue, setTagSearchValue] = useState<string>("");
+  const [filteredTagOptions, setFilteredTagOptions] = useState<{ _id: string; name: string }[]>(tags);
 
   useEffect(() => {
     if (Object.keys(initialFilters).length > 0) {
@@ -51,8 +59,32 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
       if (initialFilters.dueDate) {
         setDate(new Date(initialFilters.dueDate));
       }
+
+      // Set tags if they exist in initialFilters
+      if (initialFilters.tags && Array.isArray(initialFilters.tags)) {
+        setSelectedTags(initialFilters.tags);
+      }
     }
   }, [initialFilters]);
+
+  // Filter tags based on search input
+  useEffect(() => {
+    if (tags.length > 0) {
+      if (tagSearchValue.trim() === "") {
+        setFilteredTagOptions(tags);
+      } else {
+        const filtered = tags.filter(tag => 
+          tag.name.toLowerCase().includes(tagSearchValue.toLowerCase())
+        );
+        setFilteredTagOptions(filtered);
+      }
+    }
+  }, [tagSearchValue, tags]);
+
+  // Initialize filtered tag options with all tags
+  useEffect(() => {
+    setFilteredTagOptions(tags);
+  }, [tags]);
 
   const handleFilterChange = (key: string, value: any) => {
     const newFilters = { ...filters };
@@ -90,6 +122,45 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
     onFilterChange(newFilters);
   };
 
+  const handleTagToggle = (tagId: string) => {
+    let newSelectedTags;
+    
+    if (selectedTags.includes(tagId)) {
+      // Remove tag if already selected
+      newSelectedTags = selectedTags.filter(id => id !== tagId);
+    } else {
+      // Add tag if not already selected
+      newSelectedTags = [...selectedTags, tagId];
+    }
+    
+    setSelectedTags(newSelectedTags);
+    
+    const newFilters = { ...filters };
+    if (newSelectedTags.length > 0) {
+      newFilters.tags = newSelectedTags;
+    } else {
+      delete newFilters.tags;
+    }
+    
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
+  const removeTag = (tagId: string) => {
+    const newSelectedTags = selectedTags.filter(id => id !== tagId);
+    setSelectedTags(newSelectedTags);
+    
+    const newFilters = { ...filters };
+    if (newSelectedTags.length > 0) {
+      newFilters.tags = newSelectedTags;
+    } else {
+      delete newFilters.tags;
+    }
+    
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
   // Helper function to get business function name by ID
   const getBusinessFunctionName = (id: string) => {
     const bf = businessFunctions.find(bf => bf.id === id);
@@ -100,6 +171,12 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
   const getOwnerName = (id: string) => {
     const owner = owners.find(owner => owner._id === id);
     return owner ? owner.name : id;
+  };
+
+  // Helper function to get tag name by ID
+  const getTagName = (id: string) => {
+    const tag = tags.find(tag => tag._id === id);
+    return tag ? tag.name : id;
   };
 
   return (
@@ -384,6 +461,103 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
         </PopoverContent>
       </Popover>
 
+      {/* Tags Filter */}
+      <Popover>
+        <div className="relative">
+          <PopoverTrigger asChild>
+            <Button 
+              variant={selectedTags.length > 0 ? "default" : "outline"} 
+              size="sm" 
+              className="h-10 gap-1"
+            >
+              <Tag className="h-4 w-4" />
+              <span>
+                {selectedTags.length > 0 
+                  ? `${selectedTags.length} Tag${selectedTags.length > 1 ? 's' : ''}` 
+                  : "Tags"}
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          {selectedTags.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-5 w-5 p-0 absolute -top-2 -right-2 rounded-full bg-gray-200 hover:bg-gray-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedTags([]);
+                const newFilters = { ...filters };
+                delete newFilters.tags;
+                setFilters(newFilters);
+                onFilterChange(newFilters);
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        <PopoverContent className="w-64 p-3">
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm">Select Tags</h4>
+            
+            {/* Search input */}
+            <div className="relative">
+              <Input
+                placeholder="Search tags..."
+                value={tagSearchValue}
+                onChange={(e) => setTagSearchValue(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
+            {/* Show selected tags as badges */}
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {selectedTags.map(tagId => (
+                  <Badge key={tagId} variant="secondary" className="flex items-center gap-1 pr-1">
+                    {getTagName(tagId)}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0 rounded-full hover:bg-muted"
+                      onClick={() => removeTag(tagId)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            
+            {/* Tag selection list */}
+            <div className="flex flex-col max-h-72 overflow-y-auto space-y-2">
+              {filteredTagOptions.length > 0 ? (
+                filteredTagOptions.map((tag) => (
+                  <div key={tag._id} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`tag-${tag._id}`}
+                      checked={selectedTags.includes(tag._id)}
+                      onCheckedChange={() => handleTagToggle(tag._id)}
+                    />
+                    <label
+                      htmlFor={`tag-${tag._id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {tag.name}
+                    </label>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {tagSearchValue ? "No matching tags found" : "No tags available"}
+                </p>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
       {/* Due Date Filter -- commenting for now, todo: fix*/}
       {/* <Popover>
         <PopoverTrigger asChild>
@@ -428,6 +602,8 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
             setFilters({});
             setHoursRange([0, 10]);
             setDate(undefined);
+            setSelectedTags([]);
+            setTagSearchValue("");
             onFilterChange({});
           }}
         >
