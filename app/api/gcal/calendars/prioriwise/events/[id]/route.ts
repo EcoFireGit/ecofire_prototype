@@ -1,22 +1,20 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import createEvent, {updateEvent, deleteEvent} from '@/lib/services/gcal.events.service';
+import {updateEvent, deleteEvent} from '@/lib/services/gcal.events.service';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 export async function PATCH(
     request: Request,
     { params }: { params: { id: string } }
   ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     const prioriUpdateEvent = await request.json();
     const { id } = await params;  // Awaiting params to get id
 

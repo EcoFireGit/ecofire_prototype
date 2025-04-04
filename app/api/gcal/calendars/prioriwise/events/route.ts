@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import createEvent, {updateEvent, deleteEvent, getAllEventsForTwoWeeks} from '@/lib/services/gcal.events.service';
+import createEvent, {getAllEventsForTwoWeeks} from '@/lib/services/gcal.events.service';
+import { validateAuth } from '@/lib/utils/auth-utils';
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
+    
+    const userId = authResult.userId;
     const eventData = await request.json();
     if (!eventData || !eventData.summary || !eventData.start || !eventData.end) {
       return NextResponse.json(
