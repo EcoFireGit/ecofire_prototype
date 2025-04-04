@@ -28,10 +28,26 @@ interface SearchResultItem {
   businessFunctionName?: string;
   businessFunctionId?: string;
   dueDate?: string;
+  date?: string; // For tasks (do date)
   nextTaskId?: string;
   jobId?: string;
   tasks?: string[];
   owner?: string;
+  focusLevel?: string;
+  joyLevel?: string;
+  requiredHours?: number;
+}
+
+// Business function interface
+interface BusinessFunction {
+  id: string;
+  name: string;
+}
+
+// Owner interface
+interface Owner {
+  _id: string;
+  name: string;
 }
 
 // Props interface
@@ -50,11 +66,15 @@ export function TasksSidebar({
 }: TasksSidebarProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [businessFunctions, setBusinessFunctions] = useState<BusinessFunction[]>([]);
+  const [businessFunctionMap, setBusinessFunctionMap] = useState<Record<string, string>>({});
+  const [owners, setOwners] = useState<Owner[]>([]);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
   const [taskDialogOpen, setTaskDialogOpen] = useState<boolean>(false);
   const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
+  const [taskDetails, setTaskDetails] = useState<SearchResultItem | null>(null);
 
   const { toast } = useToast();
   const { refreshJobOwner } = useTaskContext();
@@ -82,6 +102,47 @@ export function TasksSidebar({
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
 
+  // Fetch business functions
+  useEffect(() => {
+    const fetchBusinessFunctions = async () => {
+      try {
+        const response = await fetch("/api/business-functions");
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch business functions: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          const functions = result.data.map((bf: any) => ({
+            id: bf._id,
+            name: bf.name,
+          }));
+          
+          setBusinessFunctions(functions);
+          
+          // Create a mapping from ID to name
+          const mapping: Record<string, string> = {};
+          functions.forEach((bf: { id: string; name: string }) => {
+            mapping[bf.id] = bf.name;
+          });
+          
+          setBusinessFunctionMap(mapping);
+        }
+      } catch (error) {
+        console.error("Error fetching business functions:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch business functions",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchBusinessFunctions();
+  }, [toast]);
+
   // Fetch owners from API
   useEffect(() => {
     const fetchOwners = async () => {
@@ -97,13 +158,19 @@ export function TasksSidebar({
         // Create a mapping from owner ID to owner name
         const mapping: Record<string, string> = {};
         if (Array.isArray(ownersData)) {
-          ownersData.forEach((owner: { _id: string; name: string }) => {
+          const ownersList = ownersData;
+          setOwners(ownersList);
+          
+          ownersList.forEach((owner: { _id: string; name: string }) => {
             if (owner._id && owner.name) {
               mapping[owner._id] = owner.name;
             }
           });
         } else if (ownersData.data && Array.isArray(ownersData.data)) {
-          ownersData.data.forEach((owner: { _id: string; name: string }) => {
+          const ownersList = ownersData.data;
+          setOwners(ownersList);
+          
+          ownersList.forEach((owner: { _id: string; name: string }) => {
             if (owner._id && owner.name) {
               mapping[owner._id] = owner.name;
             }
@@ -123,6 +190,48 @@ export function TasksSidebar({
 
     fetchOwners();
   }, [toast]);
+
+  // Fetch task details if it's a task
+  useEffect(() => {
+    const fetchTaskDetails = async () => {
+      if (!selectedItem || isItemJob(selectedItem)) {
+        setTaskDetails(null);
+        return;
+      }
+      
+      // It's a task, fetch details if we're missing any
+      if (
+        selectedItem.focusLevel &&
+        selectedItem.joyLevel &&
+        selectedItem.date &&
+        selectedItem.requiredHours
+      ) {
+        // We already have all details
+        setTaskDetails(selectedItem);
+        return;
+      }
+
+      const taskId = getId(selectedItem);
+      if (!taskId) return;
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          setTaskDetails({
+            ...selectedItem,
+            ...result.data,
+            id: taskId,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching task details:", error);
+      }
+    };
+
+    fetchTaskDetails();
+  }, [selectedItem]);
 
   // Fetch tasks when job changes
   useEffect(() => {
@@ -531,7 +640,7 @@ export function TasksSidebar({
 
   // Format date
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "No date";
+    if (!dateString) return "Not set";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -546,6 +655,12 @@ export function TasksSidebar({
     return ownerMap[ownerId] || "Not assigned";
   };
 
+  // Gets business function name from ID
+  const getBusinessFunctionName = (businessFunctionId?: string) => {
+    if (!businessFunctionId) return "None";
+    return businessFunctionMap[businessFunctionId] || businessFunctionId;
+  };
+
   if (!selectedItem) {
     return null;
   }
@@ -554,6 +669,9 @@ export function TasksSidebar({
   const isJob = isItemJob(selectedItem);
   const itemType = getItemType(selectedItem);
   const displayType = formatType(itemType);
+  
+  // For task view, use the detailed task data if available
+  const itemToDisplay = !isJob && taskDetails ? taskDetails : selectedItem;
 
   return (
     <>
@@ -572,50 +690,91 @@ export function TasksSidebar({
               </SheetDescription>
             </SheetHeader>
 
-            {/* Job Details Card */}
+            {/* Details Card */}
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>{selectedItem.title}</CardTitle>
+                <CardTitle>{itemToDisplay.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {selectedItem.notes && (
+                {itemToDisplay.notes && (
                   <div>
                     <p className="text-sm font-medium">Notes:</p>
                     <div className="text-sm text-muted-foreground" style={{ whiteSpace: 'pre-wrap', overflowY: 'auto', overflowX: 'hidden', maxHeight: '10rem', wordBreak: 'break-word' }}>
-                      {selectedItem.notes}
+                      {itemToDisplay.notes}
                     </div>
                   </div>
                 )}
-                {/* Display fields based on type */}
-                {/* Always show business function for jobs */}
-                {isJob && selectedItem.businessFunctionName && (
+
+                {/* Business Function - always show for jobs */}
+                {isJob && (
                   <div>
                     <p className="text-sm font-medium">Business Function:</p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedItem.businessFunctionName}
+                      {selectedItem.businessFunctionName || getBusinessFunctionName(selectedItem.businessFunctionId)}
                     </p>
                   </div>
                 )}
                 
-                {/* Always show owner for tasks */}
-                {!isJob && selectedItem.owner && (
+                {/* Owner - always show for tasks */}
+                {!isJob && (
                   <div>
                     <p className="text-sm font-medium">Owner:</p>
                     <p className="text-sm text-muted-foreground">
-                      {getOwnerName(selectedItem.owner)}
+                      {getOwnerName(itemToDisplay.owner)}
                     </p>
                   </div>
                 )}
                 
-                {/* Show due date (for jobs) or do date (for tasks) */}
-                {selectedItem.dueDate && (
+                {/* Due/Do Date */}
+                {isJob ? (
+                  // Due Date for Jobs
+                  itemToDisplay.dueDate && (
+                    <div>
+                      <p className="text-sm font-medium">Due Date:</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(itemToDisplay.dueDate)}
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  // Do Date for Tasks
                   <div>
-                    <p className="text-sm font-medium">{isJob ? "Due Date:" : "Do Date:"}</p>
+                    <p className="text-sm font-medium">Do Date:</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(selectedItem.dueDate)}
+                      {formatDate(itemToDisplay.date)}
                     </p>
                   </div>
                 )}
+                
+                {/* Task specific attributes */}
+                {!isJob && (
+                  <>
+                    {/* Focus Level */}
+                    <div>
+                      <p className="text-sm font-medium">Focus Level:</p>
+                      <p className="text-sm text-muted-foreground">
+                        {itemToDisplay.focusLevel || "Not set"}
+                      </p>
+                    </div>
+                    
+                    {/* Joy Level */}
+                    <div>
+                      <p className="text-sm font-medium">Joy Level:</p>
+                      <p className="text-sm text-muted-foreground">
+                        {itemToDisplay.joyLevel || "Not set"}
+                      </p>
+                    </div>
+                    
+                    {/* Required Hours */}
+                    <div>
+                      <p className="text-sm font-medium">Hours Required:</p>
+                      <p className="text-sm text-muted-foreground">
+                        {itemToDisplay.requiredHours ? `${itemToDisplay.requiredHours}h` : "Not set"}
+                      </p>
+                    </div>
+                  </>
+                )}
+                
                 <div>
                   <p className="text-sm font-medium">Type:</p>
                   <p className="text-sm text-muted-foreground">
