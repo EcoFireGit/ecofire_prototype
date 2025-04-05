@@ -228,8 +228,20 @@ export default function OnboardingPage() {
     },
     onFinish(result, completion) {
       console.log("PI-QBO mappings generation completed");
-      // After all mappings are generated, redirect to dashboard
-      router.push("/dashboard");
+      // Calculate job impact values before redirecting
+      try {
+        const response = await fetch("/api/jobs/calculate-impact", {
+          method: "POST",
+        });
+        const result = await response.json();
+        if (result.success) {
+          console.log("Job impact values updated successfully");
+        }
+      } catch (error) {
+        console.error("Error updating job impact values:", error);
+      }
+      // After all mappings are generated, redirect to jobs page
+      router.push("/dashboard/jobs");
     },
     onError(error) {
       console.error("PI-QBO Mappings completion error:", error);
