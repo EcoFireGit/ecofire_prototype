@@ -955,20 +955,22 @@ export default function OnboardingPage() {
             <Button
               onClick={handleReturnToDashboard}
               disabled={
-                isPILoading || isMappingsLoading || isPiQboMappingsLoading
+                isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading
               }
               className="flex items-center gap-2"
             >
-              {(isPILoading || isMappingsLoading || isPiQboMappingsLoading) && (
+              {(isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading) && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              {isPILoading
-                ? "Generating PIs..."
-                : isMappingsLoading
-                  ? "Generating Job-PI Mappings..."
-                  : isPiQboMappingsLoading
-                    ? "Generating PI-QBO Mappings..."
-                    : "Go to Jobs feed"}
+              {isJobsLoading
+                ? "Generating Jobs..."
+                : isPILoading
+                  ? "Generating PIs..."
+                  : isMappingsLoading
+                    ? "Generating Job-PI Mappings..."
+                    : isPiQboMappingsLoading
+                      ? "Generating PI-QBO Mappings..."
+                      : "Go to Jobs feed"}
             </Button>
           </div>
         </div>
