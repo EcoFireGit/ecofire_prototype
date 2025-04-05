@@ -801,8 +801,8 @@ export default function OnboardingPage() {
               </Button>
             )}
 
-            <Button onClick={() => router.push("/dashboard")}>
-              Return to Dashboard
+            <Button onClick={handlePreviousStep}>
+              Go back to previous step
             </Button>
           </div>
         </div>
