@@ -695,10 +695,7 @@ export default function OnboardingPage() {
                       const jsonMatch = completion.match(/\{[\s\S]*\}/);
                       if (jsonMatch) {
                         let jsonStr = jsonMatch[0];
-                        jsonStr = jsonStr.replace(/'/g, '"');
-                        const outcomeData = JSON.parse(jsonStr);
-                        // Fix escaped quotes in strings (like word"s)
-                        jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
+                        const outcomeData = dJSON.parse(jsonStr);
                         return (
                           <div className="space-y-4">
                             {Object.keys(outcomeData).map((key) => {
@@ -832,22 +829,8 @@ export default function OnboardingPage() {
                       const jsonMatch = jobsCompletion.match(/\{[\s\S]*\}/);
                       if (jsonMatch) {
                         let jsonStr = jsonMatch[0];
-                        // First, fix possessive apostrophes with a specific pattern
-                        jsonStr = jsonStr.replace(/(\w+)\."s/g, "$1's");
-                        // Replace single quotes with double quotes (for JSON validity)
-                        jsonStr = jsonStr.replace(/'/g, '"');
-                        // Fix escaped quotes in strings (like word"s)
-                        jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
-                        // Fix company names with apostrophes
-                        jsonStr = jsonStr.replace(
-                          /"([^"]+)"s mission"/g,
-                          '"$1\'s mission"',
-                        );
-
-                        // Handle any other known patterns that cause issues
-                        jsonStr = jsonStr.replace(/\."/g, '."');
-
-                        const jobsData = JSON.parse(jsonStr);
+                        // Using dirty-json for parsing instead of manual fixing
+                        const jobsData = dJSON.parse(jsonStr);
                         return (
                           <div className="space-y-6">
                             {Object.keys(jobsData).map((key) => {

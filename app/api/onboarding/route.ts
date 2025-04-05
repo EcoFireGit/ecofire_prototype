@@ -4,6 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
 import crypto from "crypto";
+import * as dJSON from 'dirty-json'; // Import dirty-json library
 
 export async function POST(req: NextRequest) {
   try {
@@ -109,15 +110,12 @@ export async function POST(req: NextRequest) {
               // Extract JSON from the response text
               const jsonMatch = text.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
-                // Get the JSON string and fix potential issues
+                // Get the JSON string
                 let jsonStr = jsonMatch[0];
-                // Replace single quotes with double quotes
-                jsonStr = jsonStr.replace(/'/g, '"');
-                // Fix escaped quotes in strings (like word"s)
-                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
 
                 try {
-                  const outcomeData = JSON.parse(jsonStr);
+                  // Use dirty-json to parse the string instead of manual fixing
+                  const outcomeData = dJSON.parse(jsonStr);
 
                   // Import QBO service
                   const { QBOService } = await import(
@@ -207,29 +205,12 @@ export async function POST(req: NextRequest) {
               // Extract JSON from the response text
               const jsonMatch = text.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
-                // Get the JSON string and fix potential issues
+                // Get the JSON string
                 let jsonStr = jsonMatch[0];
-                // First, fix possessive apostrophes with a specific pattern
-                jsonStr = jsonStr.replace(/(\w+)\."s/g, "$1's");
-                // Replace single quotes with double quotes (for JSON validity)
-                jsonStr = jsonStr.replace(/'/g, '"');
-                // Fix escaped quotes in strings (like word"s)
-                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
-                // Fix company names with apostrophes
-                jsonStr = jsonStr.replace(
-                  /"([^"]+)"s mission"/g,
-                  '"$1\'s mission"',
-                );
-                // Handle any other known patterns that cause issues
-                jsonStr = jsonStr.replace(/\."/g, '."');
-
-                console.log(
-                  "Cleaned JSON string:",
-                  jsonStr.substring(0, 100) + "...",
-                );
 
                 try {
-                  const jobsData = JSON.parse(jsonStr);
+                  // Use dirty-json to parse the string instead of manual fixing
+                  const jobsData = dJSON.parse(jsonStr);
                   console.log("Jobs data parsed successfully");
 
                   // Import Job service
@@ -376,15 +357,12 @@ export async function POST(req: NextRequest) {
               // Extract JSON from the response text
               const jsonMatch = text.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
-                // Get the JSON string and fix potential issues
+                // Get the JSON string
                 let jsonStr = jsonMatch[0];
-                // Replace single quotes with double quotes
-                jsonStr = jsonStr.replace(/'/g, '"');
-                // Fix escaped quotes in strings (like word"s)
-                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
 
                 try {
-                  const piData = JSON.parse(jsonStr);
+                  // Use dirty-json to parse the string instead of manual fixing
+                  const piData = dJSON.parse(jsonStr);
 
                   // Import PI service
                   const { PIService } = await import(
@@ -507,15 +485,12 @@ export async function POST(req: NextRequest) {
               // Extract JSON from the response text
               const jsonMatch = text.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
-                // Get the JSON string and fix potential issues
+                // Get the JSON string
                 let jsonStr = jsonMatch[0];
-                // Replace single quotes with double quotes
-                jsonStr = jsonStr.replace(/'/g, '"');
-                // Fix escaped quotes in strings
-                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
 
                 try {
-                  const mappingsData = JSON.parse(jsonStr);
+                  // Use dirty-json to parse the string instead of manual fixing
+                  const mappingsData = dJSON.parse(jsonStr);
 
                   // Import MappingService
                   const { MappingService } = await import(
@@ -652,15 +627,12 @@ export async function POST(req: NextRequest) {
               // Extract JSON from the response text
               const jsonMatch = text.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
-                // Get the JSON string and fix potential issues
+                // Get the JSON string
                 let jsonStr = jsonMatch[0];
-                // Replace single quotes with double quotes
-                jsonStr = jsonStr.replace(/'/g, '"');
-                // Fix escaped quotes in strings
-                jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
 
                 try {
-                  const mappingsData = JSON.parse(jsonStr);
+                  // Use dirty-json to parse the string instead of manual fixing
+                  const mappingsData = dJSON.parse(jsonStr);
 
                   // Import PIQBOMappingService
                   const { PIQBOMappingService } = await import(
