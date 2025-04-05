@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import { updateJobImpactValues } from "@/lib/services/job-impact.service";
 import { validateAuth } from "@/lib/utils/auth-utils";
@@ -6,15 +5,15 @@ import { validateAuth } from "@/lib/utils/auth-utils";
 export async function POST() {
   try {
     const authResult = await validateAuth();
-        
+
         if (!authResult.isAuthorized) {
           return authResult.response;
         }
-        
+
         const userId = authResult.userId;
 
     const result = await updateJobImpactValues(userId!);
-    
+
     if (result.success) {
       return NextResponse.json(result);
     } else {
