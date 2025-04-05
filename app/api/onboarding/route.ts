@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateAuth } from '@/lib/utils/auth-utils';
+import { validateAuth } from "@/lib/utils/auth-utils";
 import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
@@ -8,11 +8,11 @@ import crypto from "crypto";
 export async function POST(req: NextRequest) {
   try {
     const authResult = await validateAuth();
-    
+
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    
+
     const userId = authResult.userId;
 
     const params = await req.json();
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     // Update the business info with the business description as mission statement
     try {
       await businessInfoService.updateBusinessInfo(userId!, {
-        missionStatement: businessDescription
+        missionStatement: businessDescription,
       });
       console.log("Business info updated with mission statement");
     } catch (updateError) {
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       // First step - outcomes
       const result = await Promise.race([
         streamText({
-          model: openai("gpt-4o"),
+          model: openai("gpt-4-turbo"),
           system: systemPrompt,
           prompt: outcomePrompt,
           async onFinish({ text, usage, finishReason }) {
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
       // Second step - jobs to be done
       const result = await Promise.race([
         streamText({
-          model: openai("gpt-4o"),
+          model: openai("gpt-4-turbo"),
           system: systemPrompt,
           prompt: jobsPrompt,
           async onFinish({ text, usage, finishReason }) {
@@ -223,10 +223,10 @@ export async function POST(req: NextRequest) {
                 // Handle any other known patterns that cause issues
                 jsonStr = jsonStr.replace(/\."/g, '."');
 
-                // console.log(
-                //   "Cleaned JSON string:",
-                //   jsonStr.substring(0, 100) + "...",
-                // );
+                console.log(
+                  "Cleaned JSON string:",
+                  jsonStr.substring(0, 100) + "...",
+                );
 
                 try {
                   const jobsData = JSON.parse(jsonStr);
@@ -365,7 +365,7 @@ export async function POST(req: NextRequest) {
       // Third step - Progress Indicators (PIs)
       const result = await Promise.race([
         streamText({
-          model: openai("gpt-4o"),
+          model: openai("gpt-4-turbo"),
           system: systemPrompt,
           prompt: pisPrompt,
           async onFinish({ text, usage, finishReason }) {
@@ -494,7 +494,7 @@ export async function POST(req: NextRequest) {
 
       const result = await Promise.race([
         streamText({
-          model: openai("gpt-4o"),
+          model: openai("gpt-4-turbo"),
           system: systemPrompt,
           prompt: mappingsPrompt,
           async onFinish({ text, usage, finishReason }) {
@@ -637,7 +637,7 @@ export async function POST(req: NextRequest) {
 
       const result = await Promise.race([
         streamText({
-          model: openai("gpt-4o"),
+          model: openai("gpt-4-turbo"),
           system: systemPrompt,
           prompt: piQboMappingsPrompt,
           async onFinish({ text, usage, finishReason }) {
