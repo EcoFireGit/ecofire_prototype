@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import dJSON from 'dirty-json'; // Import dirty-json library
+import dJSON from "dirty-json"; // Import dirty-json library
 
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
@@ -298,7 +298,8 @@ export default function OnboardingPage() {
       // After PIs are generated, generate Job-PI mappings
       toast({
         title: "Generating Job-PI Mappings",
-        description: "Please wait while we create mappings between jobs and PIs...",
+        description:
+          "Please wait while we create mappings between jobs and PIs...",
       });
 
       // Call the API with the step parameter set to "mappings"
@@ -318,7 +319,8 @@ export default function OnboardingPage() {
       // After Job-PI mappings are generated, generate PI-QBO mappings
       toast({
         title: "Generating PI-QBO Mappings",
-        description: "Please wait while we create mappings between PIs and QBOs...",
+        description:
+          "Please wait while we create mappings between PIs and QBOs...",
       });
 
       // Call the API with the step parameter set to "pi-qbo-mappings"
@@ -347,15 +349,15 @@ export default function OnboardingPage() {
       } catch (error) {
         console.error("Error updating job impact values:", error);
       }
-      
+
       // After all mappings are generated, redirect to jobs page
       router.push("/dashboard/jobs");
-
     } catch (err) {
       console.error("Error during PI or mapping generation:", err);
       toast({
         title: "Generation Error",
-        description: "There was a problem generating PIs or mappings, but you can still return to dashboard.",
+        description:
+          "There was a problem generating PIs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
@@ -950,16 +952,23 @@ export default function OnboardingPage() {
               </Button>
             )}
 
-            <Button 
-              onClick={handleReturnToDashboard} 
-              disabled={isPILoading || isMappingsLoading || isPiQboMappingsLoading}
+            <Button
+              onClick={handleReturnToDashboard}
+              disabled={
+                isPILoading || isMappingsLoading || isPiQboMappingsLoading
+              }
               className="flex items-center gap-2"
             >
-              {(isPILoading || isMappingsLoading || isPiQboMappingsLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isPILoading ? "Generating PIs..." : 
-               isMappingsLoading ? "Generating Job-PI Mappings..." : 
-               isPiQboMappingsLoading ? "Generating PI-QBO Mappings..." :
-               "Return to Dashboard"}
+              {(isPILoading || isMappingsLoading || isPiQboMappingsLoading) && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {isPILoading
+                ? "Generating PIs..."
+                : isMappingsLoading
+                  ? "Generating Job-PI Mappings..."
+                  : isPiQboMappingsLoading
+                    ? "Generating PI-QBO Mappings..."
+                    : "Go to Jobs feed"}
             </Button>
           </div>
         </div>
