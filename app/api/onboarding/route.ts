@@ -4,7 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
 import crypto from "crypto";
-import * as dJSON from 'dirty-json'; // Import dirty-json library
+import dJSON from "dirty-json"; // Import dirty-json library
 
 export async function POST(req: NextRequest) {
   try {
@@ -469,7 +469,6 @@ export async function POST(req: NextRequest) {
         `Do not leave any job unmapped. If necessary, create logical connections between jobs and PIs based on their relationship to the business mission. ` +
         `Output your result in the form of a JSON in the following format: ` +
         `{ "mapping1": { "jobId": "job-id-here", "jobName": "Job Title Here", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here } }. ` +
-        `Each mapping should follow the JobPiMapping interface. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
 
       const result = await Promise.race([

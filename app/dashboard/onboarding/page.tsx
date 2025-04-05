@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import dJSON from 'dirty-json'; // Import dirty-json library
 
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
