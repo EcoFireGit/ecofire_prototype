@@ -1,6 +1,6 @@
 import { authenticate } from '@google-cloud/local-auth';
 import { OAuth2Client, Credentials } from 'google-auth-library';
-import { google } from 'googleapis';
+import { google, calendar_v3 } from 'googleapis';
 import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
 
@@ -33,7 +33,7 @@ export async function getCalendar(auth: Credentials): Promise<calendar_v3.Calend
   }
   catch (error) {
     console.log("Error in getCalendar" + error);
-    throw new Error('Error getting calendar object', error);
+    throw new Error('Error getting calendar object');
   }
 }
 

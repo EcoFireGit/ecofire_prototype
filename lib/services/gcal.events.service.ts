@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import GCalAuth from '../models/gcal-auth.model';
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import dbConnect from '../mongodb';
 import getCalendar from './google.calendar.provider';
@@ -22,12 +22,16 @@ async function createEvent(userId: string, eventData: any) {
     return response.data;
     
   }catch(error){
-    if(error.code === 404){
-      throw new Error('Calendar not found', error);
+    if (isErrorWithCode(error) && error.code === 404) {
+      throw new Error('Calendar not found');
     }
     console.log("Error in createEvent: ", error);
     throw error;
   }
+}
+
+function isErrorWithCode(error: unknown): error is { code: number } {
+  return typeof error === 'object' && error !== null && 'code' in error;
 }
 
 export async function updateEvent(userId: string, eventId: string, updatedEventDetails: any) {
@@ -57,8 +61,8 @@ export async function updateEvent(userId: string, eventId: string, updatedEventD
     });
     return res.data;
   } catch(error){
-    if(error.code === 404){
-      throw new Error('Calendar or Event not found', error);
+    if (isErrorWithCode(error) && error.code === 404) {
+      throw new Error('Calendar or Event not found');
     }
     console.log("Error in updateEvent: ", error);
     throw error

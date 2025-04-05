@@ -3,7 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
-import { Schema$CalendarListEntry } from 'googleapis';
+import { calendar_v3} from 'googleapis';
 import getCalendar from './google.calendar.provider';
 import dbConnect from '../mongodb';
 
@@ -142,7 +142,7 @@ export async function saveAuthorizedCalendars(userId: string, calendars: any) {
   }
 
 }
-export async function getCalendarsFromGoogle(userId: string): Promise<Schema$CalendarListEntry[]> {
+export async function getCalendarsFromGoogle(userId: string): Promise<calendar_v3.Schema$CalendarListEntry[]> {
   try {
     await dbConnect();
 
@@ -159,7 +159,7 @@ export async function getCalendarsFromGoogle(userId: string): Promise<Schema$Cal
   }
 }
  
-export async function createPrioriCalendar(userId: string): Promise<Schema$CalendarListEntry.data> {
+export async function createPrioriCalendar(userId: string): Promise<calendar_v3.Schema$Calendar> {
   try {
     await dbConnect();
 
