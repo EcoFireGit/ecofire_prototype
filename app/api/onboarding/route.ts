@@ -163,20 +163,6 @@ export async function POST(req: NextRequest) {
                       );
                       console.log(`QBO created for outcome: ${outcome.name}`);
                     }
-                    await qboService.createQBO(
-                      {
-                        name: outcome.name,
-                        beginningValue: 0, // Initial value
-                        currentValue: 0, // Initial value
-                        targetValue: outcome.targetValue,
-                        deadline: deadlineDate,
-                        points: outcome.points,
-                        notes: `Auto-generated from onboarding for ${businessName}`,
-                      },
-                      userId!,
-                    );
-
-                    console.log(`QBO created for outcome: ${outcome.name}`);
                   }
                 } catch (error) {
                   console.error(
