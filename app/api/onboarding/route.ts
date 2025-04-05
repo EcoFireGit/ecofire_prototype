@@ -484,10 +484,11 @@ export async function POST(req: NextRequest) {
       const mappingsPrompt =
         `Based on the mission statement of the business and the following Jobs and Progress Indicators (PIs), create mappings between jobs and PIs that make sense. ` +
         `\n\nJOBS:\n${jobsContext}\n\nPROGRESS INDICATORS:\n${pisContext}\n\n` +
-        `Generate mappings between jobs and PIs where each job can impact one or more PIs. ` +
+        `Generate mappings between jobs and PIs where each job must impact one or more PIs. ` +
         `For each mapping, you need to specify how much impact a job has on a specific PI using a piImpactValue. ` +
         `The piImpactValue should not exceed the targetValue for that PI. ` +
-        `Ensure that there is at least one such mapping for each PI.` +
+        `IMPORTANT: Ensure that EVERY job is mapped to at least one PI, and every PI has at least one job mapped to it. ` +
+        `Do not leave any job unmapped. If necessary, create logical connections between jobs and PIs based on their relationship to the business mission. ` +
         `Output your result in the form of a JSON in the following format: ` +
         `{ "mapping1": { "jobId": "job-id-here", "jobName": "Job Title Here", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here } }. ` +
         `Each mapping should follow the JobPiMapping interface. ` +
