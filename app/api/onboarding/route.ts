@@ -630,10 +630,11 @@ export async function POST(req: NextRequest) {
       const piQboMappingsPrompt =
         `Based on the mission statement of the business and the following Progress Indicators (PIs) and Quarterly Business Objectives (QBOs), create mappings between PIs and QBOs that make sense. ` +
         `\n\nPROGRESS INDICATORS:\n${pisContext}\n\nQUARTERLY BUSINESS OBJECTIVES:\n${qbosContext}\n\n` +
-        `Generate mappings between PIs and QBOs where each PI can impact one or more QBOs. ` +
+        `Generate mappings between PIs and QBOs where each PI must impact one or more QBOs. ` +
         `For each mapping, you need to specify how much impact a PI has on a specific QBO using a qboImpact. ` +
         `The value for qboImpact should not exceed the targetValue for that QBO. ` +
-        `Ensure that there is at least one such mapping for each job.` +
+        `IMPORTANT: Ensure that EVERY PI is mapped to at least one QBO, and every QBO has at least one PI mapped to it. ` +
+        `Do not leave any PI unmapped. If necessary, create logical connections between PIs and QBOs based on their relationship to the business mission. ` +
         `Output your result in the form of a JSON in the following format: ` +
         `{ "mapping1": { "piId": "pi-id-here", "piName": "PI Name Here", "qboId": "qbo-id-here", "qboName": "QBO Name Here", "piTarget": pi-target-value-here, "qboTarget": qbo-target-value-here, "qboImpact": 10 } }. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
