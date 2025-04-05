@@ -487,6 +487,7 @@ export async function POST(req: NextRequest) {
         `Generate mappings between jobs and PIs where each job can impact one or more PIs. ` +
         `For each mapping, you need to specify how much impact a job has on a specific PI using a piImpactValue. ` +
         `The piImpactValue should not exceed the targetValue for that PI. ` +
+        `Ensure that there is at least one such mapping for each PI.` +
         `Output your result in the form of a JSON in the following format: ` +
         `{ "mapping1": { "jobId": "job-id-here", "jobName": "Job Title Here", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here } }. ` +
         `Each mapping should follow the JobPiMapping interface. ` +
@@ -631,6 +632,7 @@ export async function POST(req: NextRequest) {
         `Generate mappings between PIs and QBOs where each PI can impact one or more QBOs. ` +
         `For each mapping, you need to specify how much impact a PI has on a specific QBO using a qboImpact. ` +
         `The value for qboImpact should not exceed the targetValue for that QBO. ` +
+        `Ensure that there is at least one such mapping for each job.` +
         `Output your result in the form of a JSON in the following format: ` +
         `{ "mapping1": { "piId": "pi-id-here", "piName": "PI Name Here", "qboId": "qbo-id-here", "qboName": "QBO Name Here", "piTarget": pi-target-value-here, "qboTarget": qbo-target-value-here, "qboImpact": 10 } }. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
