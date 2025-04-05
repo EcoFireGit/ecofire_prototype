@@ -465,8 +465,9 @@ export async function POST(req: NextRequest) {
         `Generate mappings between jobs and PIs where each job must impact one or more PIs. ` +
         `For each mapping, you need to specify how much impact a job has on a specific PI using a piImpactValue. ` +
         `The piImpactValue should not exceed the targetValue for that PI. ` +
-        `IMPORTANT: Ensure that EVERY job is mapped to at least one PI, and every PI has at least one job mapped to it. ` +
-        `Do not leave any job unmapped. If necessary, create logical connections between jobs and PIs based on their relationship to the business mission. ` +
+        `CRITICAL REQUIREMENT: You MUST ensure that EVERY job from the list is mapped to at least one PI, and every PI has at least one job mapped to it. ` +
+        `Double-check your output to verify that no job is left unmapped. If necessary, create logical connections between jobs and PIs based on their relationship to the business mission. ` +
+        `Before finalizing, count the unique job IDs in your mappings and ensure it matches the total number of jobs in the input. ` +
         `Output your result in the form of a JSON in the following format: ` +
         `{ "mapping1": { "jobId": "job-id-here", "jobName": "Job Title Here", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here } }. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
