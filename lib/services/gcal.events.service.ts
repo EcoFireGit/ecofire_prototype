@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import GCalAuth from '../models/gcal-auth.model';
-import moment from 'moment-timezone';
+import {  getAllEventsForTwoWeeks } from './google.calendar.provider';
+
 
 import dbConnect from '../mongodb';
 import getCalendar from './google.calendar.provider';
@@ -90,34 +91,44 @@ export async function deleteEvent(userId: string, eventId: string) {
   }
 }
 
-export async function getAllEventsForTwoWeeks(userId: string) {
+export async function getPrioriwiseEvents(userId: string) {
   try {
     await dbConnect();
     const prioriwiseCalendarExists = await getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
-    const calendar = await getCalendar(prioriwiseCalendarExists.auth);
-    const calendarId = prioriwiseCalendarExists.prioriwiseCalendar.id;
-
-
-    // Calculate the start and end of the current week (Sunday to Saturday)
-    const now = moment().startOf('week');  // Get the start of the current week (Sunday)
-    const startOfWeek = now.toISOString(); // Start of the week (e.g., Sunday at 00:00)
-    const endOfWeekInTwoWeeks = now.add(2, 'weeks').endOf('week').toISOString();
-
-    // Fetch events from the calendar
-    const res = await calendar.events.list({
-      calendarId: calendarId, // Use 'primary' for the primary calendar
-      timeMin: startOfWeek, // Events starting after this time
-      timeMax: endOfWeekInTwoWeeks,   // Events ending before this time
-      singleEvents: true,   // Ensure events that repeat are expanded
-      orderBy: 'startTime', // Order by start time
-    });
-
-    const events = res.data.items;
+    const events = await getAllEventsForTwoWeeks(prioriwiseCalendarExists.auth, prioriwiseCalendarExists.prioriwiseCalendar.id);
     
     return events;
   } catch (error) {
     console.error('Error retrieving events:', error);
+    throw error;
+  }
+}
+
+export async function getPrioriwiseCalendarEvents(userId: string, calendarId: string) {
+  try {
+    await dbConnect();
+    const prioriwiseCalendarExists = await getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
+
+    const events = await getAllEventsForTwoWeeks(prioriwiseCalendarExists.auth, calendarId);    
+    return events;
+  } catch (error) {
+    console.error('Error retrieving events for calendar {}:', calendarId, error);
+    throw error;
+  }
+}
+export async function getCalendarEvents(userId: string, calendarId: string) {
+  try {
+    await dbConnect();
+    const calendarAuth = await GCalAuth.findOne({ userId: userId});
+    if (!calendarAuth || !calendarAuth.auth) {
+      throw new Error('either user does not exist or calendar not connected');
+    }
+  
+    const events = await getAllEventsForTwoWeeks(calendarAuth.auth, calendarId);    
+    return events;
+  } catch (error) {
+    console.error('Error retrieving events for calendar {}:', calendarId, error);
     throw error;
   }
 }
