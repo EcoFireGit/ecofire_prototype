@@ -160,11 +160,11 @@ export default function OnboardingPage() {
           "An error occurred while generating PIs, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     },
   });
-  
+
   // Fourth hook for Job-PI mappings completion
   const {
     complete: completeMappings,
@@ -199,11 +199,11 @@ export default function OnboardingPage() {
           "An error occurred while generating Job-PI mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     },
   });
-  
+
   // Fifth hook for PI-QBO mappings completion
   const {
     complete: completePiQboMappings,
@@ -239,8 +239,8 @@ export default function OnboardingPage() {
           "An error occurred while generating PI-QBO mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     },
   });
 
@@ -293,13 +293,13 @@ export default function OnboardingPage() {
           step: "pis", // Indicate this is the PIs step
         },
       });
-      
+
       // After PIs are generated, generate Job-PI mappings
       toast({
         title: "Generating Job-PI Mappings",
         description: "Please wait while we create mappings between jobs and PIs...",
       });
-      
+
       // Call the API with the step parameter set to "mappings"
       await completeMappings("", {
         body: {
@@ -313,13 +313,13 @@ export default function OnboardingPage() {
           step: "mappings", // Indicate this is the mappings step
         },
       });
-      
+
       // After Job-PI mappings are generated, generate PI-QBO mappings
       toast({
         title: "Generating PI-QBO Mappings",
         description: "Please wait while we create mappings between PIs and QBOs...",
       });
-      
+
       // Call the API with the step parameter set to "pi-qbo-mappings"
       await completePiQboMappings("", {
         body: {
@@ -333,7 +333,7 @@ export default function OnboardingPage() {
           step: "pi-qbo-mappings", // Indicate this is the PI-QBO mappings step
         },
       });
-      
+
     } catch (err) {
       console.error("Error during PI or mapping generation:", err);
       toast({
@@ -341,8 +341,8 @@ export default function OnboardingPage() {
         description: "There was a problem generating PIs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     }
   };
 
