@@ -7,16 +7,25 @@ import { useToast } from "@/hooks/use-toast";
 
 import CalendarAuth from '@/components/gcal/calendar-auth';
 import { Gcal, convertGcalsToTableData } from "@/components/gcal/table/columns";
+import { getEventsForCalendar } from "@/lib/services/gcal.service";
 
 export default function CalendarPage() {
   const [data, setData] = useState<Gcal[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authInitialized, setAuthInitialized] = useState(false); // Track CalendarAuth completion
-  const [selectedRows, setSelectedRows] = useState<Gcal[]>([]); // Store full objects
+  const [authInitialized, setAuthInitialized] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<Gcal[]>([]);
   const { toast } = useToast();
 
-  // Fetch data for the table
+  type CalendarEvent = {
+    date: string;
+    time: string;
+    name: string;
+    calendar: string;
+  };
+
+  
   const fetchGcals = async () => {
     try {
       setLoading(true);
@@ -53,7 +62,7 @@ export default function CalendarPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ calendars: selectedRows }), // Send full objects
+        body: JSON.stringify({ calendars: selectedRows }),
       });
 
       const result = await response.json();
@@ -63,8 +72,23 @@ export default function CalendarPage() {
           title: "Success",
           description: `${selectedRows.length} calendar(s) added successfully`,
         });
-        setSelectedRows([]); // Clear selection after successful operation
-        fetchGcals(); // Refresh table data
+        setSelectedRows([]);
+        fetchGcals();
+
+        const userId = "user-123"; // Replace with actual user ID logic
+        const allEvents = [];
+        for (const row of selectedRows) {
+          const events = await getEventsForCalendar(userId, row.id);
+          const formattedEvents = events?.map((event: any) => ({
+            date: event.start.dateTime ? new Date(event.start.dateTime).toLocaleDateString() : event.start.date,
+            time: event.start.dateTime ? new Date(event.start.dateTime).toLocaleTimeString() : 'All Day',
+            name: event.summary,
+            calendar: row.summary,
+          })) || [];
+          allEvents.push(...formattedEvents);
+        }
+        setEvents(allEvents);
+
       } else {
         throw new Error(result.error);
       }
@@ -78,16 +102,13 @@ export default function CalendarPage() {
     }
   };
 
-
-  // Initialize authentication and fetch data
   useEffect(() => {
     setAuthInitialized(true);
     if (authInitialized) {
-      fetchGcals(); // Fetch data only after CalendarAuth is initialized
+      fetchGcals();
     }
   }, [authInitialized]);
 
-  // Handle row selection
   const toggleRowSelection = (row: Gcal) => {
     setSelectedRows((prevSelectedRows) =>
       prevSelectedRows.some((selectedRow) => selectedRow.id === row.id)
@@ -95,16 +116,15 @@ export default function CalendarPage() {
         : [...prevSelectedRows, row]
     );
   };
-      return (
-      <>
-        <div className="p-6 max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
-          {/* Render CalendarAuth */}
-          <CalendarAuth />
 
-        </div>
+  return (
+    <>
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
+        <CalendarAuth />
+      </div>
 
-        {authInitialized && (
+      {authInitialized && (
         <div className="p-4">
           <div className="container mx-auto py-6">
             <div className="flex justify-between items-center mb-6">
@@ -114,8 +134,7 @@ export default function CalendarPage() {
               </Button>
             </div>
 
-            {/* Render Table */}
-            <table className="w-full border-collapse border border-gray-200">
+            <table className="w-full border-collapse border border-gray-200 mb-8">
               <thead>
                 <tr>
                   <th className="border border-gray-300 p-2 text-left">Select</th>
@@ -127,26 +146,51 @@ export default function CalendarPage() {
               </thead>
               <tbody>
                 {data.map((row) => (
-                <tr key={row.id} className={`border border-gray-300 ${selectedRows.some((selectedRow)=> selectedRow.id
-                  === row.id) ? 'bg-blue-100' : ''}`}
-                  >
-                  <td className="p-2">
-                    <input type="checkbox" checked={selectedRows.some((selectedRow)=> selectedRow.id === row.id)}
-                    onChange={() => toggleRowSelection(row)} // Pass full row object
-                    />
-                  </td>
-                  <td className="p-2">{row.id}</td>
-                  <td className="p-2">{row.etag}</td>
-                  <td className="p-2">{row.summary}</td>
-                  <td className="p-2">{row.timeZone}</td>
-                </tr>
+                  <tr key={row.id} className={`border border-gray-300 ${selectedRows.some((selectedRow) => selectedRow.id === row.id) ? 'bg-blue-100' : ''}`}>
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedRows.some((selectedRow) => selectedRow.id === row.id)}
+                        onChange={() => toggleRowSelection(row)}
+                      />
+                    </td>
+                    <td className="p-2">{row.id}</td>
+                    <td className="p-2">{row.etag}</td>
+                    <td className="p-2">{row.summary}</td>
+                    <td className="p-2">{row.timeZone}</td>
+                  </tr>
                 ))}
               </tbody>
-
             </table>
+
+            {events.length > 0 && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Calendar Events</h2>
+                <table className="w-full border-collapse border border-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="border border-gray-300 p-2 text-left">Date</th>
+                      <th className="border border-gray-300 p-2 text-left">Time</th>
+                      <th className="border border-gray-300 p-2 text-left">Event Name</th>
+                      <th className="border border-gray-300 p-2 text-left">Calendar Name</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.map((event, idx) => (
+                      <tr key={idx} className="border border-gray-300">
+                        <td className="p-2">{event.date}</td>
+                        <td className="p-2">{event.time}</td>
+                        <td className="p-2">{event.name}</td>
+                        <td className="p-2">{event.calendar}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
           </div>
         </div>
-        )}
-      </>
-      );
-      }
+      )}
+    </>
+  );
+}
