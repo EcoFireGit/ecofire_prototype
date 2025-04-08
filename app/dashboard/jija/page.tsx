@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard } from "lucide-react"; // Added import for Clipboard icon
+import { Clipboard } from "lucide-react";
 
 interface ChatSession {
   _id: string;
@@ -24,12 +25,20 @@ interface ChatResponse {
   hasMore: boolean;
 }
 
+interface ProcessedMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  html?: string;
+}
+
 export default function Chat() {
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [processedMessages, setProcessedMessages] = useState<ProcessedMessage[]>([]);
   const LIMIT = 3;
   const { userId } = useAuth();
   const searchParams = useSearchParams();
@@ -63,6 +72,42 @@ export default function Chat() {
       setInput(`Can you help me with doing "${jobTitle}?"`);
     }
   }, [jobTitle, setInput]);
+
+  useEffect(() => {
+    // Process markdown in messages
+    const processMessages = async () => {
+      if (messages.length) {
+        const processed = await Promise.all(
+          messages.map(async (msg) => {
+            if (msg.role === "assistant") {
+              try {
+                const response = await fetch("/api/markdown", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ markdown: msg.content }),
+                });
+                
+                if (response.ok) {
+                  const { html } = await response.json();
+                  return { ...msg, html };
+                }
+              } catch (error) {
+                console.error("Error processing markdown:", error);
+              }
+            }
+            return msg;
+          })
+        );
+        setProcessedMessages(processed);
+      } else {
+        setProcessedMessages([]);
+      }
+    };
+
+    processMessages();
+  }, [messages]);
 
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
@@ -251,7 +296,7 @@ export default function Chat() {
 
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
-        {messages.map((m) => (
+        {processedMessages.map((m) => (
           <div
             key={m.id}
             className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50 relative"
@@ -279,7 +324,16 @@ export default function Chat() {
                 <Clipboard size={16} />
               </button>
             </div>
-            <div className="mt-1">{m.content}</div>
+            <div className="mt-1">
+              {m.role === "assistant" && m.html ? (
+                <div 
+                  className="prose dark:prose-invert max-w-none" 
+                  dangerouslySetInnerHTML={{ __html: m.html }} 
+                />
+              ) : (
+                m.content
+              )}
+            </div>
           </div>
         ))}
 
