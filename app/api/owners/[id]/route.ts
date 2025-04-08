@@ -8,25 +8,24 @@ export async function PUT(
 ) {
   try {
     const authResult = await validateAuth();
-    
+   
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    
+   
     const userId = authResult.userId;
-    
     const { id } = await params;
     const body = await request.json();
     const { name } = body;
-    
+   
     if (!name) {
       return NextResponse.json(
         { error: "Name is required" },
         { status: 400 }
       );
     }
-    
-    const owner = await ownerService.updateOwner(id, name, userId!);
+   
+    const owner = await ownerService.updateOwner(id, name, userId);
    
     if (!owner) {
       return NextResponse.json(
@@ -47,19 +46,18 @@ export async function PUT(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const authResult = await validateAuth();
-    
+   
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    
+   
     const userId = authResult.userId;
-    
-    const { id } = await params;
-    const success = await ownerService.deleteOwner(id, userId!);
+    const { id } = params;
+    const success = await ownerService.deleteOwner(id, userId);
    
     if (!success) {
       return NextResponse.json(
