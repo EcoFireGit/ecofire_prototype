@@ -55,8 +55,15 @@ export class JobService {
   async deleteJob(id: string, userId: string): Promise<boolean> {
     try {
       await dbConnect();
-      const result = await Job.findOneAndDelete({ _id: id, userId });
-      return !!result;
+      const updateData = { isDeleted: true};
+
+      const updatedJob = await Job.findOneAndUpdate(
+        { _id: id, userId },
+        { $set: updateData },
+        { new: true, runValidators: true }
+      ).lean();
+      
+      return updatedJob ? JSON.parse(JSON.stringify(updatedJob)) : false;
     } catch (error) {
       throw new Error('Error deleting job from database');
     }

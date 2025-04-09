@@ -66,8 +66,14 @@ export class TaskService {
   async deleteTasksByJobId(jobId: string, userId: string): Promise<boolean> {
     try {
       await dbConnect();
-      const result = await Task.deleteMany({jobId:jobId, userId:userId}); 
-      return !!result;
+      const result = await Task.updateMany(
+        { jobId: jobId, userId: userId }, // Criteria for finding tasks
+        {
+          $set: { isDeleted: true } // Fields to update
+        },
+        { new: true, runValidators: true }
+      ).lean();
+      return JSON.parse(JSON.stringify(result)) ? true : false;
     } catch (error) {
       throw new Error('Error deleting tasks from database');
     }

@@ -22,6 +22,8 @@ export interface Task extends mongoose.Document {
   jobId: string;
   userId: string;
   completed: boolean;
+  isDeleted: boolean; // Soft delete flag
+
   // nextTask: boolean; // New property to mark task as next
 }
 const TaskSchema = new mongoose.Schema<Task>({
@@ -75,7 +77,11 @@ const TaskSchema = new mongoose.Schema<Task>({
     default: false,
     required: true
   },
-  // nextTask: {
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    required: true
+  },  // nextTask: {
   //   type: Boolean,
   //   default: false,
   //   required: true
