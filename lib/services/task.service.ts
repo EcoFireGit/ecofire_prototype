@@ -3,6 +3,7 @@ import { Task as TaskInterface } from '../models/task.model';
 import dbConnect from '../mongodb';
 
 export class TaskService {
+
   async getTasksByJobId(jobId: string, userId: string): Promise<TaskInterface[]> {
     try {
       await dbConnect();
@@ -59,6 +60,27 @@ export class TaskService {
       return !!result;
     } catch (error) {
       throw new Error('Error deleting task from database');
+    }
+  }
+
+  async deleteTasksByJobId(jobId: string, userId: string): Promise<boolean> {
+    try {
+      await dbConnect();
+      const result = await Task.deleteMany({jobId:jobId, userId:userId}); 
+      return !!result;
+    } catch (error) {
+      throw new Error('Error deleting tasks from database');
+    }
+  }
+
+  async markCompleted(id: string, userId: string, isCompleted: boolean): Promise<TaskInterface | null> {
+    try {
+      const updateData = {
+        completed: isCompleted
+      };
+      return this.updateTask(id, userId, updateData);
+    } catch (error) {
+      throw new Error('Error setting task status');
     }
   }
 
