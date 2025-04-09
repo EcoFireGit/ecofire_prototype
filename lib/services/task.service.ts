@@ -7,7 +7,7 @@ export class TaskService {
   async getTasksByJobId(jobId: string, userId: string): Promise<TaskInterface[]> {
     try {
       await dbConnect();
-      const tasks = await Task.find({ jobId, userId }).lean();
+      const tasks = await Task.find({ jobId, userId, isDeleted:false }).lean();
       return JSON.parse(JSON.stringify(tasks));
     } catch (error) {
       throw new Error('Error fetching tasks from database');
@@ -17,7 +17,7 @@ export class TaskService {
   async getTaskById(id: string, userId: string): Promise<TaskInterface | null> {
     try {
       await dbConnect();
-      const task = await Task.findOne({ _id: id, userId }).lean();
+      const task = await Task.findOne({ _id: id, userId, isDeleted:false }).lean();
       return task ? JSON.parse(JSON.stringify(task)) : null;
     } catch (error) {
       throw new Error('Error fetching task from database');
@@ -56,8 +56,12 @@ export class TaskService {
   async deleteTask(id: string, userId: string): Promise<boolean> {
     try {
       await dbConnect();
-      const result = await Task.findOneAndDelete({ _id: id, userId });
-      return !!result;
+      const result = await Task.findOneAndUpdate(
+        { _id: id, userId },
+        { $set: {isDeleted: true}} ,
+        { new: true, runValidators: true }
+      ).lean();
+      return JSON.parse(JSON.stringify(result)) ? true : false;
     } catch (error) {
       throw new Error('Error deleting task from database');
     }

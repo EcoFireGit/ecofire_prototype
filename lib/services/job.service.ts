@@ -16,7 +16,7 @@ export class JobService {
   async getJobById(id: string, userId: string): Promise<Jobs | null> {
     try {
       await dbConnect();
-      const job = await Job.findOne({ _id: id, userId }).lean();
+      const job = await Job.findOne({ _id: id, userId, isDeleted: false }).lean();
       return job ? JSON.parse(JSON.stringify(job)) : null;
     } catch (error) {
       throw new Error('Error fetching job from database');
@@ -55,11 +55,9 @@ export class JobService {
   async deleteJob(id: string, userId: string): Promise<boolean> {
     try {
       await dbConnect();
-      const updateData = { isDeleted: true};
-
       const updatedJob = await Job.findOneAndUpdate(
         { _id: id, userId },
-        { $set: updateData },
+        { $set: { isDeleted: true} },
         { new: true, runValidators: true }
       ).lean();
       
