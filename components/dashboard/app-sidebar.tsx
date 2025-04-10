@@ -1,4 +1,6 @@
-import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon, BriefcaseBusinessIcon } from "lucide-react"
+"use client"
+
+import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon, BriefcaseBusinessIcon, Heart } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -13,6 +15,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import Link from "next/link"
 import { OrganizationSwitcher } from "./organization-switcher"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useCallback } from "react"
 
 // Menu items.
 const items = [
@@ -88,6 +92,46 @@ const backstageItems = [
 ]
 
 export function AppSidebar() {
+  // Function to handle emoji selection and apply filters
+  const handleWellnessSelection = useCallback((mood:any) => {
+    let filters = {};
+    
+    switch (mood) {
+      case 'happy':
+        // Happy - Show tasks with high joy level
+        filters = { joyLevel: 'High' };
+        break;
+      case 'sad':
+        // Sad - Show tasks with high joy level (to cheer up)
+        filters = { joyLevel: 'High' };
+        break;
+      case 'focused':
+        // Focused - Show tasks with high focus level
+        filters = { focusLevel: 'High' };
+        break;
+      case 'distracted':
+        // Distracted - Show tasks with low focus level
+        filters = { focusLevel: 'Low' };
+        break;
+      case 'tired':
+        // Tired - Show tasks with low required hours
+        filters = { minHours: 0, maxHours: 1 };
+        break;
+      case 'energetic':
+        // Energetic - Show tasks with high required hours
+        filters = { minHours: 3, maxHours: 10 };
+        break;
+      default:
+        // Default - no filters
+        filters = {};
+    }
+    
+    // Dispatch a custom event with the filters and mood
+    window.dispatchEvent(new CustomEvent('applyWellnessFilters', { 
+      detail: { filters, mood } 
+    }));
+  }, []);
+  
   return (
     <Sidebar>
       <SidebarContent>
@@ -139,6 +183,67 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          {/* Wellness Check Button */}
+          <SidebarMenuItem>
+            <Popover>
+              <PopoverTrigger asChild>
+                <SidebarMenuButton size={"lg"}>
+                  <Heart className="text-purple-500" />
+                  <span>Wellness Check</span>
+                </SidebarMenuButton>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-3" align="start" sideOffset={10}>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">How are you feeling today?</h4>
+                  <p className="text-xs text-gray-500">Choose your mood to get suggestions</p>
+                  <div className="grid grid-cols-3 gap-3 mt-2">
+                    <button 
+                      onClick={() => handleWellnessSelection('happy')}
+                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <div className="text-2xl mb-1">😊</div>
+                      <div className="text-xs">Happy</div>
+                    </button>
+                    <button 
+                      onClick={() => handleWellnessSelection('sad')}
+                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <div className="text-2xl mb-1">😔</div>
+                      <div className="text-xs">Sad</div>
+                    </button>
+                    <button 
+                      onClick={() => handleWellnessSelection('focused')}
+                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <div className="text-2xl mb-1">🧠</div>
+                      <div className="text-xs">Focused</div>
+                    </button>
+                    <button 
+                      onClick={() => handleWellnessSelection('distracted')}
+                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <div className="text-2xl mb-1">😵‍💫</div>
+                      <div className="text-xs">Distracted</div>
+                    </button>
+                    <button 
+                      onClick={() => handleWellnessSelection('tired')}
+                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <div className="text-2xl mb-1">😴</div>
+                      <div className="text-xs">Tired</div>
+                    </button>
+                    <button 
+                      onClick={() => handleWellnessSelection('energetic')}
+                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <div className="text-2xl mb-1">⚡</div>
+                      <div className="text-xs">Energetic</div>
+                    </button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </SidebarMenuItem>
           <SidebarMenuItem>
                 <OrganizationSwitcher />
           </SidebarMenuItem>
@@ -162,4 +267,4 @@ export function AppSidebar() {
       </SidebarFooter>
     </Sidebar>
   )
-}   
+}
