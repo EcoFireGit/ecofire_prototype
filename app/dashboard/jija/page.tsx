@@ -222,7 +222,10 @@ export default function Chat() {
                       ? "bg-blue-50 border-blue-500"
                       : "hover:bg-gray-50"
                   }`}
-                  onClick={() => loadChatSession(chat.chatId)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    loadChatSession(chat.chatId);
+                  }}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-sm text-gray-500">
