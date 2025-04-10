@@ -92,7 +92,10 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>EcoF:re</SidebarGroupLabel>
+          <SidebarGroupLabel className="h-16">
+            <img src="/PRIORIWISE_ECOFIRE_WHITE.png" alt="PRIORIWISE" className="h-10 w-auto my-4">
+            </img>
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -107,9 +110,9 @@ export function AppSidebar() {
               ))}
               
               {/* Backstage Collapsible Group */}
-              <Collapsible defaultOpen className="group/collapsible">
+              <Collapsible className="group/collapsible">
                 <SidebarMenuItem>
-                  <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent">
+                  <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent hover:text-sidebar-accent-foreground">
                     <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
                     <span>Backstage</span>
                     <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
