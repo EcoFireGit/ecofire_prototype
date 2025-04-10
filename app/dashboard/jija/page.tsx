@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { Clipboard } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ChatSession {
   _id: string;
@@ -296,6 +297,21 @@ export default function Chat() {
 
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
+        {selectedChatId && (
+          <div className="mb-4">
+            <Button 
+              onClick={() => {
+                setSelectedChatId(null);
+                setMessages([]);
+                setInput("");
+              }}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <span>Close Conversation</span>
+            </Button>
+          </div>
+        )}
         {processedMessages.map((m) => (
           <div
             key={m.id}
