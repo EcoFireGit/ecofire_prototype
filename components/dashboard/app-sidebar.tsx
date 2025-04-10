@@ -205,8 +205,8 @@ export function AppSidebar() {
                       onClick={() => handleWellnessSelection('sad')}
                       className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
                     >
-                      <div className="text-2xl mb-1">😔</div>
-                      <div className="text-xs">Sad</div>
+                      <div className="text-2xl mb-1">😀</div>
+                      <div className="text-xs">Happy</div>
                     </button>
                     <button 
                       onClick={() => handleWellnessSelection('focused')}
