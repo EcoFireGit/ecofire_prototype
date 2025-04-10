@@ -70,21 +70,61 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
     }
   }, [initialFilters]);
 
+  // Check for saved wellness filters on component mount
+  useEffect(() => {
+    const savedMood = sessionStorage.getItem('wellnessMood');
+    const savedFilters = sessionStorage.getItem('wellnessFilters');
+    
+    if (savedMood && savedFilters) {
+      try {
+        const parsedFilters = JSON.parse(savedFilters);
+        
+        // Apply the saved filters
+        setActiveWellnessMood(savedMood);
+        setFilters(parsedFilters);
+        
+        // Update hours range if necessary
+        if (parsedFilters.minHours !== undefined && parsedFilters.maxHours !== undefined) {
+          setHoursRange([parsedFilters.minHours, parsedFilters.maxHours]);
+        }
+        
+        // Apply the filters
+        onFilterChange(parsedFilters);
+        
+        // Show toast notification
+        let moodEmoji = "";
+        if (savedMood === 'sad') moodEmoji = "😔";
+        else if (savedMood === 'focused') moodEmoji = "🧠";
+        else if (savedMood === 'distracted') moodEmoji = "😵‍💫";
+        
+        toast({
+          title: `${moodEmoji} Wellness filters applied`,
+          description: "Showing jobs based on your mood",
+        });
+        
+        // Clear the saved filters
+        sessionStorage.removeItem('wellnessMood');
+        sessionStorage.removeItem('wellnessFilters');
+      } catch (error) {
+        console.error('Error applying saved wellness filters:', error);
+        sessionStorage.removeItem('wellnessMood');
+        sessionStorage.removeItem('wellnessFilters');
+      }
+    }
+  }, [onFilterChange, toast]);
+
   // Set up listener for wellness filter events
   useEffect(() => {
     const handleWellnessFilters = (event:any) => {
       const { filters: wellnessFilters, mood } = event.detail;
       
       // Show toast notification
-      let moodEmoji = "😊";
+      let moodEmoji = "";
       let message = "Showing tasks based on your mood";
       
-      if (mood === 'happy') moodEmoji = "😊";
-      else if (mood === 'sad') moodEmoji = "😔";
+      if (mood === 'sad') moodEmoji = "😔";
       else if (mood === 'focused') moodEmoji = "🧠";
       else if (mood === 'distracted') moodEmoji = "😵‍💫";
-      else if (mood === 'tired') moodEmoji = "😴";
-      else if (mood === 'energetic') moodEmoji = "⚡";
       
       toast({
         title: `${moodEmoji} Wellness filters applied`,
@@ -248,14 +288,11 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
       {/* Display active wellness mode if selected */}
       {activeWellnessMood && (
         <Badge className="bg-purple-100 text-purple-800 border-purple-300 flex items-center gap-1 h-10">
-          <Heart className="h-4 w-4 text-purple-500" />
+          <Heart className="h-4 w-4 text-purple-500 fill-purple-500" />
           <span className="font-medium">
-            {activeWellnessMood === 'happy' && "Happy mood - High joy tasks"}
-            {activeWellnessMood === 'sad' && "Sad mood - Cheerful tasks"}
+            {activeWellnessMood === 'sad' && "Sad mood - High joy tasks"}
             {activeWellnessMood === 'focused' && "Focused mood - High focus tasks"}
             {activeWellnessMood === 'distracted' && "Distracted mood - Low focus tasks"}
-            {activeWellnessMood === 'tired' && "Tired mood - Quick tasks"}
-            {activeWellnessMood === 'energetic' && "Energetic mood - Challenging tasks"}
           </span>
           <Button 
             variant="ghost" 

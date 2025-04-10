@@ -1,5 +1,4 @@
 "use client"
-
 import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon, BriefcaseBusinessIcon, Heart } from "lucide-react"
 import {
   Sidebar,
@@ -94,13 +93,10 @@ const backstageItems = [
 export function AppSidebar() {
   // Function to handle emoji selection and apply filters
   const handleWellnessSelection = useCallback((mood:any) => {
+    // Construct the filters object based on the mood
     let filters = {};
     
     switch (mood) {
-      case 'happy':
-        // Happy - Show tasks with high joy level
-        filters = { joyLevel: 'High' };
-        break;
       case 'sad':
         // Sad - Show tasks with high joy level (to cheer up)
         filters = { joyLevel: 'High' };
@@ -113,25 +109,27 @@ export function AppSidebar() {
         // Distracted - Show tasks with low focus level
         filters = { focusLevel: 'Low' };
         break;
-      case 'tired':
-        // Tired - Show tasks with low required hours
-        filters = { minHours: 0, maxHours: 1 };
-        break;
-      case 'energetic':
-        // Energetic - Show tasks with high required hours
-        filters = { minHours: 3, maxHours: 10 };
-        break;
       default:
         // Default - no filters
         filters = {};
     }
     
-    // Dispatch a custom event with the filters and mood
-    window.dispatchEvent(new CustomEvent('applyWellnessFilters', { 
-      detail: { filters, mood } 
-    }));
-  }, []);
-  
+    // Store the selected mood and filters in sessionStorage for retrieval after navigation
+    sessionStorage.setItem('wellnessMood', mood);
+    sessionStorage.setItem('wellnessFilters', JSON.stringify(filters));
+    
+    // Check if we're already on the jobs page
+    const currentPath = window.location.pathname;
+    if (currentPath === '/dashboard/jobs') {
+      // If already on jobs page, apply filters directly
+      window.dispatchEvent(new CustomEvent('applyWellnessFilters', { 
+        detail: { filters, mood } 
+      }));
+    } else {
+      // Otherwise navigate to jobs page - filters will be applied on page load
+      window.location.href = '/dashboard/jobs';
+    }
+  }, []);  
   return (
     <Sidebar>
       <SidebarContent>
@@ -188,22 +186,15 @@ export function AppSidebar() {
             <Popover>
               <PopoverTrigger asChild>
                 <SidebarMenuButton size={"lg"}>
-                  <Heart className="text-purple-500" />
+                  <Heart className="text-purple-500 fill-purple-500" />
                   <span>Wellness Check</span>
                 </SidebarMenuButton>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-3" align="start" sideOffset={10}>
+              <PopoverContent className="w-64 p-3" side="right" align="start" sideOffset={10}>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">How are you feeling today?</h4>
                   <p className="text-xs text-gray-500">Choose your mood to get suggestions</p>
                   <div className="grid grid-cols-3 gap-3 mt-2">
-                    <button 
-                      onClick={() => handleWellnessSelection('happy')}
-                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
-                    >
-                      <div className="text-2xl mb-1">😊</div>
-                      <div className="text-xs">Happy</div>
-                    </button>
                     <button 
                       onClick={() => handleWellnessSelection('sad')}
                       className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
@@ -224,20 +215,6 @@ export function AppSidebar() {
                     >
                       <div className="text-2xl mb-1">😵‍💫</div>
                       <div className="text-xs">Distracted</div>
-                    </button>
-                    <button 
-                      onClick={() => handleWellnessSelection('tired')}
-                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
-                    >
-                      <div className="text-2xl mb-1">😴</div>
-                      <div className="text-xs">Tired</div>
-                    </button>
-                    <button 
-                      onClick={() => handleWellnessSelection('energetic')}
-                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
-                    >
-                      <div className="text-2xl mb-1">⚡</div>
-                      <div className="text-xs">Energetic</div>
                     </button>
                   </div>
                 </div>
