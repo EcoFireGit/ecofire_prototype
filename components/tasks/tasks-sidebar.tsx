@@ -10,7 +10,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, PawPrint } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
 import { TaskDialog } from "./tasks-dialog";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
@@ -497,6 +498,17 @@ export function TasksSidebar({
     return 0;
   });
 
+  // Format date helper function
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Not set";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -514,37 +526,54 @@ export function TasksSidebar({
             {/* Job Details Card */}
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>{selectedJob.title}</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{selectedJob.title}</span>
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent>
+                {/* Notes Section */}
                 {selectedJob.notes && (
-                  <div>
-                    <p className="text-sm font-medium">Notes:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedJob.notes}
-                    </p>
+                  <div className="mb-4 pb-4 border-b">
+                    <div className="flex items-center mb-2">
+                      <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                      <h3 className="text-sm font-semibold">Notes</h3>
+                    </div>
+                    <div className="pl-6">
+                      <div className="text-sm text-muted-foreground" style={{ whiteSpace: 'pre-wrap', overflowY: 'auto', overflowX: 'hidden', maxHeight: '10rem', wordBreak: 'break-word' }}>
+                        {selectedJob.notes}
+                      </div>
+                    </div>
                   </div>
                 )}
-                {selectedJob.businessFunctionName && (
-                  <div>
-                    <p className="text-sm font-medium">Business Function:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedJob.businessFunctionName}
-                    </p>
-                  </div>
-                )}
-                {selectedJob.dueDate && (
-                  <div>
-                    <p className="text-sm font-medium">Due Date:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(selectedJob.dueDate).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                )}
+
+                {/* Job Attributes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Business Function */}
+                  {selectedJob.businessFunctionName && (
+                    <div className="flex items-start">
+                      <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                      <div>
+                        <span className="text-xs text-gray-500">Business Function</span>
+                        <p className="text-sm font-medium">
+                          {selectedJob.businessFunctionName}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Due Date */}
+                  {selectedJob.dueDate && (
+                    <div className="flex items-start">
+                      <Calendar className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+                      <div>
+                        <span className="text-xs text-gray-500">Due Date</span>
+                        <p className="text-sm font-medium">
+                          {formatDate(selectedJob.dueDate)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -604,4 +633,4 @@ export function TasksSidebar({
       />
     </>
   );
-};
+}
