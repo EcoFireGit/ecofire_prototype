@@ -4,7 +4,8 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard } from "lucide-react"; // Added import for Clipboard icon
+import { Clipboard } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ChatSession {
   _id: string;
@@ -24,12 +25,22 @@ interface ChatResponse {
   hasMore: boolean;
 }
 
+interface ProcessedMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  html?: string;
+}
+
 export default function Chat() {
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [processedMessages, setProcessedMessages] = useState<
+    ProcessedMessage[]
+  >([]);
   const LIMIT = 3;
   const { userId } = useAuth();
   const searchParams = useSearchParams();
@@ -63,6 +74,47 @@ export default function Chat() {
       setInput(`Can you help me with doing "${jobTitle}?"`);
     }
   }, [jobTitle, setInput]);
+
+  useEffect(() => {
+    const processMessages = async () => {
+      if (messages.length) {
+        const processed = await Promise.all(
+          messages.map(async (msg) => {
+            // Filter messages to only include user and assistant roles
+            if (msg.role === "user" || msg.role === "assistant") {
+              if (msg.role === "assistant") {
+                try {
+                  const response = await fetch("/api/markdown", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ markdown: msg.content }),
+                  });
+
+                  if (response.ok) {
+                    const { html } = await response.json();
+                    return { ...msg, html };
+                  }
+                } catch (error) {
+                  console.error("Error processing markdown:", error);
+                }
+              }
+              return msg;
+            }
+            return null;
+          }),
+        );
+        // Filter out null values resulted from invalid roles
+        setProcessedMessages(
+          processed.filter((msg) => msg !== null) as ProcessedMessage[],
+        );
+      } else {
+        setProcessedMessages([]);
+      }
+    };
+    processMessages();
+  }, [messages]);
 
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
@@ -103,12 +155,13 @@ export default function Chat() {
 
   const loadChatSession = async (chatId: string) => {
     try {
+      // Clear the current state first for better UX
+      setSelectedChatId(chatId);
+      setInput("");
+
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
-
-        // Set the selected chat ID
-        setSelectedChatId(chatId);
 
         // Set the chat messages to continue the conversation
         if (data && data.messages && data.messages.length > 0) {
@@ -121,8 +174,13 @@ export default function Chat() {
             }),
           );
 
-          setMessages(formattedMessages);
+          // Use a slight delay to ensure UI updates properly
+          setTimeout(() => {
+            setMessages(formattedMessages);
+          }, 10);
         }
+      } else {
+        console.error("Failed to fetch chat history:", response.status);
       }
     } catch (error) {
       console.error("Error loading chat session:", error);
@@ -176,7 +234,10 @@ export default function Chat() {
                       ? "bg-blue-50 border-blue-500"
                       : "hover:bg-gray-50"
                   }`}
-                  onClick={() => loadChatSession(chat.chatId)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    loadChatSession(chat.chatId);
+                  }}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-sm text-gray-500">
@@ -191,7 +252,9 @@ export default function Chat() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const fullMessage = chat.messages.find(m => m.role === "user")?.content || "";
+                        const fullMessage =
+                          chat.messages.find((m) => m.role === "user")
+                            ?.content || "";
                         navigator.clipboard.writeText(fullMessage);
                         // Optional: Add visual feedback
                         const button = e.currentTarget;
@@ -214,7 +277,9 @@ export default function Chat() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const fullMessage = chat.messages.find(m => m.role === "assistant")?.content || "";
+                        const fullMessage =
+                          chat.messages.find((m) => m.role === "assistant")
+                            ?.content || "";
                         navigator.clipboard.writeText(fullMessage);
                         // Optional: Add visual feedback
                         const button = e.currentTarget;
@@ -251,7 +316,22 @@ export default function Chat() {
 
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
-        {messages.map((m) => (
+        {selectedChatId && (
+          <div className="mb-4">
+            <Button
+              onClick={() => {
+                setSelectedChatId(null);
+                setMessages([]);
+                setInput("");
+              }}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <span>Close Conversation</span>
+            </Button>
+          </div>
+        )}
+        {processedMessages.map((m) => (
           <div
             key={m.id}
             className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50 relative"
@@ -279,7 +359,16 @@ export default function Chat() {
                 <Clipboard size={16} />
               </button>
             </div>
-            <div className="mt-1">{m.content}</div>
+            <div className="mt-1">
+              {m.role === "assistant" && m.html ? (
+                <div
+                  className="prose dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: m.html }}
+                />
+              ) : (
+                m.content
+              )}
+            </div>
           </div>
         ))}
 
