@@ -5,8 +5,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarTrigger />
-      <main>{children}</main>
+      <main>
+        <SidebarTrigger />
+        {children}
+      </main>
     </SidebarProvider>
   );
 }
