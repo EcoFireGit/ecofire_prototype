@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateAuth } from '@/lib/utils/auth-utils';
-import { validateString } from "@/lib/utils/string-utils";
+import { validateString } from "@/lib/utils/validation-utils";
 import ownerService from "@/lib/services/owner.service";
 import ValidationError from '../../errors/validation-error';
 
