@@ -96,10 +96,11 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
         if (savedMood === 'sad') moodEmoji = "😔";
         else if (savedMood === 'focused') moodEmoji = "🧠";
         else if (savedMood === 'distracted') moodEmoji = "😵‍💫";
+        else if (savedMood === 'tired') moodEmoji = "😴";
         
         toast({
           title: `${moodEmoji} Wellness filters applied`,
-          description: "Showing jobs based on your mood",
+          description: "Showing tasks based on your mood",
         });
         
         // Clear the saved filters
@@ -125,6 +126,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
       if (mood === 'sad') moodEmoji = "😔";
       else if (mood === 'focused') moodEmoji = "🧠";
       else if (mood === 'distracted') moodEmoji = "😵‍💫";
+      else if (mood === 'tired') moodEmoji = "😴";
       
       toast({
         title: `${moodEmoji} Wellness filters applied`,
@@ -287,12 +289,13 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
     <div className="flex flex-wrap items-center gap-2 mb-4">
       {/* Display active wellness mode if selected */}
       {activeWellnessMood && (
-        <Badge className="bg-purple-100 text-purple-800 border-purple-300 flex items-center gap-1 h-10">
+        <Badge className="bg-purple-100 text-purple-800 border-purple-300 flex items-center gap-1 h-10 hover:bg-purple-200">
           <Heart className="h-4 w-4 text-purple-500 fill-purple-500" />
           <span className="font-medium">
             {activeWellnessMood === 'sad' && "Sad mood - High joy tasks"}
             {activeWellnessMood === 'focused' && "Focused mood - High focus tasks"}
-            {activeWellnessMood === 'distracted' && "Distracted mood - Low focus tasks"}
+            {activeWellnessMood === 'distracted' && "Distracted mood - High joy & low focus tasks"}
+            {activeWellnessMood === 'tired' && "Tired mood - Low focus & low joy tasks"}
           </span>
           <Button 
             variant="ghost" 

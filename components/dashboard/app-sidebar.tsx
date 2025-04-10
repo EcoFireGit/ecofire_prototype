@@ -1,4 +1,5 @@
 "use client"
+
 import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon, BriefcaseBusinessIcon, Heart } from "lucide-react"
 import {
   Sidebar,
@@ -92,7 +93,7 @@ const backstageItems = [
 
 export function AppSidebar() {
   // Function to handle emoji selection and apply filters
-  const handleWellnessSelection = useCallback((mood:any) => {
+  const handleWellnessSelection = useCallback((mood: any) => {
     // Construct the filters object based on the mood
     let filters = {};
     
@@ -106,8 +107,12 @@ export function AppSidebar() {
         filters = { focusLevel: 'High' };
         break;
       case 'distracted':
-        // Distracted - Show tasks with low focus level
-        filters = { focusLevel: 'Low' };
+        // Distracted - Show tasks with both high joy and low focus
+        filters = { focusLevel: 'Low', joyLevel: 'High' };
+        break;
+      case 'tired':
+        // Tired - Show tasks with both low focus and low joy
+        filters = { focusLevel: 'Low', joyLevel: 'Low' };
         break;
       default:
         // Default - no filters
@@ -129,7 +134,8 @@ export function AppSidebar() {
       // Otherwise navigate to jobs page - filters will be applied on page load
       window.location.href = '/dashboard/jobs';
     }
-  }, []);  
+  }, []);
+  
   return (
     <Sidebar>
       <SidebarContent>
@@ -193,8 +199,8 @@ export function AppSidebar() {
               <PopoverContent className="w-64 p-3" side="right" align="start" sideOffset={10}>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">How are you feeling today?</h4>
-                  <p className="text-xs text-gray-500">Choose your mood to get job suggestions</p>
-                  <div className="grid grid-cols-3 gap-3 mt-2">
+                  <p className="text-xs text-gray-500">Choose your mood to get suggestions</p>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
                     <button 
                       onClick={() => handleWellnessSelection('sad')}
                       className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
@@ -215,6 +221,13 @@ export function AppSidebar() {
                     >
                       <div className="text-2xl mb-1">😵‍💫</div>
                       <div className="text-xs">Distracted</div>
+                    </button>
+                    <button 
+                      onClick={() => handleWellnessSelection('tired')}
+                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <div className="text-2xl mb-1">😴</div>
+                      <div className="text-xs">Tired</div>
                     </button>
                   </div>
                 </div>
