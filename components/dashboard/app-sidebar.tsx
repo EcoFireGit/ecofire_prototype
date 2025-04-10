@@ -199,7 +199,7 @@ export function AppSidebar() {
               <PopoverContent className="w-64 p-3" side="right" align="start" sideOffset={10}>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">How are you feeling today?</h4>
-                  <p className="text-xs text-gray-500">Choose your mood to get suggestions</p>
+                  <p className="text-xs text-gray-500">Choose your mood to get Job suggestions</p>
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <button 
                       onClick={() => handleWellnessSelection('sad')}
@@ -212,7 +212,7 @@ export function AppSidebar() {
                       onClick={() => handleWellnessSelection('focused')}
                       className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
                     >
-                      <div className="text-2xl mb-1">🧠</div>
+                      <div className="text-2xl mb-1">🤓</div>
                       <div className="text-xs">Focused</div>
                     </button>
                     <button 
