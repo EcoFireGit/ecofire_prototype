@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useChat } from "@ai-sdk/react";
@@ -39,7 +38,9 @@ export default function Chat() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [processedMessages, setProcessedMessages] = useState<ProcessedMessage[]>([]);
+  const [processedMessages, setProcessedMessages] = useState<
+    ProcessedMessage[]
+  >([]);
   const LIMIT = 3;
   const { userId } = useAuth();
   const searchParams = useSearchParams();
@@ -75,38 +76,43 @@ export default function Chat() {
   }, [jobTitle, setInput]);
 
   useEffect(() => {
-    // Process markdown in messages
     const processMessages = async () => {
       if (messages.length) {
         const processed = await Promise.all(
           messages.map(async (msg) => {
-            if (msg.role === "assistant") {
-              try {
-                const response = await fetch("/api/markdown", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ markdown: msg.content }),
-                });
-                
-                if (response.ok) {
-                  const { html } = await response.json();
-                  return { ...msg, html };
+            // Filter messages to only include user and assistant roles
+            if (msg.role === "user" || msg.role === "assistant") {
+              if (msg.role === "assistant") {
+                try {
+                  const response = await fetch("/api/markdown", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ markdown: msg.content }),
+                  });
+
+                  if (response.ok) {
+                    const { html } = await response.json();
+                    return { ...msg, html };
+                  }
+                } catch (error) {
+                  console.error("Error processing markdown:", error);
                 }
-              } catch (error) {
-                console.error("Error processing markdown:", error);
               }
+              return msg;
             }
-            return msg;
-          })
+            return null;
+          }),
         );
-        setProcessedMessages(processed);
+        // Filter out null values resulted from invalid roles
+        setProcessedMessages(
+          processed.filter((msg) => msg !== null) as ProcessedMessage[],
+        );
       } else {
         setProcessedMessages([]);
       }
     };
-
     processMessages();
   }, [messages]);
 
@@ -152,7 +158,7 @@ export default function Chat() {
       // Clear the current state first for better UX
       setSelectedChatId(chatId);
       setInput("");
-      
+
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
@@ -246,7 +252,9 @@ export default function Chat() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const fullMessage = chat.messages.find(m => m.role === "user")?.content || "";
+                        const fullMessage =
+                          chat.messages.find((m) => m.role === "user")
+                            ?.content || "";
                         navigator.clipboard.writeText(fullMessage);
                         // Optional: Add visual feedback
                         const button = e.currentTarget;
@@ -269,7 +277,9 @@ export default function Chat() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        const fullMessage = chat.messages.find(m => m.role === "assistant")?.content || "";
+                        const fullMessage =
+                          chat.messages.find((m) => m.role === "assistant")
+                            ?.content || "";
                         navigator.clipboard.writeText(fullMessage);
                         // Optional: Add visual feedback
                         const button = e.currentTarget;
@@ -308,7 +318,7 @@ export default function Chat() {
       <div className="flex flex-col w-full stretch">
         {selectedChatId && (
           <div className="mb-4">
-            <Button 
+            <Button
               onClick={() => {
                 setSelectedChatId(null);
                 setMessages([]);
@@ -351,9 +361,9 @@ export default function Chat() {
             </div>
             <div className="mt-1">
               {m.role === "assistant" && m.html ? (
-                <div 
-                  className="prose dark:prose-invert max-w-none" 
-                  dangerouslySetInnerHTML={{ __html: m.html }} 
+                <div
+                  className="prose dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: m.html }}
                 />
               ) : (
                 m.content
