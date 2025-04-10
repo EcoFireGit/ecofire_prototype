@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import {updateEvent, deleteEvent} from '@/lib/services/gcal.events.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
 
 export async function PATCH(
-    request: Request,
-    { params }: { params: { id: string } }
-  ) {
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const authResult = await validateAuth();
     
@@ -34,9 +34,9 @@ export async function PATCH(
 }
 
 export async function DELETE(
-    request: Request,
-    { params }: { params: { id: string } }
-  ) {
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId } = await auth();
     if (!userId) {

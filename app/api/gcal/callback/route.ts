@@ -1,5 +1,5 @@
 // pages/api/auth/callback/google.js
-import processAuthCode from '@/lib/services/gcal.service';
+import { processAuthCode } from '@/lib/services/gcal.service';
 import { NextResponse, NextRequest } from 'next/server';
 import { validateAuth } from '@/lib/utils/auth-utils';
 

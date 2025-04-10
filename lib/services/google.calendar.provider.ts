@@ -1,9 +1,6 @@
-import { authenticate } from '@google-cloud/local-auth';
-import { OAuth2Client, Credentials } from 'google-auth-library';
-import { google } from 'googleapis';
-import path from 'path';
-import GCalAuth from '../models/gcal-auth.model';
-
+import { google, calendar_v3 } from 'googleapis';
+import { Credentials } from 'google-auth-library';
+import moment from 'moment-timezone';
 import dbConnect from '../mongodb';
 
 
@@ -33,7 +30,37 @@ export async function getCalendar(auth: Credentials): Promise<calendar_v3.Calend
   }
   catch (error) {
     console.log("Error in getCalendar" + error);
-    throw new Error('Error getting calendar object', error);
+    throw new Error('Error getting calendar object');
+  }
+}
+
+export async function getAllEventsForTwoWeeks(auth: Credentials, calendarId: string): Promise<any> {
+  try {
+
+    const calendar = await getCalendar(auth);
+
+    console.log("Calendar object: ", calendar);
+    // Calculate the start and end of the current week (Sunday to Saturday)
+    const now = moment().startOf('week');  // Get the start of the current week (Sunday)
+    const startOfWeek = now.toISOString(); // Start of the week (e.g., Sunday at 00:00)
+    const endOfWeekInTwoWeeks = now.add(2, 'weeks').endOf('week').toISOString();
+
+    // Fetch events from the calendar
+    const res = await calendar.events.list({
+      calendarId: calendarId, 
+      timeMin: startOfWeek, // Events starting after this time
+      timeMax: endOfWeekInTwoWeeks,   // Events ending before this time
+      singleEvents: true,   // Ensure events that repeat are expanded
+      orderBy: 'startTime', // Order by start time
+    });
+    console.log("events list: ", res);
+
+    const events = res.data.items;
+    
+    return events;
+  } catch (error) {
+    console.error('Error retrieving events:', error);
+    throw error;
   }
 }
 

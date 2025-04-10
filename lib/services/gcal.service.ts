@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
+import { calendar_v3} from 'googleapis';
 import getCalendar from './google.calendar.provider';
 import { Schema$CalendarListEntry } from 'googleapis';
 
@@ -80,7 +81,7 @@ export async function getRefreshToken(userId: string) {
   }
 }
 
-async function processAuthCode(userId: string, code: string) {
+export async function processAuthCode(userId: string, code: string) {
   try {
     //get tokens from code
     const { tokens } = await oauth2Client.getToken(code);
@@ -145,7 +146,7 @@ export async function saveAuthorizedCalendars(userId: string, calendars: any) {
   }
 
 }
-export async function getCalendarsFromGoogle(userId: string): Promise<Schema$CalendarListEntry[]> {
+export async function getCalendarsFromGoogle(userId: string): Promise<calendar_v3.Schema$CalendarListEntry[]> {
   try {
     await dbConnect();
 
@@ -171,7 +172,7 @@ export async function getCalendarsFromGoogle(userId: string): Promise<Schema$Cal
   }
 }
  
-export async function createPrioriCalendar(userId: string): Promise<Schema$CalendarListEntry.data> {
+export async function createPrioriCalendar(userId: string): Promise<calendar_v3.Schema$Calendar> {
   try {
     await dbConnect();
 
@@ -218,45 +219,7 @@ export async function createPrioriCalendar(userId: string): Promise<Schema$Calen
   }
 }
 
-export async function getEventsForCalendar(userId: string, calendarId: string) {
-  try {
-    await dbConnect();
-    const gcalAuth = await GCalAuth.findOne({ userId: userId });
-    if (!gcalAuth) {
-      throw new Error(`No credentials found for user ${userId}`);
-    }
 
-    // Set credentials and refresh access token
-    oauth2Client.setCredentials(gcalAuth.auth);
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    oauth2Client.setCredentials(credentials);
-
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-    const res = await calendar.events.list({
-      calendarId: calendarId,
-      timeMin: new Date().toISOString(),
-      maxResults: 10,
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
-
-    const events = res.data.items;
-
-    if (!events || events.length === 0) {
-      console.log(`No upcoming events found for calendar: ${calendarId}`);
-      return;
-    }
-
-    console.log(`Upcoming 10 events from calendar '${calendarId}':`);
-    events.forEach((event) => {
-      const start = event.start.dateTime || event.start.date;
-      console.log(`${start} - ${event.summary}`);
-    });
-
-  } catch (error: any) {
-    console.error(`Error retrieving events for calendar '${calendarId}':`, error.message);
-  }
-}
 
 
 async function doesCalendarExist(oauth2Client: OAuth2Client, calendarId: string) {

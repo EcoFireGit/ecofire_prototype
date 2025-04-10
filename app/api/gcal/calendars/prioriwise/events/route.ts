@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import createEvent, {getAllEventsForTwoWeeks} from '@/lib/services/gcal.events.service';
+import createEvent, {getPrioriwiseEvents} from '@/lib/services/gcal.events.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const authResult = await validateAuth();
     
@@ -35,19 +35,17 @@ export async function POST(request: Request) {
 }
 
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized'
-        },
-        { status: 401 }
-      );
+    const authResult = await validateAuth();
+    
+    if (!authResult.isAuthorized) {
+      return authResult.response;
     }
-    const getPrioriCalendarEvents= await getAllEventsForTwoWeeks(userId);
+    
+    const userId = authResult.userId;
+    
+    const getPrioriCalendarEvents= await getPrioriwiseEvents(userId);
 
     return NextResponse.json({
       success: true,
