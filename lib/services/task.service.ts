@@ -7,7 +7,10 @@ export class TaskService {
   async getTasksByJobId(jobId: string, userId: string): Promise<TaskInterface[]> {
     try {
       await dbConnect();
-      const tasks = await Task.find({ jobId, userId, isDeleted:false }).lean();
+      const tasks = await Task.find({ jobId, userId, $or: [
+        { isDeleted: { $eq: false } },
+        { isDeleted: { $exists: false } }
+      ]}).lean();
       return JSON.parse(JSON.stringify(tasks));
     } catch (error) {
       throw new Error('Error fetching tasks from database');
@@ -17,7 +20,10 @@ export class TaskService {
   async getTaskById(id: string, userId: string): Promise<TaskInterface | null> {
     try {
       await dbConnect();
-      const task = await Task.findOne({ _id: id, userId, isDeleted:false }).lean();
+      const task = await Task.findOne({ _id: id, userId, $or: [
+        { isDeleted: { $eq: false } },
+        { isDeleted: { $exists: false } }
+      ] }).lean();
       return task ? JSON.parse(JSON.stringify(task)) : null;
     } catch (error) {
       throw new Error('Error fetching task from database');

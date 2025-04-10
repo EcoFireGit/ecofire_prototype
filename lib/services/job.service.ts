@@ -6,7 +6,10 @@ export class JobService {
   async getAllJobs(userId: string): Promise<Jobs[]> {
     try {
       await dbConnect();
-      const jobs = await Job.find({ userId }).lean();
+      const jobs = await Job.find({ userId, $or: [
+        { isDeleted: { $eq: false } },
+        { isDeleted: { $exists: false } }
+      ] }).lean();
       return JSON.parse(JSON.stringify(jobs));
     } catch (error) {
       throw new Error('Error fetching jobs from database');
