@@ -149,12 +149,13 @@ export default function Chat() {
 
   const loadChatSession = async (chatId: string) => {
     try {
+      // Clear the current state first for better UX
+      setSelectedChatId(chatId);
+      setInput("");
+      
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
-
-        // Set the selected chat ID
-        setSelectedChatId(chatId);
 
         // Set the chat messages to continue the conversation
         if (data && data.messages && data.messages.length > 0) {
@@ -167,8 +168,13 @@ export default function Chat() {
             }),
           );
 
-          setMessages(formattedMessages);
+          // Use a slight delay to ensure UI updates properly
+          setTimeout(() => {
+            setMessages(formattedMessages);
+          }, 10);
         }
+      } else {
+        console.error("Failed to fetch chat history:", response.status);
       }
     } catch (error) {
       console.error("Error loading chat session:", error);
