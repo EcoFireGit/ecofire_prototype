@@ -5,8 +5,6 @@ import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
 import { calendar_v3} from 'googleapis';
 import getCalendar from './google.calendar.provider';
-//import { Schema$CalendarListEntry } from 'googleapis';
-
 import dbConnect from '../mongodb';
 
 
@@ -81,7 +79,7 @@ export async function getRefreshToken(userId: string) {
   }
 }
 
-export async function processAuthCode(userId: string, code: string) {
+async function processAuthCode(userId: string, code: string) {
   try {
     //get tokens from code
     const { tokens } = await oauth2Client.getToken(code);
@@ -107,17 +105,17 @@ export async function processAuthCode(userId: string, code: string) {
 async function saveCredentials(userId: string, client: Record<string, any> ) {
   try {
     await dbConnect();
-    const gcalAuthExists = await GCalAuth.findOne({ userId: userId });
-    if(gcalAuthExists){
-      gcalAuthExists.auth = client;
-      gcalAuthExists.save();
+    let gcalAuth = await GCalAuth.findOne({ userId: userId });
+    if(gcalAuth){
+      gcalAuth.auth = client;
     }else {
-      const gcalAuth = new GCalAuth({
+      gcalAuth = new GCalAuth({
         userId: userId,
         auth: client
       });
-      const savedAuth = await gcalAuth.save();
     }
+    
+    await gcalAuth.save();
 
  }catch(error){
       console.log("Error in saveCredentials" + error);
@@ -131,10 +129,8 @@ export async function saveAuthorizedCalendars(userId: string, calendars: any) {
     await dbConnect();
 
     //load refresh token from
-    const gcalAuth = await GCalAuth.findOne({ userId: userId });
-    if (!gcalAuth) {
-      throw new Error('No credentials found');
-    }
+    const gcalAuth = await getCalendarAuthForUser(userId);
+
     gcalAuth.calendars = calendars;
     const savedAuth = gcalAuth.save();
     return JSON.parse(JSON.stringify(savedAuth));
@@ -151,18 +147,9 @@ export async function getCalendarsFromGoogle(userId: string): Promise<calendar_v
     await dbConnect();
 
     //load refresh token from
-    const gcalAuth = await GCalAuth.findOne({ userId: userId });
-    if (!gcalAuth) {
-      throw new Error('No credentials found');
-    }
+    const gcalAuth = await getCalendarAuthForUser(userId);
 
-    const auth = gcalAuth.auth;
-    oauth2Client.setCredentials(auth);
-
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    
-    oauth2Client.setCredentials(credentials);
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const calendar = await getCalendar(gcalAuth.auth);
     const res = await calendar.calendarList.list();
     return res.data.items || [];
   }
@@ -176,69 +163,43 @@ export async function createPrioriCalendar(userId: string): Promise<calendar_v3.
   try {
     await dbConnect();
 
-    //load refresh token from
-    const gcalAuth = await GCalAuth.findOne({ userId: userId });
-    if (!gcalAuth) {
-      throw new Error('No credentials found');
-    }
-    //set credentials
-    const auth = gcalAuth.auth;
-    oauth2Client.setCredentials(auth);
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    oauth2Client.setCredentials(credentials);
+    //does calendar exist in db?
+    const gcalAuth = await getCalendarAuthForUser(userId);
+            
+    const calendar = await getCalendar(gcalAuth.auth);
 
-    //does prioriwise calendar exist in google?
-    if(gcalAuth.prioriCalendar && gcalAuth.prioriCalendar.id ) {
-      const prioriwiseCalendar = await doesCalendarExist(oauth2Client, gcalAuth.prioriwiseCalendar.id);
-      if(prioriwiseCalendar){
-        return prioriwiseCalendar;
-      }
-    }
-
-    //create calendar on google
-    const calendarData = {
-      summary: 'Prioriwise',
-      description: 'Prioriwise Calendar to manage your business jobs',
-      etag: 'Prioriwise',
-      timeZone: 'America/Los_Angeles',
-    };
-
-    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-    const res = await calendar.calendars.insert({
-        requestBody: calendarData
-    });
-    gcalAuth.prioriwiseCalendar = res.data;
-
-    //save to db
-    const savedAuth = gcalAuth.save();
-    return savedAuth.prioriwiseCalendar;
-  }
-  catch (error) {
-    console.log("Error in createPrioriCalendar" , error);
-    throw new Error('Error creating calendar');
-  }
-}
-
-
-
-
-async function doesCalendarExist(oauth2Client: OAuth2Client, calendarId: string) {
-  try {
-      const priorCalExists = await google.calendar({ version: 'v3', auth: oauth2Client }).calendars.get({
-        calendarId: calendarId
+    if(gcalAuth.prioriCalendar && gcalAuth.prioriCalendar.id ) { //exists in db
+      //does prioriwise calendar exist in google? 
+      const priorCalExists = await calendar.calendars.get({
+        calendarId: gcalAuth.prioriCalendar.id
       });
       if(priorCalExists && priorCalExists.data){
         return priorCalExists.data;
       }
-    }  
-    catch (error) {
-      if(error.code !== 404){
-        console.log("Error in doesCalendarExist: ", error);
-      }
-      return null;
     }
-}
 
+      //does not exist either in db or on google. so create calendar on google
+      const calendarData = {
+        summary: 'Prioriwise',
+        description: 'Prioriwise Calendar to manage your business jobs',
+        etag: 'Prioriwise',
+        timeZone: 'America/Los_Angeles',
+      };
+
+      // const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+      const res = await calendar.calendars.insert({
+          requestBody: calendarData
+      });
+      gcalAuth.prioriwiseCalendar = res.data;
+
+      //save to db
+      const savedAuth = gcalAuth.save();
+      return savedAuth.prioriwiseCalendar;
+  } catch (error) {
+    console.log("Error in createPrioriCalendar" , error);
+    throw new Error('Error creating calendar');
+  }
+}
 
 async function getCalendarAuthForUser(userId: string) {
   const gcalAuth = await GCalAuth.findOne({ userId: userId });
