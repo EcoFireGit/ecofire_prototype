@@ -27,23 +27,34 @@ export default function TaskFeedView() {
   const [jobs, setJobs] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
-  const [businessFunctionMap, setBusinessFunctionMap] = useState<Record<string, string>>({});
+  const [businessFunctionMap, setBusinessFunctionMap] = useState<
+    Record<string, string>
+  >({});
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [owners, setOwners] = useState<{ _id: string; name: string }[]>([]);
-  const [businessFunctions, setBusinessFunctions] = useState<{ id: string; name: string }[]>([]);
+  const [businessFunctions, setBusinessFunctions] = useState<
+    { id: string; name: string }[]
+  >([]);
   const { toast } = useToast();
-  
+  const [tags, setTags] = useState<{ _id: string; name: string }[]>([]);
+
   // State for task dialog
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
-  
+
   // State for confirmation dialogs
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
-  const [taskToComplete, setTaskToComplete] = useState<{id: string, title: string} | null>(null);
-  
+  const [taskToComplete, setTaskToComplete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+
   // State for notes dialog
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
-  const [taskNotes, setTaskNotes] = useState<{title: string, notes: string} | null>(null);
+  const [taskNotes, setTaskNotes] = useState<{
+    title: string;
+    notes: string;
+  } | null>(null);
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -52,49 +63,52 @@ export default function TaskFeedView() {
       // First get all jobs
       const jobsResponse = await fetch("/api/jobs");
       const jobsResult = await jobsResponse.json();
-      
+
       if (!jobsResult.success || !Array.isArray(jobsResult.data)) {
         throw new Error("Failed to fetch jobs");
       }
-      
+
       // Create a job map for lookup
       const jobsMap: Record<string, any> = {};
-      
+
       // Collect all business function ids to fetch their names
       const businessFunctionIds: string[] = [];
-      
+
       jobsResult.data.forEach((job: any) => {
         // Store the job in our map
         if (job._id) {
           jobsMap[job._id] = job;
         }
-        
+
         // Collect business function ids
-        if (job.businessFunctionId && !businessFunctionIds.includes(job.businessFunctionId)) {
+        if (
+          job.businessFunctionId &&
+          !businessFunctionIds.includes(job.businessFunctionId)
+        ) {
           businessFunctionIds.push(job.businessFunctionId);
         }
       });
-      
+
       // Update jobs state
       setJobs(jobsMap);
-      
+
       // Fetch business function names
       if (businessFunctionIds.length > 0) {
         try {
           const bfResponse = await fetch("/api/business-functions");
           const bfResult = await bfResponse.json();
-          
+
           if (bfResult.success && Array.isArray(bfResult.data)) {
             const bfMap: Record<string, string> = {};
             const bfArray: { id: string; name: string }[] = [];
-            
+
             bfResult.data.forEach((bf: any) => {
               if (bf._id && bf.name) {
                 bfMap[bf._id] = bf.name;
                 bfArray.push({ id: bf._id, name: bf.name });
               }
             });
-            
+
             setBusinessFunctionMap(bfMap);
             setBusinessFunctions(bfArray);
           }
@@ -102,14 +116,14 @@ export default function TaskFeedView() {
           console.error("Error fetching business functions:", bfError);
         }
       }
-      
+
       // Try to fetch tasks using the next-steps endpoint first (which we know works)
       let allTasks = [];
       try {
         // First try to get all tasks
         const allTasksResponse = await fetch("/api/tasks");
         const allTasksResult = await allTasksResponse.json();
-        
+
         if (allTasksResult.success && Array.isArray(allTasksResult.data)) {
           allTasks = allTasksResult.data;
         } else {
@@ -117,7 +131,7 @@ export default function TaskFeedView() {
           console.log("Falling back to next-steps endpoint");
           const nextTasksResponse = await fetch("/api/tasks/next-steps");
           const nextTasksResult = await nextTasksResponse.json();
-          
+
           if (nextTasksResult.success && Array.isArray(nextTasksResult.data)) {
             allTasks = nextTasksResult.data;
           } else {
@@ -127,25 +141,28 @@ export default function TaskFeedView() {
       } catch (taskError) {
         console.error("Error fetching tasks:", taskError);
         // Try another approach - fetch tasks by job IDs
-        
+
         // Get all job IDs
         const jobIds = Object.keys(jobsMap);
         let jobTasks: any[] = [];
-        
+
         // Fetch tasks for each job
         for (const jobId of jobIds) {
           try {
             const jobTasksResponse = await fetch(`/api/tasks/job/${jobId}`);
             const jobTasksResult = await jobTasksResponse.json();
-            
+
             if (jobTasksResult.success && Array.isArray(jobTasksResult.data)) {
               jobTasks = [...jobTasks, ...jobTasksResult.data];
             }
           } catch (jobTaskError) {
-            console.error(`Error fetching tasks for job ${jobId}:`, jobTaskError);
+            console.error(
+              `Error fetching tasks for job ${jobId}:`,
+              jobTaskError
+            );
           }
         }
-        
+
         if (jobTasks.length > 0) {
           allTasks = jobTasks;
         } else {
@@ -153,12 +170,12 @@ export default function TaskFeedView() {
           const nextTaskIds = Object.values(jobsMap)
             .filter((job: any) => job.nextTaskId)
             .map((job: any) => job.nextTaskId);
-            
+
           for (const taskId of nextTaskIds) {
             try {
               const taskResponse = await fetch(`/api/tasks/${taskId}`);
               const taskResult = await taskResponse.json();
-              
+
               if (taskResult.success && taskResult.data) {
                 allTasks.push(taskResult.data);
               }
@@ -168,23 +185,23 @@ export default function TaskFeedView() {
           }
         }
       }
-      
+
       // Fetch owners for mapping and filters
       await fetchOwners();
-      
+      // Fetch tags for filtering
+      await fetchTags();
       console.log("Fetched tasks:", allTasks);
-      
+
       // Remove any duplicate tasks and filter out completed tasks
-      const uniqueTasks = Array.from(new Map(
-        allTasks.map((task: any) => [task._id, task])
-      ).values()).filter((task: any) => task.completed !== true);
-      
+      const uniqueTasks = Array.from(
+        new Map(allTasks.map((task: any) => [task._id, task])).values()
+      ).filter((task: any) => task.completed !== true);
+
       const sortedTasks = sortTasks(uniqueTasks, jobsMap);
-      
+
       setTasks(sortedTasks);
       setFilteredTasks(sortedTasks);
       setSortedTasks(sortedTasks);
-      
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -196,30 +213,30 @@ export default function TaskFeedView() {
       setLoading(false);
     }
   };
-  
+
   // Function to sort tasks - next tasks first, ordered by job impact score
   const sortTasks = (tasks: any[], jobsMap: Record<string, any>) => {
     return [...tasks].sort((a, b) => {
       // Check if task is a next task
       const aIsNextTask = a.jobId && jobsMap[a.jobId]?.nextTaskId === a._id;
       const bIsNextTask = b.jobId && jobsMap[b.jobId]?.nextTaskId === b._id;
-      
+
       // First sort by next task status
       if (aIsNextTask && !bIsNextTask) return -1;
       if (!aIsNextTask && bIsNextTask) return 1;
-      
+
       // If both are next tasks, sort by job impact score (higher first)
       if (aIsNextTask && bIsNextTask) {
         const aImpact = jobsMap[a.jobId]?.impact || 0;
         const bImpact = jobsMap[b.jobId]?.impact || 0;
         return bImpact - aImpact;
       }
-      
+
       // If neither are next tasks, sort by date
       if (a.date && b.date) {
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       }
-      
+
       // Default fallback for sorting
       return 0;
     });
@@ -228,18 +245,18 @@ export default function TaskFeedView() {
   // Function to fetch owners for filters
   const fetchOwners = async () => {
     try {
-      const response = await fetch('/api/owners');
+      const response = await fetch("/api/owners");
       const result = await response.json();
-      
+
       let ownersData: { _id: string; name: string }[] = [];
       let ownerMap: Record<string, string> = {};
-      
+
       if (Array.isArray(result)) {
-        ownersData = result.map(owner => ({
+        ownersData = result.map((owner) => ({
           _id: owner._id,
-          name: owner.name
+          name: owner.name,
         }));
-        
+
         result.forEach((owner) => {
           if (owner._id && owner.name) {
             ownerMap[owner._id] = owner.name;
@@ -248,19 +265,19 @@ export default function TaskFeedView() {
       } else if (result.data && Array.isArray(result.data)) {
         ownersData = result.data.map((owner: any) => ({
           _id: owner._id,
-          name: owner.name
+          name: owner.name,
         }));
-        
+
         result.data.forEach((owner: any) => {
           if (owner._id && owner.name) {
             ownerMap[owner._id] = owner.name;
           }
         });
       }
-      
+
       setOwners(ownersData);
       setOwnerMap(ownerMap);
-      
+
       return ownersData;
     } catch (error) {
       console.error("Error fetching owners:", error);
@@ -268,59 +285,105 @@ export default function TaskFeedView() {
     }
   };
 
+  // Add a fetchTags function with the other fetch functions
+  const fetchTags = async () => {
+    try {
+      const response = await fetch("/api/task-tags");
+      const result = await response.json();
+
+      if (result.success && Array.isArray(result.data)) {
+        setTags(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
+  };
+
   // Handler for filter changes
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
-    
+
     if (Object.keys(filters).length === 0) {
       // If no filters are active, show all tasks
       setFilteredTasks(tasks);
       return;
     }
-    
+
     // Filter tasks based on the provided filters
-    const filtered = tasks.filter(task => {
+    const filtered = tasks.filter((task) => {
       let matches = true;
-      
+
       // Get the associated job for this task
       const job = task.jobId ? jobs[task.jobId] : null;
-      
+
       // Process each filter
       Object.entries(filters).forEach(([key, value]) => {
         // Skip empty values or "any" values
-        if (value === "" || value === null || value === undefined || value === "any") return;
-        
+        if (
+          value === "" ||
+          value === null ||
+          value === undefined ||
+          value === "any"
+        )
+          return;
+
         switch (key) {
           // Task filters
-          case 'focusLevel':
+          case "focusLevel":
             if (task.focusLevel !== value) matches = false;
             break;
-          case 'joyLevel':
+          case "joyLevel":
             if (task.joyLevel !== value) matches = false;
             break;
-          case 'owner':
+          case "owner":
             if (task.owner !== value) matches = false;
             break;
-          case 'minHours':
-            if (!task.requiredHours || task.requiredHours < value) matches = false;
+          case "minHours":
+            if (!task.requiredHours || task.requiredHours < value)
+              matches = false;
             break;
-          case 'maxHours':
-            if (!task.requiredHours || task.requiredHours > value) matches = false;
+          case "maxHours":
+            if (!task.requiredHours || task.requiredHours > value)
+              matches = false;
             break;
-          case 'dueDate':
-            if (!task.date || new Date(task.date) > new Date(value)) matches = false;
+          case "dueDate":
+            if (!task.date || new Date(task.date) > new Date(value))
+              matches = false;
             break;
-            
+
           // Job filters
-          case 'businessFunctionId':
+          case "businessFunctionId":
             if (!job || job.businessFunctionId !== value) matches = false;
+            break;
+          case "tags":
+            if (!Array.isArray(value) || value.length === 0) break;
+
+            if (!task.tags || !Array.isArray(task.tags)) {
+              matches = false;
+              break;
+            }
+
+            // Convert selected tag IDs to tag names for comparison
+            const selectedTagNames = value
+              .map((tagId) => {
+                const tag = tags.find((t) => t._id === tagId);
+                return tag ? tag.name : null;
+              })
+              .filter(Boolean); // Remove any null values
+
+            // Compare using tag names instead of IDs
+            if (
+              !selectedTagNames.every((tagName) => task.tags.includes(tagName))
+            ) {
+              matches = false;
+            }
             break;
         }
       });
-      
+
       return matches;
     });
-    
+
     setFilteredTasks(filtered);
   };
 
@@ -349,7 +412,7 @@ export default function TaskFeedView() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          completed: true
+          completed: true,
         }),
       });
 
@@ -362,19 +425,19 @@ export default function TaskFeedView() {
             task._id === id
               ? {
                   ...task,
-                  completed: true
+                  completed: true,
                 }
               : task
           )
         );
-        
+
         // Also update filtered tasks
         setFilteredTasks((prevTasks) =>
           prevTasks.map((task) =>
             task._id === id
               ? {
                   ...task,
-                  completed: true
+                  completed: true,
                 }
               : task
           )
@@ -384,7 +447,7 @@ export default function TaskFeedView() {
         const jobsWithThisNextTask = Object.values(jobs).filter(
           (job: any) => job.nextTaskId === id
         );
-        
+
         // Update each job found
         for (const job of jobsWithThisNextTask) {
           await fetch(`/api/jobs/${job._id}`, {
@@ -393,16 +456,14 @@ export default function TaskFeedView() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              nextTaskId: null
+              nextTaskId: null,
             }),
           });
         }
 
         // Filter out the task after a brief delay
         setTimeout(() => {
-          setTasks((prevTasks) =>
-            prevTasks.filter((task) => task._id !== id)
-          );
+          setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
           setFilteredTasks((prevTasks) =>
             prevTasks.filter((task) => task._id !== id)
           );
@@ -427,12 +488,12 @@ export default function TaskFeedView() {
       });
     }
   };
-  
+
   // Handle checkbox change
   const handleCompleteTask = (id: string, completed: boolean) => {
     if (completed) {
       // Find the task title for the confirmation dialog
-      const task = tasks.find(t => t._id === id);
+      const task = tasks.find((t) => t._id === id);
       if (task) {
         setTaskToComplete({ id, title: task.title });
         setCompleteDialogOpen(true);
@@ -442,7 +503,7 @@ export default function TaskFeedView() {
       reopenTask(id);
     }
   };
-  
+
   // Reopen a task
   const reopenTask = async (id: string) => {
     try {
@@ -452,7 +513,7 @@ export default function TaskFeedView() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          completed: false
+          completed: false,
         }),
       });
 
@@ -465,31 +526,31 @@ export default function TaskFeedView() {
             task._id === id
               ? {
                   ...task,
-                  completed: false
+                  completed: false,
                 }
               : task
           )
         );
-        
+
         // Also update filtered tasks
         setFilteredTasks((prevTasks) =>
           prevTasks.map((task) =>
             task._id === id
               ? {
                   ...task,
-                  completed: false
+                  completed: false,
                 }
               : task
           )
         );
-        
+
         // Also update sorted tasks
         setSortedTasks((prevTasks) =>
           prevTasks.map((task) =>
             task._id === id
               ? {
                   ...task,
-                  completed: false
+                  completed: false,
                 }
               : task
           )
@@ -517,7 +578,7 @@ export default function TaskFeedView() {
     if (task && task.title) {
       setTaskNotes({
         title: task.title,
-        notes: task.notes || "No notes available for this task."
+        notes: task.notes || "No notes available for this task.",
       });
       setNotesDialogOpen(true);
     }
@@ -536,12 +597,12 @@ export default function TaskFeedView() {
     setEditingTask(task);
     setTaskDialogOpen(true);
   };
-  
+
   // Handle task update
   const handleTaskUpdate = async (taskData: any) => {
     try {
       if (!editingTask) return;
-      
+
       const response = await fetch(`/api/tasks/${editingTask._id}`, {
         method: "PUT",
         headers: {
@@ -555,24 +616,26 @@ export default function TaskFeedView() {
       if (result.success) {
         // Update both tasks and filteredTasks in the local state
         const updatedTask = { ...editingTask, ...taskData };
-        
-        setTasks(prevTasks => 
-          prevTasks.map(task => 
+
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
             task._id === editingTask._id ? updatedTask : task
           )
         );
-        
+
         // Re-sort tasks after update
-        const updatedTasks = [...tasks.map(task => 
-          task._id === editingTask._id ? updatedTask : task
-        )];
-        
+        const updatedTasks = [
+          ...tasks.map((task) =>
+            task._id === editingTask._id ? updatedTask : task
+          ),
+        ];
+
         const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
         setTasks(sortedUpdatedTasks);
-        
+
         // Apply filters again to ensure the updated task still matches the current filters
         handleFilterChange(activeFilters);
-        
+
         toast({
           title: "Success",
           description: "Task updated successfully",
@@ -602,14 +665,18 @@ export default function TaskFeedView() {
       if (result.success) {
         // Remove task from both UI states
         setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
-        setFilteredTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
-        setSortedTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
+        setFilteredTasks((prevTasks) =>
+          prevTasks.filter((task) => task._id !== id)
+        );
+        setSortedTasks((prevTasks) =>
+          prevTasks.filter((task) => task._id !== id)
+        );
 
         // Find any jobs that reference this task as nextTaskId and update them
         const jobsWithThisNextTask = Object.values(jobs).filter(
           (job: any) => job.nextTaskId === id
         );
-        
+
         for (const job of jobsWithThisNextTask) {
           await fetch(`/api/jobs/${job._id}`, {
             method: "PUT",
@@ -617,7 +684,7 @@ export default function TaskFeedView() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              nextTaskId: null
+              nextTaskId: null,
             }),
           });
         }
@@ -653,16 +720,17 @@ export default function TaskFeedView() {
           onFilterChange={handleFilterChange}
           businessFunctions={businessFunctions}
           owners={owners}
+          tags={tags}
           initialFilters={activeFilters}
         />
-        
+
         <TaskSortingComponent
           onSortChange={handleSortChange}
           tasks={filteredTasks}
           jobs={jobs}
         />
       </div>
-      
+
       <div className="grid gap-6 mt-4">
         <div className="w-full">
           <NextTasks
@@ -692,7 +760,7 @@ export default function TaskFeedView() {
           jobId={editingTask.jobId}
         />
       )}
-      
+
       {/* Task Completion Confirmation Dialog */}
       <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -706,10 +774,13 @@ export default function TaskFeedView() {
             <p className="font-medium">{taskToComplete?.title}</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCompleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setCompleteDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 if (taskToComplete) {
                   completeTask(taskToComplete.id);
@@ -722,7 +793,7 @@ export default function TaskFeedView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Task Notes Dialog */}
       <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -736,9 +807,7 @@ export default function TaskFeedView() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setNotesDialogOpen(false)}>
-              Close
-            </Button>
+            <Button onClick={() => setNotesDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

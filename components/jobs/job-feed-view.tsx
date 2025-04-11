@@ -18,7 +18,7 @@ import SortingComponent from "@/components/sorting/sorting-component";
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
   jobs: Jobs[],
-  businessFunctions: BusinessFunctionForDropdown[],
+  businessFunctions: BusinessFunctionForDropdown[]
 ): Job[] {
   return jobs.map((job) => {
     // Find the business function name if it exists
@@ -57,7 +57,7 @@ export default function JobsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | undefined>(undefined);
   const [selectedActiveJobs, setSelectedActiveJobs] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const [selectedCompletedJobs, setSelectedCompletedJobs] = useState<
     Set<string>
@@ -68,6 +68,7 @@ export default function JobsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const [owners, setOwners] = useState<{ _id: string; name: string }[]>([]);
+  const [tags, setTags] = useState<{ _id: string; name: string }[]>([]);
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
 
@@ -103,23 +104,23 @@ export default function JobsPage() {
   // Function to fetch all owners
   const fetchOwners = async () => {
     try {
-      const response = await fetch('/api/owners');
+      const response = await fetch("/api/owners");
       const result = await response.json();
-      
+
       let ownersData: { _id: string; name: string }[] = [];
-      
+
       if (Array.isArray(result)) {
-        ownersData = result.map(owner => ({
+        ownersData = result.map((owner) => ({
           _id: owner._id,
-          name: owner.name
+          name: owner.name,
         }));
       } else if (result.data && Array.isArray(result.data)) {
         ownersData = result.data.map((owner: any) => ({
           _id: owner._id,
-          name: owner.name
+          name: owner.name,
         }));
       }
-      
+
       setOwners(ownersData);
       return ownersData;
     } catch (error) {
@@ -128,17 +129,31 @@ export default function JobsPage() {
     }
   };
 
+  // Add a fetchTags function
+  const fetchTags = async () => {
+    try {
+      const response = await fetch("/api/task-tags");
+      const result = await response.json();
+
+      if (result.success && Array.isArray(result.data)) {
+        setTags(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
+  };
+
   // New improved fetchTaskOwners function to properly map owner names
   const fetchTaskOwners = async (taskIds: string[]) => {
     if (!taskIds.length) return;
-    
+
     try {
       // First, fetch all owners for this user
-      const ownersResponse = await fetch('/api/owners');
+      const ownersResponse = await fetch("/api/owners");
       const ownersResult = await ownersResponse.json();
-      
+
       let ownerMap: Record<string, string> = {};
-      
+
       // Check the structure of the owners response
       if (Array.isArray(ownersResult)) {
         // Case 1: API returns direct array of owners
@@ -155,46 +170,48 @@ export default function JobsPage() {
           }
         });
       }
-      
+
       // Now fetch the tasks with the owner IDs we want to map
       const queryParams = new URLSearchParams();
-      taskIds.forEach(id => queryParams.append('ids', id));
-      
-      const tasksResponse = await fetch(`/api/tasks/batch?${queryParams.toString()}`);
+      taskIds.forEach((id) => queryParams.append("ids", id));
+
+      const tasksResponse = await fetch(
+        `/api/tasks/batch?${queryParams.toString()}`
+      );
       const tasksResult = await tasksResponse.json();
-      
+
       if (!tasksResult.success && !tasksResult.data) {
-        console.error('Tasks API did not return success or data');
+        console.error("Tasks API did not return success or data");
         return;
       }
-      
+
       const tasks = tasksResult.data || tasksResult;
-      
+
       // Map task IDs to owner names
       const taskOwnerMapping: Record<string, string> = {};
-      
+
       // Also store the detailed task information for filtering
       const taskDetailsMap: Record<string, any> = {};
-      
+
       tasks.forEach((task: any) => {
         // Store task details for filtering
         taskDetailsMap[task.id || task._id] = task;
-        
+
         // In your system, task.owner should be the owner ID
-        if (task.owner && typeof task.owner === 'string') {
+        if (task.owner && typeof task.owner === "string") {
           // Look up the owner name from our previously built map
-          taskOwnerMapping[task.id || task._id] = ownerMap[task.owner] || 'Not assigned';
+          taskOwnerMapping[task.id || task._id] =
+            ownerMap[task.owner] || "Not assigned";
         } else {
-          taskOwnerMapping[task.id || task._id] = 'Not assigned';
+          taskOwnerMapping[task.id || task._id] = "Not assigned";
         }
       });
-      
+
       // Update the state with our new mapping
       setTaskOwnerMap(taskOwnerMapping);
       setTaskDetails(taskDetailsMap);
-      
     } catch (error) {
-      console.error('Error creating task owner mapping:', error);
+      console.error("Error creating task owner mapping:", error);
     }
   };
 
@@ -237,25 +254,25 @@ export default function JobsPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ isDone: true }),
-        }),
+        })
       );
 
       await Promise.all(promises);
 
       // Move selected jobs from active to completed
       const jobsToMove = activeJobs.filter((job) =>
-        selectedActiveJobs.has(job.id),
+        selectedActiveJobs.has(job.id)
       );
       const updatedJobs = jobsToMove.map((job) => ({ ...job, isDone: true }));
 
       setActiveJobs((prev) =>
-        prev.filter((job) => !selectedActiveJobs.has(job.id)),
+        prev.filter((job) => !selectedActiveJobs.has(job.id))
       );
       setCompletedJobs((prev) => [...prev, ...updatedJobs]);
 
       // Also update filtered jobs
       setFilteredActiveJobs((prev) =>
-        prev.filter((job) => !selectedActiveJobs.has(job.id)),
+        prev.filter((job) => !selectedActiveJobs.has(job.id))
       );
       setFilteredCompletedJobs((prev) => [...prev, ...updatedJobs]);
 
@@ -289,25 +306,25 @@ export default function JobsPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ isDone: false }),
-        }),
+        })
       );
 
       await Promise.all(promises);
 
       // Move selected jobs from completed to active
       const jobsToMove = completedJobs.filter((job) =>
-        selectedCompletedJobs.has(job.id),
+        selectedCompletedJobs.has(job.id)
       );
       const updatedJobs = jobsToMove.map((job) => ({ ...job, isDone: false }));
 
       setCompletedJobs((prev) =>
-        prev.filter((job) => !selectedCompletedJobs.has(job.id)),
+        prev.filter((job) => !selectedCompletedJobs.has(job.id))
       );
       setActiveJobs((prev) => [...prev, ...updatedJobs]);
 
       // Also update filtered jobs
       setFilteredCompletedJobs((prev) =>
-        prev.filter((job) => !selectedCompletedJobs.has(job.id)),
+        prev.filter((job) => !selectedCompletedJobs.has(job.id))
       );
       setFilteredActiveJobs((prev) => [...prev, ...updatedJobs]);
 
@@ -348,6 +365,8 @@ export default function JobsPage() {
 
       // Also fetch owners for filters
       await fetchOwners();
+      // Fetch tags for filters
+      await fetchTags();
 
       // Then fetch jobs
       const jobsResponse = await fetch("/api/jobs");
@@ -358,22 +377,22 @@ export default function JobsPage() {
         const taskIds = jobsResult.data
           .filter((job: any) => job.nextTaskId)
           .map((job: any) => job.nextTaskId);
-        
+
         // Fetch task owners if any tasks exist
         if (taskIds.length > 0) {
           await fetchTaskOwners(taskIds);
         }
-        
+
         // Use the business functions we just fetched
         const allJobs = convertJobsToTableData(
           jobsResult.data,
-          currentBusinessFunctions,
+          currentBusinessFunctions
         );
-        
+
         // Separate active and completed jobs
         const activeJobs = allJobs.filter((job) => !job.isDone);
         const completedJobs = allJobs.filter((job) => job.isDone);
-        
+
         setActiveJobs(activeJobs);
         setFilteredActiveJobs(activeJobs);
         setSortedActiveJobs(activeJobs);
@@ -398,24 +417,24 @@ export default function JobsPage() {
   // Function to handle filter changes
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
-    
+
     if (Object.keys(filters).length === 0) {
       // If no filters are active, show all jobs
       setFilteredActiveJobs(activeJobs);
       setFilteredCompletedJobs(completedJobs);
       return;
     }
-    
+
     // Filter active jobs
-    const filteredActive = activeJobs.filter(job => {
+    const filteredActive = activeJobs.filter((job) => {
       return matchesFilters(job, filters);
     });
-    
+
     // Filter completed jobs - only apply non-status filters
     const nonStatusFilters = { ...filters };
     delete nonStatusFilters.isDone;
-    
-    const filteredCompleted = completedJobs.filter(job => {
+
+    const filteredCompleted = completedJobs.filter((job) => {
       // If isDone filter is true, show completed jobs, otherwise hide them
       if (filters.isDone === true) {
         return matchesFilters(job, nonStatusFilters);
@@ -423,54 +442,96 @@ export default function JobsPage() {
         return false; // Hide completed jobs if not explicitly showing them
       }
     });
-    
+
     setFilteredActiveJobs(filteredActive);
     setFilteredCompletedJobs(filteredCompleted);
   };
-  
+
   // Helper function to check if a job matches filters
   const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
     let matches = true;
-    
+
     // Get the associated task for this job (if it has a nextTaskId)
     const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
-    
+
     // Process each filter
     Object.entries(filters).forEach(([key, value]) => {
       // Skip empty values or "any" values
-      if (value === "" || value === null || value === undefined || value === "any") return;
-      
+      if (
+        value === "" ||
+        value === null ||
+        value === undefined ||
+        value === "any"
+      )
+        return;
+
       switch (key) {
         // Job filters
-        case 'businessFunctionId':
+        case "businessFunctionId":
           if (job.businessFunctionId !== value) matches = false;
           break;
-        case 'dueDate':
-          if (!job.dueDate || new Date(job.dueDate) > new Date(value)) matches = false;
+        case "dueDate":
+          if (!job.dueDate || new Date(job.dueDate) > new Date(value))
+            matches = false;
           break;
-        case 'isDone':
+        case "isDone":
           if (job.isDone !== value) matches = false;
           break;
-          
+
         // Task filters (applied to the job's next task)
-        case 'focusLevel':
+        case "focusLevel":
           if (!nextTask || nextTask.focusLevel !== value) matches = false;
           break;
-        case 'joyLevel':
+        case "joyLevel":
           if (!nextTask || nextTask.joyLevel !== value) matches = false;
           break;
-        case 'owner':
+        case "owner":
           if (!nextTask || nextTask.owner !== value) matches = false;
           break;
-        case 'minHours':
-          if (!nextTask || !nextTask.requiredHours || nextTask.requiredHours < value) matches = false;
+        case "minHours":
+          if (
+            !nextTask ||
+            !nextTask.requiredHours ||
+            nextTask.requiredHours < value
+          )
+            matches = false;
           break;
-        case 'maxHours':
-          if (!nextTask || !nextTask.requiredHours || nextTask.requiredHours > value) matches = false;
+        case "maxHours":
+          if (
+            !nextTask ||
+            !nextTask.requiredHours ||
+            nextTask.requiredHours > value
+          )
+            matches = false;
+          break;
+        case "tags":
+          if (!Array.isArray(value) || value.length === 0) break;
+
+          if (!nextTask || !nextTask.tags || !Array.isArray(nextTask.tags)) {
+            matches = false;
+            break;
+          }
+
+          // Convert selected tag IDs to tag names for comparison
+          const selectedTagNames = value
+            .map((tagId) => {
+              const tag = tags.find((t) => t._id === tagId);
+              return tag ? tag.name : null;
+            })
+            .filter(Boolean); // Remove any null values
+
+          // Compare using tag names instead of IDs
+          if (
+            !selectedTagNames.every((tagName) =>
+              nextTask.tags.includes(tagName)
+            )
+          ) {
+            matches = false;
+          }
           break;
       }
     });
-    
+
     return matches;
   };
 
@@ -604,7 +665,7 @@ export default function JobsPage() {
     if (!open && needsRefresh) {
       fetchJobs();
     }
-    
+
     // Update the sidebar state
     setTasksSidebarOpen(open);
   };
@@ -649,7 +710,7 @@ export default function JobsPage() {
                 <LayoutList className="h-4 w-4" />
               </Button>
             </div>
-            
+
             <Button
               variant="outline"
               onClick={async () => {
@@ -691,9 +752,10 @@ export default function JobsPage() {
             onFilterChange={handleFilterChange}
             businessFunctions={businessFunctions}
             owners={owners}
+            tags={tags}
             initialFilters={activeFilters}
           />
-          
+
           <SortingComponent
             onSortChange={handleActiveSortChange}
             jobs={filteredActiveJobs}
@@ -702,7 +764,7 @@ export default function JobsPage() {
         </div>
 
         {viewMode === "grid" ? (
-          <JobsGrid 
+          <JobsGrid
             data={sortedActiveJobs} // Use sorted jobs instead of filtered
             onEdit={handleOpenEdit}
             onDelete={handleDelete}
@@ -713,13 +775,21 @@ export default function JobsPage() {
           />
         ) : (
           <DataTable
-            columns={columns(handleOpenEdit, handleDelete, handleActiveSelect, handleOpenTasksSidebar, taskOwnerMap)}
+            columns={columns(
+              handleOpenEdit,
+              handleDelete,
+              handleActiveSelect,
+              handleOpenTasksSidebar,
+              taskOwnerMap
+            )}
             data={sortedActiveJobs} // Use sorted jobs instead of filtered
           />
         )}
 
         {/* Show completed jobs section if there are any to display or if no filters are active */}
-        {(filteredCompletedJobs.length > 0 || activeFilters.isDone === true || Object.keys(activeFilters).length === 0) && (
+        {(filteredCompletedJobs.length > 0 ||
+          activeFilters.isDone === true ||
+          Object.keys(activeFilters).length === 0) && (
           <>
             <div className="mt-16 mb-6 flex justify-between items-center">
               <h2 className="text-2xl font-bold">Completed Jobs</h2>
