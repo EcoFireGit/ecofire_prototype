@@ -55,7 +55,7 @@ export default function WelcomeModal({ forceShow = false }: WelcomeModalProps): 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 mx-4 animate-in fade-in zoom-in duration-300">
-        <h2 className="text-2xl font-bold mb-4">Welcome to Your Workspace!</h2>
+        <h2 className="text-2xl font-bold mb-4">Welcome to Prioriwise!</h2>
         <p className="mb-6 text-gray-600">
           We're excited to have you here. Would you like a quick tour to get familiar with our features?
         </p>

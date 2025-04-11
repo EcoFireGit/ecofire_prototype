@@ -58,7 +58,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
         {
           popover: {
             title: "You're All Set!",
-            description: "You've completed the tour. You can restart it anytime from your profile settings.",
+            description: "You've completed the tour. You can restart it anytime from the help button in your Navbar.",
           }
         }
       ];
@@ -80,11 +80,11 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
           }
         },
         
-        onDeselected: (element) => {
+        onDeselected: (element: any) => {
           console.log("👉 Step completed, element deselected:", element?.id || 'unknown', new Date().toISOString());
         },
         
-        onHighlighted: (element) => {
+        onHighlighted: (element: any) => {
           console.log("✨ Element highlighted:", element?.id || 'unknown', new Date().toISOString());
         },
         
