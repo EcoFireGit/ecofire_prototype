@@ -61,4 +61,15 @@ export class JobService {
       throw new Error('Error deleting job from database');
     }
   }
+
+  async getAllUsersWithAssignedJobs(): Promise<string[]> {
+    try {
+      await dbConnect();
+      const users = await Job.distinct('userId');
+      return users;
+    } catch (error) {
+      throw new Error('Error fetching users from database');
+    }
+  }
+  
 }
