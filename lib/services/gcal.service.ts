@@ -5,7 +5,7 @@ import path from 'path';
 import GCalAuth from '../models/gcal-auth.model';
 import { calendar_v3} from 'googleapis';
 import getCalendar from './google.calendar.provider';
-import { Schema$CalendarListEntry } from 'googleapis';
+//import { Schema$CalendarListEntry } from 'googleapis';
 
 import dbConnect from '../mongodb';
 
