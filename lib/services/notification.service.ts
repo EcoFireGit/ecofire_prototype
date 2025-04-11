@@ -3,45 +3,60 @@ import dbConnect from '../mongodb';
 
 
 export class NotificationService {
-   async getAllUnseenNotifications(userId: string) : Promise<Notification[]> {
+   async getAllUnseenNotificationsAfterCurrentTimeForUser(userId: string, currentTimeISO: Date) : Promise<Notification[]> {
         try {
             await dbConnect();
 
             const notifications = await Notification.find({
-                userId, 
-                seen: false
+                userId,
+                seen: false,
+                'upcomingEvent': { 
+                    $exists: true
+                }
             });
-            console.log('Notification fetched:', notifications);
-            return notifications;
+
+            
+            const filtered = notifications.filter(event => {
+                return new Date(event.upcomingEvent.start?.dateTime) > currentTimeISO;
+            }
+                );
+
+                return filtered;
         }catch (error) {
             console.error('Error getting notification:', error);
             throw new Error('Failed to get notification');
         }
     }
 
-    async createNotificationIfDoesntExist(userId: string, type:string, message:string, events: string[]): Promise<Notification | null> {
+    async createNotificationIfDoesntExist(userId: string, type:string, message:string, events: string[]): Promise<Notification[] | null> {
 
         try {
             await dbConnect();
 
-            const existingNotification = await Notification.findOne({
-                userId,
-                type: type,
-                data: { upcomingEvents: events }
-            });
-            if(!existingNotification){
-                console.log('No existing notification found, creating a new one');
-                const notification = await Notification.create({
-                    userId, 
+            const notifications:Notification[]=[];
+
+            for(const event of events){
+                const existingNotification = await Notification.findOne({
+                    userId,
                     type: type,
-                    message: message,
-                    data: { upcomingEvents: events },
+                    upcomingEvent : event
                 });
-                console.log('Notification created:', notification._id);
-                return notification;
+                if(!existingNotification){
+                    console.log('No existing notification found, creating a new one');
+                    const notification = await Notification.create({
+                        userId, 
+                        type: type,
+                        message: message,
+                        upcomingEvent: event,
+                    });
+                    console.log('Notification created:', notification._id);
+                    notifications.push(notification);
+                }else{
+                    console.log('Notification already exists:', existingNotification._id);
+
+                }
             }
-            console.log('Notification already exists:', existingNotification._id);
-            return existingNotification;
+            return notifications;
         }catch (error) {
             console.error('Error creating notification:', error);
             throw new Error('Failed to create notification');

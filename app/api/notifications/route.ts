@@ -15,7 +15,16 @@ export async function GET(request: NextRequest) {
     }
     const userId = authResult.userId;
     // Enhanced validation
-    const notifications = await notificationService.getAllUnseenNotifications(userId!);
+
+    const url = new URL(request.url);
+    const currentTimeParam = url.searchParams.get('currentTime'); // Get the 'currentTime' query parameter
+  
+    const currentTime = currentTimeParam ? new Date(currentTimeParam) : new Date();
+
+  // Convert currentTime string to a Date object
+    const userCurrentTime = new Date(currentTime);
+    const reqTime = request
+    const notifications = await notificationService.getAllUnseenNotificationsAfterCurrentTimeForUser(userId!, currentTime);
 
     return NextResponse.json(
       { success: true,

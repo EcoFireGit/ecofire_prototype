@@ -1,14 +1,13 @@
 // pages/api/cron/checkConflicts.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { JobService } from '@/lib/services/job.service'; // Replace with your DB utility
 import { EventsService } from '@/lib/services/gcal.events.service';
 import { NotificationService } from '@/lib/services/notification.service';
+import { TaskService } from '@/lib/services/task.service';
 
 export async function GET(req: NextRequest) {
   try {
-    //@Shrikant - IS this correct? Shouldn't it be taks ??
-    const jobService = new JobService();
-    const users = await jobService.getAllUsersWithAssignedJobs();
+    const taskService = new TaskService();
+    const users = await taskService.getAllUsersWithAssignedTasks();
 
     for (const user of users) {
       const upcomingAppts = await getUpcomingApptsFor(user);

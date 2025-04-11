@@ -63,16 +63,26 @@ export class TaskService {
   }
 
   async getNextTasks(userId: string): Promise<TaskInterface[]> {
-  try {
-    await dbConnect();
-    // Find all tasks for this user that are marked as next tasks
-    const tasks = await Task.find({ 
-      userId, 
-    }).lean();
-    // console.log(tasks);
-    return JSON.parse(JSON.stringify(tasks));
-  } catch (error) {
-    throw new Error('Error fetching next tasks from database');
+    try {
+      await dbConnect();
+      // Find all tasks for this user that are marked as next tasks
+      const tasks = await Task.find({ 
+        userId, 
+      }).lean();
+      // console.log(tasks);
+      return JSON.parse(JSON.stringify(tasks));
+    } catch (error) {
+      throw new Error('Error fetching next tasks from database');
+    }
   }
-}
+
+  async getAllUsersWithAssignedTasks(): Promise<string[]> {
+    try {
+      await dbConnect();
+      const users = await Task.distinct('userId');
+      return users;
+    } catch (error) {
+      throw new Error('Error fetching users from database');
+    }
+  }
 }
