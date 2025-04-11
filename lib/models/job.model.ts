@@ -12,6 +12,8 @@ export interface Jobs extends mongoose.Document {
   nextTaskId?: string; // Field to track the next task
   tasks?: string[]; // Array of task IDs associated with this job
   // owner field removed as it's now derived from the next task's owner
+  isDeleted: boolean; // Soft delete flag
+
 }
 
 enum level {
@@ -61,6 +63,11 @@ const JobSchema = new mongoose.Schema<Jobs>({
     type: [String],
     required: false,
     default: []
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    required: true
   }
 });
 

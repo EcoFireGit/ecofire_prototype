@@ -504,7 +504,7 @@ export default function OnboardingPage() {
   }, []);
 
   return (
-    <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
+    <div className="flex flex-col w-full max-w-4xl pb-48 p-10 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Business Onboarding</h1>
 
       {/* Step 1: Business Information */}

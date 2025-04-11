@@ -122,7 +122,7 @@ export default function BusinessInfoPage() {
   }
 
   return (
-    <div className="container py-10 mx-auto">
+    <div className="container p-10 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Business Information</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">

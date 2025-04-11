@@ -14,6 +14,17 @@ export class PIService {
     }
   }
 
+  async checkNameExists(name: string): Promise<boolean> {
+    try {
+      await dbConnect();  
+      const found = await PI.findOne({ name }).collation({ locale: 'en', strength: 2 }).exec();
+      return !!found;
+    }catch (error) {  
+      console.log(error);
+      throw new Error('Error checking name existence in database');
+    } 
+  }
+
   async getPIById(id: string, userId: string): Promise<PIs | null> {
     try {
       await dbConnect();

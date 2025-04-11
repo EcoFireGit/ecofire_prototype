@@ -89,6 +89,11 @@ const backstageItems = [
     url: "/dashboard/backstage/pis",
     icon: BarChart2,
   },
+  {
+    title: "Calendar",
+    url: "/dashboard/backstage/gcal",
+    icon: Calendar,
+  },
 ]
 
 export function AppSidebar() {
