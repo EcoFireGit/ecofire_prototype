@@ -32,7 +32,7 @@ export function OrganizationSwitcher() {
         <select 
           value={isOrganization ? currentViewId : 'personal'}
           onChange={handleChange}
-          className="border rounded px-2 py-1 text-sm"
+          className="border rounded px-2 py-1 text-sm text-black"
         >
           <option value="personal">Personal</option>
           {organizations.map(org => (

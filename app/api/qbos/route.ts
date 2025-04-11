@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server';
 import { QBOService } from '@/lib/services/qbo.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
+import { validateString } from "@/lib/utils/validation-utils";
+import ValidationError from '../../errors/validation-error';
+
 
 const qboService = new QBOService();
 
@@ -46,6 +49,7 @@ export async function POST(request: Request) {
     
     const userId = authResult.userId;
     const qboData = await request.json();
+    await validateData(qboData.name);
     const qbo = await qboService.createQBO(qboData, userId!);
     await updateJobImpactValues(userId!);
     return NextResponse.json({
@@ -54,6 +58,15 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/qbos:', error);
+    if(error instanceof ValidationError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message
+        },
+        { status: error.statusCode }
+      );
+    }    
     return NextResponse.json(
       {
         success: false,
@@ -61,5 +74,13 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  }
+}
+
+async function validateData(name: string) {
+  await validateString(name);
+  const exists = await qboService.checkNameExists(name);
+  if(exists) {
+    throw new ValidationError('QBO name already exists', 400);
   }
 }

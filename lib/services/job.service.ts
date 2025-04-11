@@ -6,7 +6,10 @@ export class JobService {
   async getAllJobs(userId: string): Promise<Jobs[]> {
     try {
       await dbConnect();
-      const jobs = await Job.find({ userId }).lean();
+      const jobs = await Job.find({ userId, $or: [
+        { isDeleted: { $eq: false } },
+        { isDeleted: { $exists: false } }
+      ] }).lean();
       return JSON.parse(JSON.stringify(jobs));
     } catch (error) {
       throw new Error('Error fetching jobs from database');
@@ -16,7 +19,7 @@ export class JobService {
   async getJobById(id: string, userId: string): Promise<Jobs | null> {
     try {
       await dbConnect();
-      const job = await Job.findOne({ _id: id, userId }).lean();
+      const job = await Job.findOne({ _id: id, userId, isDeleted: false }).lean();
       return job ? JSON.parse(JSON.stringify(job)) : null;
     } catch (error) {
       throw new Error('Error fetching job from database');
@@ -55,8 +58,13 @@ export class JobService {
   async deleteJob(id: string, userId: string): Promise<boolean> {
     try {
       await dbConnect();
-      const result = await Job.findOneAndDelete({ _id: id, userId });
-      return !!result;
+      const updatedJob = await Job.findOneAndUpdate(
+        { _id: id, userId },
+        { $set: { isDeleted: true} },
+        { new: true, runValidators: true }
+      ).lean();
+      
+      return updatedJob ? JSON.parse(JSON.stringify(updatedJob)) : false;
     } catch (error) {
       throw new Error('Error deleting job from database');
     }

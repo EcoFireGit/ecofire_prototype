@@ -14,6 +14,7 @@ import { Task } from "@/components/tasks/types";
 import { JobsGrid } from "@/components/jobs/jobs-grid";
 import FilterComponent from "@/components/filters/filter-component";
 import SortingComponent from "@/components/sorting/sorting-component";
+import { useSearchParams } from "next/navigation";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -73,6 +74,7 @@ export default function JobsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
 
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
   // Effect to update sorted jobs when filtered jobs change
   useEffect(() => {
@@ -248,7 +250,7 @@ export default function JobsPage() {
 
       // Make API call to update all selected jobs
       const promises = jobIds.map((id) =>
-        fetch(`/api/jobs/${id}`, {
+        fetch(`/api/jobs/${id}?updateTasks=true`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -352,7 +354,7 @@ export default function JobsPage() {
       // First fetch business functions
       const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
-
+      
       let currentBusinessFunctions = [];
       if (bfResult.success) {
         currentBusinessFunctions = bfResult.data.map((bf: any) => ({
@@ -412,6 +414,34 @@ export default function JobsPage() {
 
   useEffect(() => {
     fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    // Check if "open=true" is in the URL
+    const shouldOpenDialog = searchParams.get("open") === "true";
+
+    // If the parameter exists, open the dialog in create mode
+    if (shouldOpenDialog) {
+      setEditingJob(undefined);
+      setDialogOpen(true);
+    }
+  }, [searchParams]);
+
+  // Add this new useEffect to listen for the custom event from the Navbar
+  useEffect(() => {
+    // Event handler to open the dialog
+    const handleOpenDialog = () => {
+      setEditingJob(undefined);
+      setDialogOpen(true);
+    };
+
+    // Add the event listener
+    window.addEventListener("openJobDialog", handleOpenDialog);
+
+    // Clean up the event listener when component unmounts
+    return () => {
+      window.removeEventListener("openJobDialog", handleOpenDialog);
+    };
   }, []);
 
   // Function to handle filter changes
@@ -619,7 +649,7 @@ export default function JobsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/jobs/${id}`, {
+      const response = await fetch(`/api/jobs/${id}?deleteTasks=true`, {
         method: "DELETE",
       });
 
