@@ -5,8 +5,11 @@ import { NextResponse } from 'next/server';
 import { PIService } from '@/lib/services/pi.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
+import { validateString } from "@/lib/utils/validation-utils";
+import ValidationError from '../../errors/validation-error';
 
-const PIsService = new PIService();
+
+const piService = new PIService();
 
 export async function GET() {
   try {
@@ -17,7 +20,7 @@ export async function GET() {
     }
     
     const userId = authResult.userId;
-    const PIs = await PIsService.getAllPIs(userId!);
+    const PIs = await piService.getAllPIs(userId!);
    
     return NextResponse.json({
       success: true,
@@ -45,8 +48,9 @@ export async function POST(request: Request) {
     }
     
     const userId = authResult.userId;
-    const PIData = await request.json();
-    const PI = await PIsService.createPI(PIData, userId!);
+    const piData = await request.json();
+    await validateData(piData.name);    
+    const PI = await piService.createPI(piData, userId!);
     await updateJobImpactValues(userId!);
     return NextResponse.json({
       success: true,
@@ -54,6 +58,15 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/pis:', error);
+    if(error instanceof ValidationError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message
+        },
+        { status: error.statusCode }
+      );
+    }    
     return NextResponse.json(
       {
         success: false,
@@ -61,5 +74,13 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  }
+}
+
+async function validateData(name: string) {
+  await validateString(name);
+  const exists = await piService.checkNameExists(name);
+  if(exists) {
+    throw new ValidationError('PI name already exists', 400);
   }
 }

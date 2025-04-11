@@ -24,6 +24,9 @@ export default function CalendarPage() {
     calendar: string;
   };
 
+
+
+  // Fetch data for the table
   const fetchGcals = async () => {
     try {
       setLoading(true);
@@ -79,7 +82,8 @@ export default function CalendarPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ calendars: selectedRows }),
+       
+        body: JSON.stringify({ calendars: selectedRows }) // Send full objects
       });
 
       const result = await response.json();
@@ -116,23 +120,36 @@ export default function CalendarPage() {
       setSelectedRows([]);
       fetchGcals();
 
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `${selectedRows.length} calendar(s) added successfully`,
+        });
+        setSelectedRows([]); // Clear selection after successful operation
+        fetchGcals(); // Refresh table data
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       console.error("Error adding calendars:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to add calendars",
+        description: "Failed to add calendars",
         variant: "destructive",
       });
     }
   };
 
+
+  // Initialize authentication and fetch data
   useEffect(() => {
     setAuthInitialized(true);
     if (authInitialized) {
-      fetchGcals();
+      fetchGcals(); // Fetch data only after CalendarAuth is initialized
     }
   }, [authInitialized]);
 
+  // Handle row selection
   const toggleRowSelection = (row: Gcal) => {
     setSelectedRows((prevSelectedRows) =>
       prevSelectedRows.some((selectedRow) => selectedRow.id === row.id)
@@ -140,7 +157,6 @@ export default function CalendarPage() {
         : [...prevSelectedRows, row]
     );
   };
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
@@ -155,6 +171,7 @@ export default function CalendarPage() {
             </Button>
           </div>
   
+          {/* Render Calendar Table */}
           <table className="w-full border-collapse border border-gray-200 mb-8">
             <thead>
               <tr>
@@ -191,6 +208,7 @@ export default function CalendarPage() {
             </tbody>
           </table>
   
+          {/* Render Events Table */}
           {events.length > 0 && (
             <>
               <h3 className="text-xl font-semibold mb-4">Calendar Events</h3>
@@ -220,4 +238,4 @@ export default function CalendarPage() {
       )}
     </div>
   );
-}  
+}

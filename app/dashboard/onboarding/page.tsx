@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import dJSON from "dirty-json"; // Import dirty-json library
 
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
@@ -159,11 +160,11 @@ export default function OnboardingPage() {
           "An error occurred while generating PIs, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     },
   });
-  
+
   // Fourth hook for Job-PI mappings completion
   const {
     complete: completeMappings,
@@ -198,11 +199,11 @@ export default function OnboardingPage() {
           "An error occurred while generating Job-PI mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     },
   });
-  
+
   // Fifth hook for PI-QBO mappings completion
   const {
     complete: completePiQboMappings,
@@ -227,8 +228,9 @@ export default function OnboardingPage() {
     },
     onFinish(result, completion) {
       console.log("PI-QBO mappings generation completed");
-      // After all mappings are generated, redirect to dashboard
-      router.push("/dashboard");
+      // After PI-QBO mappings are completed, redirect to jobs page
+      // We'll handle job impact calculation in the handleReturnToDashboard function
+      router.push("/dashboard/jobs");
     },
     onError(error) {
       console.error("PI-QBO Mappings completion error:", error);
@@ -238,8 +240,8 @@ export default function OnboardingPage() {
           "An error occurred while generating PI-QBO mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     },
   });
 
@@ -292,13 +294,14 @@ export default function OnboardingPage() {
           step: "pis", // Indicate this is the PIs step
         },
       });
-      
+
       // After PIs are generated, generate Job-PI mappings
       toast({
         title: "Generating Job-PI Mappings",
-        description: "Please wait while we create mappings between jobs and PIs...",
+        description:
+          "Please wait while we create mappings between jobs and PIs...",
       });
-      
+
       // Call the API with the step parameter set to "mappings"
       await completeMappings("", {
         body: {
@@ -312,13 +315,14 @@ export default function OnboardingPage() {
           step: "mappings", // Indicate this is the mappings step
         },
       });
-      
+
       // After Job-PI mappings are generated, generate PI-QBO mappings
       toast({
         title: "Generating PI-QBO Mappings",
-        description: "Please wait while we create mappings between PIs and QBOs...",
+        description:
+          "Please wait while we create mappings between PIs and QBOs...",
       });
-      
+
       // Call the API with the step parameter set to "pi-qbo-mappings"
       await completePiQboMappings("", {
         body: {
@@ -332,16 +336,32 @@ export default function OnboardingPage() {
           step: "pi-qbo-mappings", // Indicate this is the PI-QBO mappings step
         },
       });
-      
+
+      // Calculate job impact values before redirecting
+      try {
+        const response = await fetch("/api/jobs/calculate-impact", {
+          method: "POST",
+        });
+        const result = await response.json();
+        if (result.success) {
+          console.log("Job impact values updated successfully");
+        }
+      } catch (error) {
+        console.error("Error updating job impact values:", error);
+      }
+
+      // After all mappings are generated, redirect to jobs page
+      router.push("/dashboard/jobs");
     } catch (err) {
       console.error("Error during PI or mapping generation:", err);
       toast({
         title: "Generation Error",
-        description: "There was a problem generating PIs or mappings, but you can still return to dashboard.",
+        description:
+          "There was a problem generating PIs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Still redirect to dashboard even if there's an error
-      router.push("/dashboard");
+      // Redirect to jobs page instead of dashboard
+      router.push("/dashboard/jobs");
     }
   };
 
@@ -484,7 +504,7 @@ export default function OnboardingPage() {
   }, []);
 
   return (
-    <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
+    <div className="flex flex-col w-full max-w-4xl pb-48 p-10 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Business Onboarding</h1>
 
       {/* Step 1: Business Information */}
@@ -695,10 +715,7 @@ export default function OnboardingPage() {
                       const jsonMatch = completion.match(/\{[\s\S]*\}/);
                       if (jsonMatch) {
                         let jsonStr = jsonMatch[0];
-                        jsonStr = jsonStr.replace(/'/g, '"');
-                        const outcomeData = JSON.parse(jsonStr);
-                        // Fix escaped quotes in strings (like word"s)
-                        jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
+                        const outcomeData = dJSON.parse(jsonStr);
                         return (
                           <div className="space-y-4">
                             {Object.keys(outcomeData).map((key) => {
@@ -791,8 +808,8 @@ export default function OnboardingPage() {
               </Button>
             )}
 
-            <Button onClick={() => router.push("/dashboard")}>
-              Return to Dashboard
+            <Button onClick={handlePreviousStep}>
+              Go back to previous step
             </Button>
           </div>
         </div>
@@ -832,22 +849,8 @@ export default function OnboardingPage() {
                       const jsonMatch = jobsCompletion.match(/\{[\s\S]*\}/);
                       if (jsonMatch) {
                         let jsonStr = jsonMatch[0];
-                        // First, fix possessive apostrophes with a specific pattern
-                        jsonStr = jsonStr.replace(/(\w+)\."s/g, "$1's");
-                        // Replace single quotes with double quotes (for JSON validity)
-                        jsonStr = jsonStr.replace(/'/g, '"');
-                        // Fix escaped quotes in strings (like word"s)
-                        jsonStr = jsonStr.replace(/(\w)"(\w)/g, "$1'$2");
-                        // Fix company names with apostrophes
-                        jsonStr = jsonStr.replace(
-                          /"([^"]+)"s mission"/g,
-                          '"$1\'s mission"',
-                        );
-
-                        // Handle any other known patterns that cause issues
-                        jsonStr = jsonStr.replace(/\."/g, '."');
-
-                        const jobsData = JSON.parse(jsonStr);
+                        // Using dirty-json for parsing instead of manual fixing
+                        const jobsData = dJSON.parse(jsonStr);
                         return (
                           <div className="space-y-6">
                             {Object.keys(jobsData).map((key) => {
@@ -949,16 +952,25 @@ export default function OnboardingPage() {
               </Button>
             )}
 
-            <Button 
-              onClick={handleReturnToDashboard} 
-              disabled={isPILoading || isMappingsLoading || isPiQboMappingsLoading}
+            <Button
+              onClick={handleReturnToDashboard}
+              disabled={
+                isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading
+              }
               className="flex items-center gap-2"
             >
-              {(isPILoading || isMappingsLoading || isPiQboMappingsLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isPILoading ? "Generating PIs..." : 
-               isMappingsLoading ? "Generating Job-PI Mappings..." : 
-               isPiQboMappingsLoading ? "Generating PI-QBO Mappings..." :
-               "Return to Dashboard"}
+              {(isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading) && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {isJobsLoading
+                ? "Generating Jobs..."
+                : isPILoading
+                  ? "Generating PIs..."
+                  : isMappingsLoading
+                    ? "Generating Job-PI Mappings..."
+                    : isPiQboMappingsLoading
+                      ? "Generating PI-QBO Mappings..."
+                      : "Go to Jobs feed"}
             </Button>
           </div>
         </div>

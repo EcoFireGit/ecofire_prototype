@@ -53,6 +53,16 @@ class OwnerService {
     }
   }
 
+  async checkNameExists(name: string): Promise<boolean> {
+    try {
+      await dbConnect();  
+      const found = await Owner.findOne({ name }).collation({ locale: 'en', strength: 2 }).exec();
+      return !!found;
+    }catch (error) {  
+      console.log(error);
+      throw new Error('Error checking name existence in database');
+    } 
+  }
   async deleteOwner(
     id: string,
     userId: string

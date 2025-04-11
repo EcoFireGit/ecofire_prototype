@@ -240,3 +240,13 @@ async function doesCalendarExist(oauth2Client: OAuth2Client, calendarId: string)
 }
 
 
+async function getCalendarAuthForUser(userId: string) {
+  const gcalAuth = await GCalAuth.findOne({ userId: userId });
+  if (!gcalAuth) {
+    throw new Error('No credentials found');
+  }
+  return gcalAuth;   const prioriwiseCalendarExists = await GCalAuth.findOne({ userId: userId, prioriwiseCalendar: { $ne: null } });
+}
+
+
+export default processAuthCode
