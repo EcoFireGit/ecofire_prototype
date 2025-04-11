@@ -250,7 +250,7 @@ export default function JobsPage() {
 
       // Make API call to update all selected jobs
       const promises = jobIds.map((id) =>
-        fetch(`/api/jobs/${id}`, {
+        fetch(`/api/jobs/${id}?updateTasks=true`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -649,7 +649,7 @@ export default function JobsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/jobs/${id}`, {
+      const response = await fetch(`/api/jobs/${id}?deleteTasks=true`, {
         method: "DELETE",
       });
 
