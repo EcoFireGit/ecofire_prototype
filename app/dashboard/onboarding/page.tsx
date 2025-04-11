@@ -274,6 +274,10 @@ export default function OnboardingPage() {
   };
 
   const handleReturnToDashboard = async () => {
+    // Set a flag to trigger the welcome modal when redirected to jobs page
+    localStorage.setItem("showWelcomeModal", "true");
+    localStorage.setItem("hasSeenWelcome", "false"); // Reset this flag to ensure the modal shows
+
     // Show a toast to inform the user that PIs are being generated
     toast({
       title: "Generating Progress Indicators",
@@ -544,7 +548,7 @@ export default function OnboardingPage() {
               value={monthsInBusiness}
               onChange={(e) =>
                 setMonthsInBusiness(
-                  e.target.value === "" ? 0 : Number(e.target.value),
+                  e.target.value === "" ? 0 : Number(e.target.value)
                 )
               }
               placeholder="0"
@@ -561,7 +565,7 @@ export default function OnboardingPage() {
               value={annualRevenue}
               onChange={(e) =>
                 setAnnualRevenue(
-                  e.target.value === "" ? 0 : Number(e.target.value),
+                  e.target.value === "" ? 0 : Number(e.target.value)
                 )
               }
               placeholder="Enter your annual revenue"
@@ -745,7 +749,7 @@ export default function OnboardingPage() {
                                         Deadline:
                                       </span>{" "}
                                       {new Date(
-                                        outcome.deadline,
+                                        outcome.deadline
                                       ).toLocaleDateString()}
                                     </p>
                                   </div>
@@ -758,7 +762,7 @@ export default function OnboardingPage() {
                     } catch (e) {
                       console.error(
                         "Error parsing outcome data for display:",
-                        e,
+                        e
                       );
                     }
                     return (
@@ -893,7 +897,7 @@ export default function OnboardingPage() {
                                                   </p>
                                                 )}
                                               </div>
-                                            ),
+                                            )
                                           )}
                                         </div>
                                       </div>
@@ -955,22 +959,28 @@ export default function OnboardingPage() {
             <Button
               onClick={handleReturnToDashboard}
               disabled={
-                isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading
+                isJobsLoading ||
+                isPILoading ||
+                isMappingsLoading ||
+                isPiQboMappingsLoading
               }
               className="flex items-center gap-2"
             >
-              {(isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading) && (
+              {(isJobsLoading ||
+                isPILoading ||
+                isMappingsLoading ||
+                isPiQboMappingsLoading) && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
               {isJobsLoading
                 ? "Generating Jobs..."
                 : isPILoading
-                  ? "Generating PIs..."
-                  : isMappingsLoading
-                    ? "Generating Job-PI Mappings..."
-                    : isPiQboMappingsLoading
-                      ? "Generating PI-QBO Mappings..."
-                      : "Go to Jobs feed"}
+                ? "Generating PIs..."
+                : isMappingsLoading
+                ? "Generating Job-PI Mappings..."
+                : isPiQboMappingsLoading
+                ? "Generating PI-QBO Mappings..."
+                : "Go to Jobs feed"}
             </Button>
           </div>
         </div>

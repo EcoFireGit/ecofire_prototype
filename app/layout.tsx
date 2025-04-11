@@ -10,7 +10,6 @@ import Navbar from "@/components/landing_page/navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { TaskProvider } from "@/hooks/task-context";
 import { ViewProvider } from "@/lib/contexts/view-context";
-import { OnboardingProvider, TourController } from "@/components/onboarding";
 export default function RootLayout({
   children,
 }: {
@@ -25,11 +24,8 @@ export default function RootLayout({
               <SignInButton />
             </SignedOut>
             <SignedIn>
-              <OnboardingProvider>
                 <Navbar />
                 <TaskProvider>{children}</TaskProvider>
-                <TourController />
-              </OnboardingProvider>
             </SignedIn>
             <Toaster />
           </body>

@@ -1,6 +1,5 @@
-"use client"
+"use client";
 
-// @/components/onboarding/driver-tour.tsx
 import React, { useEffect, useRef } from 'react';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
@@ -13,15 +12,19 @@ interface DriverTourProps {
 export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactElement | null {
   const driverRef = useRef<any>(null);
   const { endTour } = useOnboarding();
+  
+  console.log("🚀 Main DriverTour component mounted", new Date().toISOString());
 
   useEffect(() => {
     // Wait for DOM to be fully rendered
+    console.log("⏳ Waiting for DOM to be ready before starting tour", new Date().toISOString());
     const timeoutId = setTimeout(() => {
+      console.log("🔍 Searching for tour elements in DOM", new Date().toISOString());
       // Define tour steps based on your requirements
       const steps: any[] = [
-        // Step 1: Jobs & Tasks - looking for Jobs in the sidebar
+        // Step 1: Jobs & Tasks
         {
-          element: 'a[href="/dashboard/jobs"], #jobs-tasks-section',
+          element: '#jobs-tasks-section',
           popover: {
             title: 'Jobs & Tasks',
             description: 'Here you can manage all your tasks and job assignments. This is your central hub for productivity.',
@@ -37,7 +40,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
         },
         // Step 3: Google Calendar Integration
         {
-          element: 'a[href="/dashboard/backstage/gcal"], #gcal-integration',
+          element: '#gcal-integration',
           popover: {
             title: 'Google Calendar',
             description: 'Sync your events with Google Calendar to keep everything in one place.',
@@ -45,7 +48,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
         },
         // Step 4: Organization View Toggle
         {
-          element: 'a[href="/dashboard/organizations"], #org-view-toggle',
+          element: '#org-view-toggle',
           popover: {
             title: 'Organization View',
             description: 'Switch between different organizational views to see how your team is doing.',
@@ -69,6 +72,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
         doneBtnText: 'Done',
         
         onDestroyed: () => {
+          console.log("🏆 Tour completed or closed manually", new Date().toISOString());
           if (onTourEnd) {
             onTourEnd(false); // No error
           } else {
@@ -76,16 +80,35 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
           }
         },
         
+        onDeselected: (element) => {
+          console.log("👉 Step completed, element deselected:", element?.id || 'unknown', new Date().toISOString());
+        },
+        
+        onHighlighted: (element) => {
+          console.log("✨ Element highlighted:", element?.id || 'unknown', new Date().toISOString());
+        },
+        
         steps: steps
       };
 
       // Initialize Driver.js
       try {
+        console.log("🛠️ Initializing Driver.js with configuration", new Date().toISOString());
+        console.log("📋 Tour steps:", steps.map(step => step.element || 'final-step'));
+        
         driverRef.current = driver(driverOptions);
         // Start the tour
+        console.log("🏁 Starting tour with driver.drive()", new Date().toISOString());
         driverRef.current.drive();
       } catch (error) {
-        console.error("Driver.js initialization error:", error);
+        console.error("❌ Driver.js initialization error:", error, new Date().toISOString());
+        // Log DOM state for debugging
+        console.log("📄 DOM state check:", {
+          jobsElement: document.querySelector('a[href="/dashboard/jobs"], #jobs-tasks-section'),
+          wellnessCheck: document.getElementById('wellness-check'),
+          gcalElement: document.querySelector('a[href="/dashboard/backstage/gcal"], #gcal-integration'),
+          orgElement: document.querySelector('a[href="/dashboard/organizations"], #org-view-toggle')
+        });
         // Fallback: end the tour if there's an error
         if (onTourEnd) {
           onTourEnd(true); // Pass true to indicate error

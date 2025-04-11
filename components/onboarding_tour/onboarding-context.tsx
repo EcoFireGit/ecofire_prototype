@@ -1,6 +1,5 @@
-"use client"
+"use client";
 
-// @/components/onboarding/onboarding-context.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface TourState {
@@ -52,6 +51,7 @@ export function OnboardingProvider({ children }: OnboardingProviderProps): JSX.E
   }, []);
 
   const startTour = (): void => {
+    console.log("🟢 Starting tour from context", new Date().toISOString());
     setTourState({
       isActive: true,
       hasCompletedTour: false,
@@ -60,6 +60,7 @@ export function OnboardingProvider({ children }: OnboardingProviderProps): JSX.E
   };
 
   const endTour = (): void => {
+    console.log("🔴 Ending tour from context", new Date().toISOString());
     setTourState({
       isActive: false,
       hasCompletedTour: true,
@@ -69,6 +70,7 @@ export function OnboardingProvider({ children }: OnboardingProviderProps): JSX.E
   };
 
   const resetTour = (): void => {
+    console.log("🔄 Resetting tour state from context", new Date().toISOString());
     localStorage.removeItem('hasCompletedTour');
     localStorage.removeItem('isFirstLogin');
     setTourState({

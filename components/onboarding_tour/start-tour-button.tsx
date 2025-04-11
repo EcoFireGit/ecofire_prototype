@@ -1,4 +1,5 @@
-// @/components/onboarding/start-tour-button.tsx
+"use client";
+
 import React from 'react';
 import { useOnboarding } from './onboarding-context';
 
