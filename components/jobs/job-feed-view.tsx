@@ -15,6 +15,7 @@ import { JobsGrid } from "@/components/jobs/jobs-grid";
 import FilterComponent from "@/components/filters/filter-component";
 import SortingComponent from "@/components/sorting/sorting-component";
 import { useSearchParams } from "next/navigation";
+import { StartTourButton, WelcomeModal } from "../onboarding";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -722,6 +723,7 @@ export default function JobsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Jobs</h1>
           <div className="flex gap-2">
+            <StartTourButton/>
             <div className="flex items-center border rounded-md overflow-hidden mr-2">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}

@@ -6,7 +6,7 @@ import JobsPage from "@/components/jobs/job-feed-view";
 export default function FeedPage() {
   return (
       <Tabs defaultValue="job" className="w-auto ml-5">
-      <TabsList>
+      <TabsList id="jobs-tasks-section">
         <TabsTrigger value="job">Job Feed</TabsTrigger>
         <TabsTrigger value="task">Task Feed</TabsTrigger>
       </TabsList>

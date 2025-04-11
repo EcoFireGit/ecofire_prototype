@@ -196,7 +196,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <Popover>
               <PopoverTrigger asChild>
-                <SidebarMenuButton size={"lg"}>
+                <SidebarMenuButton size={"lg"} id="wellness-check">
                   <Heart className="text-purple-500 fill-purple-500" />
                   <span>Wellness Check</span>
                 </SidebarMenuButton>
