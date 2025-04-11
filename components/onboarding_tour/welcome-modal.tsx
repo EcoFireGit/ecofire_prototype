@@ -3,35 +3,38 @@
 import React, { useState, useEffect } from 'react';
 import { useOnboarding } from './onboarding-context';
 
-// Add a prop to force the modal to show regardless of localStorage state
+// Add props for better state management
 interface WelcomeModalProps {
   forceShow?: boolean;
+  onClose?: () => void;
 }
 
-export default function WelcomeModal({ forceShow = false }: WelcomeModalProps): React.ReactElement | null {
+export default function WelcomeModal({ 
+  forceShow = false,
+  onClose
+}: WelcomeModalProps): React.ReactElement | null {
   const [isVisible, setIsVisible] = useState<boolean>(forceShow);
   const { startTour } = useOnboarding();
   
   useEffect(() => {
     // Update visibility if forceShow prop changes
-    if (forceShow) {
-      setIsVisible(true);
-      return;
-    }
-    
-    // Check if this is the first login and welcome hasn't been shown
-    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome') === 'true';
-    
-    if (!hasSeenWelcome) {
-      console.log("👋 Welcome modal: first time visitor detected", new Date().toISOString());
-      setIsVisible(true);
-    }
+    setIsVisible(forceShow);
   }, [forceShow]);
 
   const handleStartTour = (): void => {
     console.log("👋 Welcome modal: starting tour", new Date().toISOString());
+    
+    // Set only hasSeenWelcome, but NOT hasCompletedTour
+    // This allows the tour to run while recording that the welcome modal was seen
     localStorage.setItem('hasSeenWelcome', 'true');
+    
+    // Close the modal
     setIsVisible(false);
+    
+    // Notify parent component
+    if (onClose) {
+      onClose();
+    }
     
     // Small timeout before starting tour to ensure modal is closed
     setTimeout(() => {
@@ -42,9 +45,18 @@ export default function WelcomeModal({ forceShow = false }: WelcomeModalProps): 
 
   const handleSkipTour = (): void => {
     console.log("⏭️ Welcome modal: skipping tour", new Date().toISOString());
+    
+    // Set both flags to prevent tour and welcome modal from showing again
     localStorage.setItem('hasSeenWelcome', 'true');
     localStorage.setItem('hasCompletedTour', 'true');
+    
+    // Close the modal
     setIsVisible(false);
+    
+    // Notify parent component
+    if (onClose) {
+      onClose();
+    }
   };
 
   if (!isVisible) {
@@ -68,7 +80,7 @@ export default function WelcomeModal({ forceShow = false }: WelcomeModalProps): 
             Skip for Now
           </button>
           <button 
-            className="px-4 py-2 bg-[#242E65] text-white rounded-md hover:bg-[#242E65]/90 transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             onClick={handleStartTour}
           >
             Start Tour

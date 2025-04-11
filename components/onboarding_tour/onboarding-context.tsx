@@ -31,22 +31,20 @@ export function OnboardingProvider({ children }: OnboardingProviderProps): JSX.E
   });
 
   useEffect(() => {
-    // Check if this is the first visit
+    // Check if tour has been completed previously
     const hasCompletedTour = localStorage.getItem('hasCompletedTour') === 'true';
-    const isFirstLogin = localStorage.getItem('isFirstLogin') !== 'false';
     
-    if (isFirstLogin) {
-      // Mark that this is no longer the first login
-      localStorage.setItem('isFirstLogin', 'false');
-      
-      // Start tour automatically for first-time users
-      if (!hasCompletedTour) {
-        setTourState({
-          isActive: true,
-          hasCompletedTour: false,
-          currentStep: 0
-        });
-      }
+    // Get the initial active state from localStorage
+    const initialActive = !hasCompletedTour && localStorage.getItem('hasSeenWelcome') !== 'true';
+    
+    // Only set the tour as active if this is a truly new session
+    if (initialActive) {
+      console.log("First visit detected, tour will be active initially");
+      setTourState({
+        isActive: false, // Start inactive, will be activated by welcome modal
+        hasCompletedTour: false,
+        currentStep: 0
+      });
     }
   }, []);
 
@@ -72,7 +70,7 @@ export function OnboardingProvider({ children }: OnboardingProviderProps): JSX.E
   const resetTour = (): void => {
     console.log("🔄 Resetting tour state from context", new Date().toISOString());
     localStorage.removeItem('hasCompletedTour');
-    localStorage.removeItem('isFirstLogin');
+    localStorage.removeItem('hasSeenWelcome');
     setTourState({
       isActive: false,
       hasCompletedTour: false,
