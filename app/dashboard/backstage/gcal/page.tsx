@@ -24,8 +24,6 @@ export default function CalendarPage() {
     calendar: string;
   };
 
-
-
   // Fetch data for the table
   const fetchGcals = async () => {
     try {
@@ -52,14 +50,13 @@ export default function CalendarPage() {
       const response = await fetch(`/api/gcal/calendars/${calendarId}/events`);
       const result = await response.json();
       
-      if (result.success) {
+      if (result.success && result.data.length > 0) {
         return result.data;
       } else {
-        console.log("HERE");
-        throw new Error(result.error || 'Failed to fetch events');
+        // Return an empty array if no events are found
+        return [];
       }
     } catch (err) {
-      console.log("THERE");
       console.error(`Error fetching events for calendar ${calendarId}:`, err);
       return [];
     }
@@ -82,7 +79,6 @@ export default function CalendarPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-       
         body: JSON.stringify({ calendars: selectedRows }) // Send full objects
       });
 
@@ -97,39 +93,30 @@ export default function CalendarPage() {
       for (const row of selectedRows) {
         const calendarEvents = await fetchCalendarEvents(row.id);
         
-        const formattedEvents = calendarEvents.map((event: any) => ({
-          date: event.start.dateTime 
-            ? new Date(event.start.dateTime).toLocaleDateString() 
-            : event.start.date,
-          time: event.start.dateTime 
-            ? new Date(event.start.dateTime).toLocaleTimeString() 
-            : 'All Day',
-          name: event.summary,
-          calendar: row.summary,
-        }));
-        
-        allEvents.push(...formattedEvents);
+        if (calendarEvents.length > 0) {
+          const formattedEvents = calendarEvents.map((event: any) => ({
+            date: event.start.dateTime 
+              ? new Date(event.start.dateTime).toLocaleDateString() 
+              : event.start.date,
+            time: event.start.dateTime 
+              ? new Date(event.start.dateTime).toLocaleTimeString() 
+              : 'All Day',
+            name: event.summary,
+            calendar: row.summary,
+          }));
+          allEvents.push(...formattedEvents);
+        }
       }
 
       setEvents(allEvents);
-      
+
       toast({
         title: "Success",
         description: `${selectedRows.length} calendar(s) added successfully with ${allEvents.length} events`,
       });
+      
       setSelectedRows([]);
       fetchGcals();
-
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: `${selectedRows.length} calendar(s) added successfully`,
-        });
-        setSelectedRows([]); // Clear selection after successful operation
-        fetchGcals(); // Refresh table data
-      } else {
-        throw new Error(result.error);
-      }
     } catch (error) {
       console.error("Error adding calendars:", error);
       toast({
@@ -139,7 +126,6 @@ export default function CalendarPage() {
       });
     }
   };
-
 
   // Initialize authentication and fetch data
   useEffect(() => {
@@ -157,6 +143,7 @@ export default function CalendarPage() {
         : [...prevSelectedRows, row]
     );
   };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
@@ -209,7 +196,7 @@ export default function CalendarPage() {
           </table>
   
           {/* Render Events Table */}
-          {events.length > 0 && (
+          {events.length > 0 ? (
             <>
               <h3 className="text-xl font-semibold mb-4">Calendar Events</h3>
               <table className="w-full border-collapse border border-gray-200">
@@ -233,6 +220,8 @@ export default function CalendarPage() {
                 </tbody>
               </table>
             </>
+          ) : (
+            <p>No events found for the selected calendars.</p> // Fallback message
           )}
         </div>
       )}
