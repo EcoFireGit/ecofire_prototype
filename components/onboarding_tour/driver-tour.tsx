@@ -56,6 +56,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
         },
         // Final step - no element, centered on screen
         {
+          element: "#help-button",
           popover: {
             title: "You're All Set!",
             description: "You've completed the tour. You can restart it anytime from the help button in your Navbar.",

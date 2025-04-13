@@ -60,7 +60,7 @@ const Navbar = () => {
     <div className="w-full px-4 py-3 flex justify-end items-center mt-5">
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="mr-2">
+          <Button variant="ghost" size="icon" className="mr-2" id="help-button">
             <HelpCircle className="h-6 w-6" />
           </Button>
         </PopoverTrigger>
