@@ -9,6 +9,10 @@ export default {
   ],
   theme: {
   	extend: {
+		fontFamily: {
+			heading: ['"SF Pro Display"', 'sans-serif'],
+			body: ['Archivo', 'sans-serif'],
+		  },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

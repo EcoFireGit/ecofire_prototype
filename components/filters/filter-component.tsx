@@ -17,14 +17,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, ChevronDown, Clock, Target, Smile, Users, Briefcase, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, Clock, Target, Smile, Users, Briefcase, X, Tag, Heart } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 export interface FilterComponentProps {
   onFilterChange: (filters: Record<string, any>) => void;
   businessFunctions?: { id: string; name: string }[];
   owners?: { _id: string; name: string }[];
+  tags?: { _id: string; name: string }[];
   initialFilters?: Record<string, any>;
 }
 
@@ -32,11 +37,17 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
   onFilterChange,
   businessFunctions = [],
   owners = [],
+  tags = [],
   initialFilters = {}
 }) => {
   const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
   const [hoursRange, setHoursRange] = useState<[number, number]>([0, 10]);
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagSearchValue, setTagSearchValue] = useState<string>("");
+  const [filteredTagOptions, setFilteredTagOptions] = useState<{ _id: string; name: string }[]>(tags);
+  const [activeWellnessMood, setActiveWellnessMood] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (Object.keys(initialFilters).length > 0) {
@@ -51,10 +62,125 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
       if (initialFilters.dueDate) {
         setDate(new Date(initialFilters.dueDate));
       }
+
+      // Set tags if they exist in initialFilters
+      if (initialFilters.tags && Array.isArray(initialFilters.tags)) {
+        setSelectedTags(initialFilters.tags);
+      }
     }
   }, [initialFilters]);
 
+  // Check for saved wellness filters on component mount
+  useEffect(() => {
+    const savedMood = sessionStorage.getItem('wellnessMood');
+    const savedFilters = sessionStorage.getItem('wellnessFilters');
+    
+    if (savedMood && savedFilters) {
+      try {
+        const parsedFilters = JSON.parse(savedFilters);
+        
+        // Apply the saved filters
+        setActiveWellnessMood(savedMood);
+        setFilters(parsedFilters);
+        
+        // Update hours range if necessary
+        if (parsedFilters.minHours !== undefined && parsedFilters.maxHours !== undefined) {
+          setHoursRange([parsedFilters.minHours, parsedFilters.maxHours]);
+        }
+        
+        // Apply the filters
+        onFilterChange(parsedFilters);
+        
+        // Show toast notification
+        let moodEmoji = "";
+        if (savedMood === 'sad') moodEmoji = "😀";
+        else if (savedMood === 'focused') moodEmoji = "🤓";
+        else if (savedMood === 'distracted') moodEmoji = "😵‍💫";
+        else if (savedMood === 'tired') moodEmoji = "😴";
+        
+        toast({
+          title: `${moodEmoji} Wellness filters applied`,
+          description: "Showing tasks based on your mood",
+        });
+        
+        // Clear the saved filters
+        sessionStorage.removeItem('wellnessMood');
+        sessionStorage.removeItem('wellnessFilters');
+      } catch (error) {
+        console.error('Error applying saved wellness filters:', error);
+        sessionStorage.removeItem('wellnessMood');
+        sessionStorage.removeItem('wellnessFilters');
+      }
+    }
+  }, [onFilterChange, toast]);
+
+  // Set up listener for wellness filter events
+  useEffect(() => {
+    const handleWellnessFilters = (event: any) => {
+      const { filters: wellnessFilters, mood } = event.detail;
+      
+      // Show toast notification
+      let moodEmoji = "";
+      let message = "Showing tasks based on your mood";
+      
+      if (mood === 'sad') moodEmoji = "😀";
+      else if (mood === 'focused') moodEmoji = "🤓";
+      else if (mood === 'distracted') moodEmoji = "😵‍💫";
+      else if (mood === 'tired') moodEmoji = "😴";
+      
+      toast({
+        title: `${moodEmoji} Wellness filters applied`,
+        description: message,
+      });
+      
+      // Update filter state
+      setActiveWellnessMood(mood);
+      
+      // Update the filters to match the wellness selection
+      const newFilters = { ...wellnessFilters };
+      setFilters(newFilters);
+      
+      // Update hours range if necessary
+      if (newFilters.minHours !== undefined && newFilters.maxHours !== undefined) {
+        setHoursRange([newFilters.minHours, newFilters.maxHours]);
+      }
+      
+      // Apply the filters
+      onFilterChange(newFilters);
+    };
+    
+    // Listen for the custom event
+    window.addEventListener('applyWellnessFilters', handleWellnessFilters);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('applyWellnessFilters', handleWellnessFilters);
+    };
+  }, [onFilterChange, toast]);
+
+  // Filter tags based on search input
+  useEffect(() => {
+    if (tags.length > 0) {
+      if (tagSearchValue.trim() === "") {
+        setFilteredTagOptions(tags);
+      } else {
+        const filtered = tags.filter(tag => 
+          tag.name.toLowerCase().includes(tagSearchValue.toLowerCase())
+        );
+        setFilteredTagOptions(filtered);
+      }
+    }
+  }, [tagSearchValue, tags]);
+
+  // Initialize filtered tag options with all tags
+  useEffect(() => {
+    setFilteredTagOptions(tags);
+  }, [tags]);
+
   const handleFilterChange = (key: string, value: any) => {
+    // Clear active wellness mood when filters are manually changed
+    setActiveWellnessMood(null);
+    
     const newFilters = { ...filters };
     
     if (value === null || value === undefined || value === "any") {
@@ -68,6 +194,9 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
   };
 
   const handleHoursChange = (value: [number, number]) => {
+    // Clear active wellness mood when filters are manually changed
+    setActiveWellnessMood(null);
+    
     setHoursRange(value);
     const newFilters = { ...filters };
     newFilters.minHours = value[0];
@@ -77,6 +206,9 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
   };
 
   const handleDateChange = (date: Date | undefined) => {
+    // Clear active wellness mood when filters are manually changed
+    setActiveWellnessMood(null);
+    
     setDate(date);
     const newFilters = { ...filters };
     
@@ -84,6 +216,51 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
       newFilters.dueDate = date.toISOString();
     } else {
       delete newFilters.dueDate;
+    }
+    
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
+  const handleTagToggle = (tagId: string) => {
+    // Clear active wellness mood when filters are manually changed
+    setActiveWellnessMood(null);
+    
+    let newSelectedTags;
+    
+    if (selectedTags.includes(tagId)) {
+      // Remove tag if already selected
+      newSelectedTags = selectedTags.filter(id => id !== tagId);
+    } else {
+      // Add tag if not already selected
+      newSelectedTags = [...selectedTags, tagId];
+    }
+    
+    setSelectedTags(newSelectedTags);
+    
+    const newFilters = { ...filters };
+    if (newSelectedTags.length > 0) {
+      newFilters.tags = newSelectedTags;
+    } else {
+      delete newFilters.tags;
+    }
+    
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
+  const removeTag = (tagId: string) => {
+    // Clear active wellness mood when filters are manually changed
+    setActiveWellnessMood(null);
+    
+    const newSelectedTags = selectedTags.filter(id => id !== tagId);
+    setSelectedTags(newSelectedTags);
+    
+    const newFilters = { ...filters };
+    if (newSelectedTags.length > 0) {
+      newFilters.tags = newSelectedTags;
+    } else {
+      delete newFilters.tags;
     }
     
     setFilters(newFilters);
@@ -102,8 +279,40 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
     return owner ? owner.name : id;
   };
 
+  // Helper function to get tag name by ID
+  const getTagName = (id: string) => {
+    const tag = tags.find(tag => tag._id === id);
+    return tag ? tag.name : id;
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-2 mb-4">
+      {/* Display active wellness mode if selected */}
+      {activeWellnessMood && (
+        <Badge className="bg-purple-100 text-purple-800 border-purple-300 flex items-center gap-1 h-10 hover:bg-purple-200">
+          <Heart className="h-4 w-4 text-purple-500 fill-purple-500" />
+          <span className="font-medium">
+            {activeWellnessMood === 'sad' && "Happy mood - High joy tasks"}
+            {activeWellnessMood === 'focused' && "Focused mood - High focus tasks"}
+            {activeWellnessMood === 'distracted' && "Distracted mood - High joy & low focus tasks"}
+            {activeWellnessMood === 'tired' && "Tired mood - Low focus & low joy tasks"}
+          </span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-5 w-5 p-0 ml-1 rounded-full hover:bg-purple-200"
+            onClick={() => {
+              setActiveWellnessMood(null);
+              setFilters({});
+              setHoursRange([0, 10]);
+              onFilterChange({});
+            }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </Badge>
+      )}
+
       {/* Hours Required Filter */}
       <Popover>
         <div className="relative">
@@ -135,6 +344,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
                 delete newFilters.maxHours;
                 setFilters(newFilters);
                 onFilterChange(newFilters);
+                setActiveWellnessMood(null);
               }}
             >
               <X className="h-3 w-3" />
@@ -190,6 +400,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 handleFilterChange('focusLevel', null);
+                setActiveWellnessMood(null);
               }}
             >
               <X className="h-3 w-3" />
@@ -250,6 +461,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 handleFilterChange('joyLevel', null);
+                setActiveWellnessMood(null);
               }}
             >
               <X className="h-3 w-3" />
@@ -312,6 +524,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 handleFilterChange('businessFunctionId', null);
+                setActiveWellnessMood(null);
               }}
             >
               <X className="h-3 w-3" />
@@ -361,6 +574,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 handleFilterChange('owner', null);
+                setActiveWellnessMood(null);
               }}
             >
               <X className="h-3 w-3" />
@@ -380,6 +594,104 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
                 {owner.name}
               </Button>
             ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Tags Filter */}
+      <Popover>
+        <div className="relative">
+          <PopoverTrigger asChild>
+            <Button 
+              variant={selectedTags.length > 0 ? "default" : "outline"} 
+              size="sm" 
+              className="h-10 gap-1"
+            >
+              <Tag className="h-4 w-4" />
+              <span>
+                {selectedTags.length > 0 
+                  ? `${selectedTags.length} Tag${selectedTags.length > 1 ? 's' : ''}` 
+                  : "Tags"}
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          {selectedTags.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-5 w-5 p-0 absolute -top-2 -right-2 rounded-full bg-gray-200 hover:bg-gray-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedTags([]);
+                const newFilters = { ...filters };
+                delete newFilters.tags;
+                setFilters(newFilters);
+                onFilterChange(newFilters);
+                setActiveWellnessMood(null);
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        <PopoverContent className="w-64 p-3">
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm">Select Tags</h4>
+            
+            {/* Search input */}
+            <div className="relative">
+              <Input
+                placeholder="Search tags..."
+                value={tagSearchValue}
+                onChange={(e) => setTagSearchValue(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
+            {/* Show selected tags as badges */}
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {selectedTags.map(tagId => (
+                  <Badge key={tagId} variant="secondary" className="flex items-center gap-1 pr-1">
+                    {getTagName(tagId)}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0 rounded-full hover:bg-muted"
+                      onClick={() => removeTag(tagId)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            
+            {/* Tag selection list */}
+            <div className="flex flex-col max-h-72 overflow-y-auto space-y-2">
+              {filteredTagOptions.length > 0 ? (
+                filteredTagOptions.map((tag) => (
+                  <div key={tag._id} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`tag-${tag._id}`}
+                      checked={selectedTags.includes(tag._id)}
+                      onCheckedChange={() => handleTagToggle(tag._id)}
+                    />
+                    <label
+                      htmlFor={`tag-${tag._id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {tag.name}
+                    </label>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {tagSearchValue ? "No matching tags found" : "No tags available"}
+                </p>
+              )}
+            </div>
           </div>
         </PopoverContent>
       </Popover>
@@ -428,6 +740,9 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
             setFilters({});
             setHoursRange([0, 10]);
             setDate(undefined);
+            setSelectedTags([]);
+            setTagSearchValue("");
+            setActiveWellnessMood(null);
             onFilterChange({});
           }}
         >

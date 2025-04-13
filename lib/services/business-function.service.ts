@@ -12,6 +12,16 @@ export class BusinessFunctionService {
     "Sales"
   ];
 
+  async checkNameExists(name: string): Promise<boolean> {
+    try {
+      await dbConnect();  
+      const found = await BusinessFunction.findOne({ name }).collation({ locale: 'en', strength: 2 }).exec();
+      return !!found;
+    }catch (error) {  
+      console.log(error);
+      throw new Error('Error checking business function name database');
+    } 
+  }
   // Track if defaults have been initialized for a user
   // Create a separate collection to track initialization status
   private async hasInitializedDefaults(userId: string): Promise<boolean> {
