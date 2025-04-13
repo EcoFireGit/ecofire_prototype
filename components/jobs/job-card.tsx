@@ -287,7 +287,7 @@ export function JobCard({
             router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
           }}
         >
-          <PawPrint className="h-4 w-4" />
+          <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />
         </Button>
 
         <AlertDialog>

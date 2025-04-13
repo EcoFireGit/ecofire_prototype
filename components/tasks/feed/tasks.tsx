@@ -237,7 +237,7 @@ export function NextTasks({
                         }}
                         title="Ask Jija about this task"
                       >
-                        <PawPrint className="h-4 w-4" />
+                        <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
                       </Button>
 
                       {onDeleteTask && (
