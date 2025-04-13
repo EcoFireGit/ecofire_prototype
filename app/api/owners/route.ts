@@ -15,15 +15,20 @@ export async function GET() {
     const userId = authResult.userId;
     const actualUserId = authResult.actualUserId;
     const email = authResult.email;
-    
-    // Only ensure default owner if we're in personal view (not org view)
-    // and we have the user's email
-    if (!authResult.isOrganization && email) {
-      // For personal view, use the actual user ID (not the viewId)
-      await ownerService.ensureDefaultOwner(actualUserId!, email);
+   
+    // Ensure default owner for both personal and organization views
+    if (email) {
+      // For personal view, use the actual user ID
+      if (!authResult.isOrganization) {
+        await ownerService.ensureDefaultOwner(actualUserId!, email);
+      } 
+      // For organization view, use the organization ID (viewId)
+      else {
+        await ownerService.ensureDefaultOwner(userId!, email);
+      }
     }
-    
-    const owners = await ownerService.getAllOwners(userId);
+   
+    const owners = await ownerService.getAllOwners(userId!);
     return NextResponse.json(owners);
   } catch (error) {
     console.error("Failed to get owners:", error);
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
     await validateData(name);
-    const owner = await ownerService.createOwner(name, userId);
+    const owner = await ownerService.createOwner(name, userId!);
     return NextResponse.json(owner);
   } catch (error) {
     console.error("Failed to create owner:", error);
