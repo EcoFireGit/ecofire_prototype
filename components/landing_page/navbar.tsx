@@ -76,11 +76,6 @@ const Navbar = () => {
             >
               Start Guided Tour
             </Button>
-            <div className="pt-2 border-t border-gray-100">
-              <Link href="/help" className="text-xs text-blue-600 hover:underline">
-                View help documentation
-              </Link>
-            </div>
           </div>
         </PopoverContent>
       </Popover>
