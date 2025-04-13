@@ -49,7 +49,6 @@ export class NotificationService {
                         message: message,
                         upcomingEvent: event,
                     });
-                    console.log('Notification created:', notification._id);
                     notifications.push(notification);
                 }else{
                     console.log('Notification already exists:', existingNotification._id);

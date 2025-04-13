@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
       const upcomingAppts = await getUpcomingApptsFor(user);
 
       if (upcomingAppts && upcomingAppts.length > 0) {
-        console.log(`User ${user} has upcoming appointments:`, upcomingAppts);
+        console.log(`User ${user} has upcoming appointments:`, upcomingAppts.length);
         await triggerInAppNotification(user, {
           type: 'upcoming_event',
           message: 'You have upcoming appointment(s) that may conflict with your tasks.',   

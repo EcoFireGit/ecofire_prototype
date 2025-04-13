@@ -159,7 +159,7 @@ async  getCalendarEvents(userId: string, calendarId: string) {
         allEvents.push(...events);
       }
     }
-    console.log("all events for user {}: ", userId, allEvents);
+    console.log("all events for user {}: ", userId, allEvents.length);
     return allEvents;
   } catch (error) {
     console.error('Error retrieving upcoming for user {}:', userId, error);
