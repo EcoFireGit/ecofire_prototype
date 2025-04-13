@@ -161,7 +161,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
   });
 
@@ -200,7 +200,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
   });
 
@@ -230,7 +230,7 @@ export default function OnboardingPage() {
       console.log("PI-QBO mappings generation completed");
       // After PI-QBO mappings are completed, redirect to jobs page
       // We'll handle job impact calculation in the handleReturnToDashboard function
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
     onError(error) {
       console.error("PI-QBO Mappings completion error:", error);
@@ -241,7 +241,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
   });
 
@@ -274,10 +274,8 @@ export default function OnboardingPage() {
   };
 
   const handleReturnToDashboard = async () => {
-    // Set a flag to trigger the welcome modal when redirected to jobs page
-    localStorage.setItem("showWelcomeModal", "true");
-    localStorage.setItem("hasSeenWelcome", "false"); // Reset this flag to ensure the modal shows
-
+    // Set the flag to trigger the welcome modal and tour
+    // Add the 'tour=true' parameter directly to the URL instead of just using localStorage
     // Show a toast to inform the user that PIs are being generated
     toast({
       title: "Generating Progress Indicators",
@@ -355,7 +353,7 @@ export default function OnboardingPage() {
       }
 
       // After all mappings are generated, redirect to jobs page
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     } catch (err) {
       console.error("Error during PI or mapping generation:", err);
       toast({
@@ -364,8 +362,8 @@ export default function OnboardingPage() {
           "There was a problem generating PIs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      // Redirect to jobs page instead of dashboard with the onboarding tour 
+      router.push("/dashboard/jobs?tour=true");
     }
   };
 

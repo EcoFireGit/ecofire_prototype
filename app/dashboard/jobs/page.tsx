@@ -2,43 +2,76 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TaskFeedView from "@/components/tasks/feed/task-feed-view";
 import JobsPage from "@/components/jobs/job-feed-view";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { WelcomeModal, TourController } from "@/components/onboarding_tour";
 import { OnboardingProvider } from "@/components/onboarding_tour/onboarding-context";
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
+
+// Import the event name (or define it here if you prefer)
+const TOUR_START_EVENT = "directTourStart";
 
 export default function FeedPage() {
   const [showOnboardingTour, setShowOnboardingTour] = useState(false);
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const pathname = usePathname();
+  const initialLoadRef = useRef(true);
   
-  // Check for tour parameter in URL
+  // Handle URL parameters on initial load (for page loads and redirects)
   useEffect(() => {
-    const tourParam = searchParams.get('tour');
-    
-    if (tourParam === 'true') {
-      console.log('Tour parameter detected in URL, showing welcome modal');
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
       
-      // Clear the tour parameter from URL to allow restarting the tour later
-      // by replacing the current URL with a clean one (without query params)
-      // This uses setTimeout to ensure the tour starts before removing the parameter
-      setTimeout(() => {
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, '', cleanUrl);
-      }, 100);
+      // Check for tour parameter in URL
+      const tourParam = searchParams.get('tour');
+      const fromOnboarding = pathname === '/dashboard/jobs' && tourParam === 'true';
       
-      // Reset all relevant flags to ensure tour starts properly
-      localStorage.removeItem('hasSeenWelcome');
-      localStorage.removeItem('hasCompletedTour');
+      // Also check localStorage (for backward compatibility)
+      const hasShowWelcomeFlag = localStorage.getItem("showWelcomeModal") === "true";
       
-      // Show the welcome modal
-      setShowOnboardingTour(true);
+      console.log('Initial tour detection:', { 
+        fromUrlParam: !!tourParam, 
+        fromLocalStorage: hasShowWelcomeFlag,
+        pathname 
+      });
+      
+      if (fromOnboarding || hasShowWelcomeFlag) {
+        console.log('Tour needs to be shown on initial load');
+        
+        // Clear localStorage flags 
+        localStorage.removeItem("showWelcomeModal");
+        
+        // Show welcome modal
+        setShowOnboardingTour(true);
+      }
     }
-  }, [searchParams]); // This will re-run whenever the URL parameters change
+  }, [searchParams, pathname]);
   
-  // Handle tour completion
-  const handleTourEnd = () => {
-    console.log("Tour ended or skipped, resetting state");
+  // Listen for the direct tour start event (for same-page tour starts)
+  useEffect(() => {
+    const handleDirectTourStart = () => {
+      console.log("🎯 Received direct tour start event - showing welcome modal immediately");
+      setShowOnboardingTour(true);
+    };
+    
+    // Add event listener for our custom direct event
+    window.addEventListener(TOUR_START_EVENT, handleDirectTourStart);
+    
+    // Also keep the legacy event listener for backward compatibility
+    const handleLegacyTourStart = () => {
+      console.log("Received legacy tour start event");
+      setShowOnboardingTour(true);
+    };
+    window.addEventListener("startOnboardingTour", handleLegacyTourStart);
+    
+    return () => {
+      window.removeEventListener(TOUR_START_EVENT, handleDirectTourStart);
+      window.removeEventListener("startOnboardingTour", handleLegacyTourStart);
+    };
+  }, []);
+  
+  // Handle tour completion or skipping
+  const handleCloseWelcomeModal = () => {
+    console.log("Welcome modal closed");
     setShowOnboardingTour(false);
   };
   
@@ -58,11 +91,11 @@ export default function FeedPage() {
         </TabsContent>
       </Tabs>
       
-      {/* Show welcome modal immediately when triggered */}
+      {/* Show welcome modal when triggered */}
       {showOnboardingTour && (
         <WelcomeModal 
           forceShow={true} 
-          onClose={handleTourEnd} 
+          onClose={handleCloseWelcomeModal} 
         />
       )}
     </OnboardingProvider>

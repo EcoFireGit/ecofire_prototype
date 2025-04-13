@@ -10,6 +10,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+// Create a direct custom event to handle same-page tour starts
+const TOUR_START_EVENT = "directTourStart";
+
 const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -33,20 +36,22 @@ const Navbar = () => {
   const handleStartTourClick = () => {
     console.log("Start Tour button clicked", { currentPath: pathname });
     
-    // Reset all tour flags to ensure we start fresh
-    localStorage.removeItem('hasSeenWelcome');
-    localStorage.removeItem('hasCompletedTour');
-    
     if (pathname === "/dashboard/jobs") {
-      // If already on jobs page, use URL approach with a unique timestamp
+      // If already on jobs page, use a direct event for immediate response
+      console.log("Already on jobs page, using direct event");
+      
+      // 1. Add tour parameter to URL for consistency/bookmarking
       const timestamp = Date.now();
       const newUrl = `/dashboard/jobs?tour=true&t=${timestamp}`;
+      window.history.pushState({}, "", newUrl);
       
-      console.log(`Navigating to ${newUrl} (soft navigation)`);
-      router.push(newUrl);
+      // 2. Dispatch a direct custom event for immediate handling
+      const directEvent = new CustomEvent(TOUR_START_EVENT);
+      console.log("Dispatching direct tour start event");
+      window.dispatchEvent(directEvent);
     } else {
       // Navigate to jobs page with tour query param
-      console.log("Navigating to jobs page with tour param");
+      console.log("Navigating to jobs page with tour parameter");
       router.push("/dashboard/jobs?tour=true");
     }
   };
@@ -98,4 +103,6 @@ const Navbar = () => {
   );
 };
 
+// Export both the component and the event name
 export default Navbar;
+export { TOUR_START_EVENT };
