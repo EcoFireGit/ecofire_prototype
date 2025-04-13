@@ -35,7 +35,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
           element: '#wellness-check',
           popover: {
             title: 'Wellness Check',
-            description: 'Track your wellbeing and set reminders for breaks and wellness activities.',
+            description: 'Reprioritize your jobs based on your mood.',
           }
         },
         // Step 3: Google Calendar Integration
