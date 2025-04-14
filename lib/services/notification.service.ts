@@ -3,7 +3,7 @@ import dbConnect from '../mongodb';
 
 
 export class NotificationService {
-   async getAllUnseenNotificationsAfterCurrentTimeForUser(userId: string, currentTimeISO: Date) : Promise<Notification[]> {
+   async getFirstUnseenNotificationsAfterCurrentTimeForUser(userId: string, currentTimeISO: Date) : Promise<Notification> {
         try {
             await dbConnect();
 
@@ -16,11 +16,10 @@ export class NotificationService {
             });
 
             
-            const filtered = notifications.filter(event => {
-                return new Date(event.upcomingEvent.start?.dateTime) > currentTimeISO;
-            }
-                );
-
+            const filtered = notifications
+            .filter(event => new Date(event.upcomingEvent.start?.dateTime) > currentTimeISO)
+            .sort((a, b) => new Date(a.upcomingEvent.start?.dateTime).getTime() - new Date(b.upcomingEvent.start?.dateTime).getTime())[0];
+        
                 return filtered;
         }catch (error) {
             console.error('Error getting notification:', error);

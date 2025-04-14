@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   // Convert currentTime string to a Date object
     const userCurrentTime = new Date(currentTime);
     const reqTime = request
-    const notifications = await notificationService.getAllUnseenNotificationsAfterCurrentTimeForUser(userId!, currentTime);
+    const notifications = await notificationService.getFirstUnseenNotificationsAfterCurrentTimeForUser(userId!, currentTime);
 
     return NextResponse.json(
       { success: true,
