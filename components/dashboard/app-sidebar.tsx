@@ -243,6 +243,8 @@ export function AppSidebar() {
           <SidebarMenuItem>
                 <OrganizationSwitcher />
           </SidebarMenuItem>
+          {/* hiding settings and download business plan as they are empty pages
+          
           <SidebarMenuItem>
             <SidebarMenuButton size={"lg"} asChild>
               <a href="#">
@@ -258,7 +260,7 @@ export function AppSidebar() {
                 <span>Business Success Plan</span>
               </a>
             </SidebarMenuButton>
-          </SidebarMenuItem>
+          </SidebarMenuItem> */}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
