@@ -356,7 +356,7 @@ export default function JobsPage() {
       // First fetch business functions
       const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
-
+      
       let currentBusinessFunctions = [];
       if (bfResult.success) {
         currentBusinessFunctions = bfResult.data.map((bf: any) => ({
