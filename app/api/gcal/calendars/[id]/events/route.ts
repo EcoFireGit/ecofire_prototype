@@ -17,7 +17,7 @@ export async function GET(request: NextRequest,
     const userId = authResult.userId;
     const { id } = await params;  // Awaiting params to get id
     
-    const getPrioriCalendarEvents= await getCalendarEvents(userId, id);
+    const getPrioriCalendarEvents= await getCalendarEvents(userId!, id);
 
     return NextResponse.json({
       success: true,
