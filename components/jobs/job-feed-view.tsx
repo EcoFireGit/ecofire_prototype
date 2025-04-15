@@ -15,6 +15,7 @@ import { JobsGrid } from "@/components/jobs/jobs-grid";
 import FilterComponent from "@/components/filters/filter-component";
 import SortingComponent from "@/components/sorting/sorting-component";
 import { useSearchParams } from "next/navigation";
+import AppointmentNotification from "../gcal/notification";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -911,6 +912,7 @@ export default function JobsPage() {
           </div>
         )}
       </div>
+      <AppointmentNotification minutes={15} />s
     </div>
   );
 }
