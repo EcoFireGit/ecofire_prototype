@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    const userId = authResult.userId;
+    const userId = authResult.actualUserId;
     // Enhanced validation
 
     const url = new URL(request.url);

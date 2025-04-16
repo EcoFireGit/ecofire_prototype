@@ -2,12 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EventsService } from '@/lib/services/gcal.events.service';
 import { NotificationService } from '@/lib/services/notification.service';
-import { TaskService } from '@/lib/services/task.service';
+import  ownerService from '@/lib/services/owner.service';
 
 export async function GET(req: NextRequest) {
   try {
-    const taskService = new TaskService();
-    const users = await taskService.getAllUsersWithAssignedTasks();
+    const users = await ownerService.getAllApplicationUsers();
 
     for (const user of users) {
       const upcomingAppts = await getUpcomingApptsFor(user);
