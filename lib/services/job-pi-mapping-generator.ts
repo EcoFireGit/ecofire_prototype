@@ -1,4 +1,3 @@
-
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { PIService } from "./pi.service";
@@ -14,11 +13,15 @@ export class JobPIMappingGenerator {
     this.mappingService = new MappingService();
   }
 
-  async generateMappingsForJob(userId: string, job: any, businessDescription: string = ""): Promise<boolean> {
+  async generateMappingsForJob(
+    userId: string,
+    job: any,
+    businessDescription: string = "",
+  ): Promise<boolean> {
     try {
       // Fetch all existing PIs to provide to the AI
       const pis = await this.piService.getAllPIs(userId);
-      
+
       if (!pis || pis.length === 0) {
         console.log("No PIs found, skipping mapping generation");
         return false;
@@ -47,9 +50,8 @@ export class JobPIMappingGenerator {
 
       // Create a system prompt (similar to onboarding)
       const systemPrompt =
-        "You are an elite business strategy consultant specializing in guiding startups and small businesses. " +
-        `You are consulting a business owner ${businessDescription ? 'whose business mission statement is: "' + businessDescription + '".' : '.'} ` +
-        "You need to create appropriate mappings between jobs and progress indicators.";
+        "You are an elite business strategy consultant with decades of experience across multiple industries, specializing in guiding startups and small businesses from ideation through scaling based on cross-industry best practices." +
+        `You are advising a business owner ${businessDescription ? 'whose business mission statement is: "' + businessDescription + '".' : "."} `;
 
       // Use generateText to generate the mappings
       const { text } = await generateText({
@@ -73,7 +75,11 @@ export class JobPIMappingGenerator {
             const mapping = mappingsData[key];
 
             // Verify mapping has required fields
-            if (!mapping.jobId || !mapping.piId || mapping.piImpactValue === undefined) {
+            if (
+              !mapping.jobId ||
+              !mapping.piId ||
+              mapping.piImpactValue === undefined
+            ) {
               console.warn("Mapping missing required fields:", mapping);
               continue;
             }
@@ -92,10 +98,10 @@ export class JobPIMappingGenerator {
               userId,
             );
             console.log(
-              `Mapping created: ${mapping.jobName} -> ${mapping.piName}`,
+              `Mapping created: ${mapping.jobName} -> ${mapping.piName} with impact value ${mapping.piImpactValue}`,
             );
           }
-          
+
           // Successfully created mappings
           return true;
         } catch (error) {
