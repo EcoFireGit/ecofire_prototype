@@ -24,8 +24,8 @@ export default function RootLayout({
               <SignInButton />
             </SignedOut>
             <SignedIn>
-              <Navbar />
-              <TaskProvider>{children}</TaskProvider>
+                <Navbar />
+                <TaskProvider>{children}</TaskProvider>
             </SignedIn>
             <Toaster />
           </body>

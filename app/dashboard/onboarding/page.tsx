@@ -161,7 +161,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
   });
 
@@ -200,7 +200,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
   });
 
@@ -230,7 +230,7 @@ export default function OnboardingPage() {
       console.log("PI-QBO mappings generation completed");
       // After PI-QBO mappings are completed, redirect to jobs page
       // We'll handle job impact calculation in the handleReturnToDashboard function
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
     onError(error) {
       console.error("PI-QBO Mappings completion error:", error);
@@ -241,7 +241,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     },
   });
 
@@ -274,6 +274,8 @@ export default function OnboardingPage() {
   };
 
   const handleReturnToDashboard = async () => {
+    // Set the flag to trigger the welcome modal and tour
+    // Add the 'tour=true' parameter directly to the URL instead of just using localStorage
     // Show a toast to inform the user that PIs are being generated
     toast({
       title: "Generating Progress Indicators",
@@ -351,7 +353,7 @@ export default function OnboardingPage() {
       }
 
       // After all mappings are generated, redirect to jobs page
-      router.push("/dashboard/jobs");
+      router.push("/dashboard/jobs?tour=true");
     } catch (err) {
       console.error("Error during PI or mapping generation:", err);
       toast({
@@ -360,8 +362,8 @@ export default function OnboardingPage() {
           "There was a problem generating PIs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs");
+      // Redirect to jobs page instead of dashboard with the onboarding tour 
+      router.push("/dashboard/jobs?tour=true");
     }
   };
 
@@ -544,7 +546,7 @@ export default function OnboardingPage() {
               value={monthsInBusiness}
               onChange={(e) =>
                 setMonthsInBusiness(
-                  e.target.value === "" ? 0 : Number(e.target.value),
+                  e.target.value === "" ? 0 : Number(e.target.value)
                 )
               }
               placeholder="0"
@@ -561,7 +563,7 @@ export default function OnboardingPage() {
               value={annualRevenue}
               onChange={(e) =>
                 setAnnualRevenue(
-                  e.target.value === "" ? 0 : Number(e.target.value),
+                  e.target.value === "" ? 0 : Number(e.target.value)
                 )
               }
               placeholder="Enter your annual revenue"
@@ -745,7 +747,7 @@ export default function OnboardingPage() {
                                         Deadline:
                                       </span>{" "}
                                       {new Date(
-                                        outcome.deadline,
+                                        outcome.deadline
                                       ).toLocaleDateString()}
                                     </p>
                                   </div>
@@ -758,7 +760,7 @@ export default function OnboardingPage() {
                     } catch (e) {
                       console.error(
                         "Error parsing outcome data for display:",
-                        e,
+                        e
                       );
                     }
                     return (
@@ -893,7 +895,7 @@ export default function OnboardingPage() {
                                                   </p>
                                                 )}
                                               </div>
-                                            ),
+                                            )
                                           )}
                                         </div>
                                       </div>
@@ -955,22 +957,28 @@ export default function OnboardingPage() {
             <Button
               onClick={handleReturnToDashboard}
               disabled={
-                isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading
+                isJobsLoading ||
+                isPILoading ||
+                isMappingsLoading ||
+                isPiQboMappingsLoading
               }
               className="flex items-center gap-2"
             >
-              {(isJobsLoading || isPILoading || isMappingsLoading || isPiQboMappingsLoading) && (
+              {(isJobsLoading ||
+                isPILoading ||
+                isMappingsLoading ||
+                isPiQboMappingsLoading) && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
               {isJobsLoading
                 ? "Generating Jobs..."
                 : isPILoading
-                  ? "Generating PIs..."
-                  : isMappingsLoading
-                    ? "Generating Job-PI Mappings..."
-                    : isPiQboMappingsLoading
-                      ? "Generating PI-QBO Mappings..."
-                      : "Go to Jobs feed"}
+                ? "Generating PIs..."
+                : isMappingsLoading
+                ? "Generating Job-PI Mappings..."
+                : isPiQboMappingsLoading
+                ? "Generating PI-QBO Mappings..."
+                : "Go to Jobs feed"}
             </Button>
           </div>
         </div>
