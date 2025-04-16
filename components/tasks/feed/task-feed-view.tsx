@@ -15,7 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
+import {getPrioriCalendarId} from '@/lib/services/gcal.service';
 // Type imports only
 import type { Task } from "@/lib/models/task.model";
 import type { Jobs } from "@/lib/models/job.model";
@@ -578,11 +578,8 @@ export default function TaskFeedView() {
   };
 
   // Add task to calendar
-    // Handle add to calendar
-  // Handle add to calendar
   const handleAddToCalendar = async (task: any) => {
     try {
-      // Ensure task.date is defined before proceeding
       if (!task.date) {
         toast({
           title: "Error",
@@ -591,28 +588,32 @@ export default function TaskFeedView() {
         });
         return;
       }
-
-      // Calculate start and end times (assuming 1-hour duration for simplicity)
+  
+      // Calculate start and end times (1-hour duration)
       const startDate = new Date(task.date);
       const endDate = new Date(startDate);
-      endDate.setHours(startDate.getHours() + 1); // Add one hour
-
-      // Format the dates for Google Calendar URL
+      endDate.setHours(startDate.getHours() + task.requiredHours);
+  
       const startDateStr = startDate.toISOString().replace(/[-:]/g, '').slice(0, -5) + 'Z';
       const endDateStr = endDate.toISOString().replace(/[-:]/g, '').slice(0, -5) + 'Z';
-
-      // Create Google Calendar URL
-      const googleCalendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(task.title)}&dates=${startDateStr}/${endDateStr}&details=${encodeURIComponent(task.description)}&sf=true&output=xml`;
-
-      // Open Google Calendar in a new tab
+  
+      // Fetch the calendar ID from the server
+      const response = await fetch('/api/gcal/calendars/prioriwise'); // or your actual route
+      if (!response.ok) {
+        throw new Error('Failed to fetch calendar ID');
+      }
+  
+      const { calendarId } = await response.json();
+  
+      // Construct Google Calendar URL
+      const googleCalendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(task.title)}&dates=${startDateStr}/${endDateStr}&details=${encodeURIComponent(task.description)}&sf=true&output=xml&src=${calendarId}`;
+  
       window.open(googleCalendarUrl, '_blank');
-
+  
       toast({
         title: "Redirecting to Google Calendar",
         description: "You can now add this event to your calendar.",
       });
-
-
     } catch (error) {
       console.error("Error adding task to calendar:", error);
       toast({
@@ -622,7 +623,7 @@ export default function TaskFeedView() {
       });
     }
   };
-
+  
 
   // Edit task
   const handleEditTask = (task: any) => {

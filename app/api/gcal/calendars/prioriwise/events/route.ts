@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }    
     const savedPrioriCalendarEvent= await eventService.createEvent (userId, eventData);
-
+   
     return NextResponse.json({
       success: true,
       data: savedPrioriCalendarEvent

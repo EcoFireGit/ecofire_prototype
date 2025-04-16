@@ -201,6 +201,24 @@ export async function createPrioriCalendar(userId: string): Promise<calendar_v3.
   }
 }
 
+export async function getPrioriCalendarId(userId: string): Promise<string> {
+  try {
+    await dbConnect();
+
+    const gcalAuth = await getCalendarAuthForUser(userId);
+
+    // Only return the calendar ID if it exists in the DB
+    if (gcalAuth.prioriwiseCalendar?.id) {
+      return gcalAuth.prioriwiseCalendar.id;
+    }
+
+    throw new Error('Prioriwise calendar ID not found in database');
+  } catch (error) {
+    console.error('Error in getPrioriCalendarId:', error);
+    throw new Error('Could not retrieve calendar ID from database');
+  }
+}
+
 async function getCalendarAuthForUser(userId: string) {
   const gcalAuth = await GCalAuth.findOne({ userId: userId });
   if (!gcalAuth) {
