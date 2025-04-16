@@ -27,7 +27,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
           element: '#jobs-tasks-section',
           popover: {
             title: 'Jobs & Tasks',
-            description: 'Here you can manage all your tasks and job assignments. This is your central hub for productivity.',
+            description: 'Welcome to your zone of genius! Here you can manage all your tasks and job assignments that have already been prioritized for you.'
           }
         },
         // Step 2: Wellness Check

@@ -17,6 +17,7 @@ import SortingComponent from "@/components/sorting/sorting-component";
 import { useSearchParams } from "next/navigation";
 import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
+import { QBOCircles } from "@/components/qbo/qbo-circles";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -795,28 +796,46 @@ export default function JobsPage() {
           />
         </div>
 
-        {viewMode === "grid" ? (
-          <JobsGrid
-            data={sortedActiveJobs} // Use sorted jobs instead of filtered
-            onEdit={handleOpenEdit}
-            onDelete={handleDelete}
-            onSelect={handleActiveSelect}
-            onOpenTasksSidebar={handleOpenTasksSidebar}
-            taskOwnerMap={taskOwnerMap}
-            selectedJobs={selectedActiveJobs}
-          />
-        ) : (
-          <DataTable
-            columns={columns(
-              handleOpenEdit,
-              handleDelete,
-              handleActiveSelect,
-              handleOpenTasksSidebar,
-              taskOwnerMap
+        <div className="flex flex-col md:flex-row gap-12">
+          {/* Main job grid/table - takes 2/3 of the space */}
+          <div className="md:w-3/5 md:pr-6">
+            {viewMode === "grid" ? (
+              <JobsGrid
+                data={sortedActiveJobs} // Use sorted jobs instead of filtered
+                onEdit={handleOpenEdit}
+                onDelete={handleDelete}
+                onSelect={handleActiveSelect}
+                onOpenTasksSidebar={handleOpenTasksSidebar}
+                taskOwnerMap={taskOwnerMap}
+                selectedJobs={selectedActiveJobs}
+              />
+            ) : (
+              <DataTable
+                columns={columns(
+                  handleOpenEdit,
+                  handleDelete,
+                  handleActiveSelect,
+                  handleOpenTasksSidebar,
+                  taskOwnerMap
+                )}
+                data={sortedActiveJobs} // Use sorted jobs instead of filtered
+              />
             )}
-            data={sortedActiveJobs} // Use sorted jobs instead of filtered
-          />
-        )}
+          </div>
+          
+          {/* QBO Circles Component - takes 2/5 of the space with padding */}
+          <div className="md:w-2/5 mb-8 md:sticky md:top-20 md:self-start md:pl-10 md:border-l border-gray-200">
+            <QBOCircles 
+              onSelectJob={(jobId) => {
+                // Find the job and open its tasks sidebar
+                const job = [...activeJobs, ...completedJobs].find(j => j.id === jobId);
+                if (job) {
+                  handleOpenTasksSidebar(job);
+                }
+              }} 
+            />
+          </div>
+        </div>
 
         {/* Show completed jobs section if there are any to display or if no filters are active */}
         {(filteredCompletedJobs.length > 0 ||
