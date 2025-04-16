@@ -144,9 +144,39 @@ export default function CalendarPage() {
     );
   };
 
-  const handleGetNotifications = async () => {
+  const handleGetGcal = async () => {
     try {
       const response = await fetch('http://localhost:3000/api/gcal', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "GCal  retrieved successfully",
+        });
+        console.log("result :", result);
+      } else {
+        throw new Error(result.error || 'Failed to get gcal');
+      }
+    } catch (error) {
+      console.error("Error getting GCal :", error);
+      toast({
+        title: "Error",
+        description: "Failed to get GCal ",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGetNotifications = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/notifications', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -190,10 +220,16 @@ export default function CalendarPage() {
               <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar
             </Button>
             <Button
+              onClick={handleGetGcal}
+              className="bg-green-500 hover:bg-green-600"
+            >
+              Get api/gcal (Testing)
+            </Button>
+            <Button
               onClick={handleGetNotifications}
               className="bg-green-500 hover:bg-green-600"
             >
-              Get GCal Notifications (Testing)
+              Get api/notification (Testing)
             </Button>
           </div>
 

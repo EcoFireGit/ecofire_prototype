@@ -934,7 +934,7 @@ export default function JobsPage() {
           </div>
         )}
       </div>
-      <AppointmentNotification minutes={15} />s
+      <AppointmentNotification />
     </div>
   );
 }

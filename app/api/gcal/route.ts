@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     for (const user of users) {
       const upcomingAppts = await getUpcomingApptsFor(user);
-
+      console.log(`User ${user} upcoming appointments:`, upcomingAppts.length);
       if (upcomingAppts && upcomingAppts.length > 0) {
         console.log(`User ${user} has upcoming appointments:`, upcomingAppts.length);
         await triggerInAppNotification(user, {

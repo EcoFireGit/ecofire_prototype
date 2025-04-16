@@ -1,83 +1,236 @@
 "use client";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Clock } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { UserButton } from "@clerk/nextjs";
+import { Search, Bell, HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-interface AppointmentNotificationProps {
-  minutes?: number;
+// Create a direct custom event to handle same-page tour starts
+const TOUR_START_EVENT = "directTourStart";
+
+// Interface for notification data
+interface NotificationData {
+  _id: {
+    $oid: string;
+  };
+  userId: string;
+  type: string;
+  message: string;
+  upcomingEvent: {
+    summary: string;
+    start: {
+      dateTime: string;
+      timeZone: string;
+    };
+    end: {
+      dateTime: string;
+      timeZone: string;
+    };
+  };
+  seen: boolean;
+  createdAt: {
+    $date: string;
+  };
 }
 
-export const AppointmentNotification = ({ minutes = 15 }: AppointmentNotificationProps) => {
-  const [visible, setVisible] = useState(false);
-  const pathname = usePathname();
+const Navbar = () => {
   const router = useRouter();
- 
-  // Set up event listener for notification button click
+  const pathname = usePathname();
+  const [hasNotification, setHasNotification] = useState(false);
+  const [notification, setNotification] = useState<NotificationData | null>(null);
+  const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
+  
+  // Function to fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      console.log('Fetching notifications...');
+      const response = await fetch('/api/notifications');
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications');
+      }
+      
+      const data = await response.json();
+      console.log('Notification data received:', data);
+      
+      if (data.success && data.data) {
+        const notificationData = data.data as NotificationData;
+        console.log('Parsed notification data:', notificationData);
+        
+        // Check if there's a notification
+        if (notificationData && notificationData.upcomingEvent) {
+          // Calculate time remaining
+          const eventTime = new Date(notificationData.upcomingEvent.start.dateTime);
+          const currentTime = new Date();
+          const diffMs = eventTime.getTime() - currentTime.getTime();
+          const diffMinutes = Math.floor(diffMs / 60000);
+          
+          console.log('Event time:', eventTime);
+          console.log('Current time:', currentTime);
+          console.log('Minutes remaining until event:', diffMinutes);
+          
+          // Only set notification if event hasn't passed
+          if (diffMinutes > 0) {
+            setNotification(notificationData);
+            setHasNotification(true);
+            setMinutesRemaining(diffMinutes);
+            console.log('Notification active - event is in the future');
+          } else {
+            // Event has passed, clear notification
+            setNotification(null);
+            setHasNotification(false);
+            setMinutesRemaining(null);
+            console.log('Notification cleared - event has passed');
+          }
+        } else {
+          // No notification data
+          setNotification(null);
+          setHasNotification(false);
+          setMinutesRemaining(null);
+          console.log('No valid notification data found');
+        }
+      } else {
+        console.log('No notification data in response or request failed');
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+  
+  // Set up polling for notifications every 60 seconds
   useEffect(() => {
-    const handleShowNotification = () => {
-      setVisible(true);
-    };
-   
-    window.addEventListener('showAppointmentNotification', handleShowNotification);
-   
-    return () => {
-      window.removeEventListener('showAppointmentNotification', handleShowNotification);
-    };
+    // Fetch on initial load
+    fetchNotifications();
+    
+    // Set up interval
+    const intervalId = setInterval(() => {
+      fetchNotifications();
+    }, 60000); // 60 seconds
+    
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
   }, []);
- 
-  if (!visible) return null;
- 
+  
+  // Handle create job button click
+  const handleCreateJobClick = (e: { preventDefault: () => void; }) => {
+    // If already on jobs page, prevent default navigation and use custom event
+    if (pathname === "/dashboard/jobs") {
+      e.preventDefault();
+     
+      // Create and dispatch a custom event that the JobsPage can listen for
+      const event = new CustomEvent("openJobDialog");
+      window.dispatchEvent(event);
+    } else {
+      // Normal navigation to jobs page with query param
+      router.push("/dashboard/jobs?open=true");
+    }
+  };
+
+  // Handle notification click
+  const handleNotificationClick = () => {
+    if (hasNotification) {
+      setHasNotification(false);
+      
+      // Pass the event details to the appointment notification
+      if (notification && minutesRemaining) {
+        const eventDetails = {
+          title: notification.upcomingEvent.summary,
+          minutes: minutesRemaining
+        };
+        
+        console.log('Opening notification with event details:', eventDetails);
+        
+        // Trigger the appointment notification to show with event details
+        window.dispatchEvent(new CustomEvent("showAppointmentNotification", {
+          detail: eventDetails
+        }));
+      } else {
+        console.log('No notification data available for display');
+      }
+    }
+  };
+
+  // Handle start tour button click
+  const handleStartTourClick = () => {
+    console.log("Start Tour button clicked", { currentPath: pathname });
+    
+    if (pathname === "/dashboard/jobs") {
+      // If already on jobs page, use a direct event for immediate response
+      console.log("Already on jobs page, using direct event");
+      
+      // 1. Add tour parameter to URL for consistency/bookmarking
+      const timestamp = Date.now();
+      const newUrl = `/dashboard/jobs?tour=true&t=${timestamp}`;
+      window.history.pushState({}, "", newUrl);
+      
+      // 2. Dispatch a direct custom event for immediate handling
+      const directEvent = new CustomEvent(TOUR_START_EVENT);
+      console.log("Dispatching direct tour start event");
+      window.dispatchEvent(directEvent);
+    } else {
+      // Navigate to jobs page with tour query param
+      console.log("Navigating to jobs page with tour parameter");
+      router.push("/dashboard/jobs?tour=true");
+    }
+  };
+  
   return (
-    <div className="fixed bottom-6 left-[17rem] z-50 bg-white rounded-lg shadow-lg p-4 max-w-md border border-blue-300 animate-in slide-in-from-bottom-10 duration-300">
-      <div className="flex items-start gap-3">
-        <div className="bg-blue-100 p-2 rounded-full">
-          <Clock className="h-5 w-5 text-blue-600" />
-        </div>
-       
-        <div className="flex-1">
-          <p className="text-sm font-medium mb-1">Hey! 👋</p>
-          <h4 className="font-medium text-base mb-1">Google calendar sync</h4>
-          <p className="text-sm mb-1">
-            You have an Doctor's appointment in <span className="text-green-600 font-medium">{minutes} mins</span>.
-          </p>
-          <p className="text-sm text-gray-600 mb-3">Do you want to reprioritize your tasks?</p>
-         
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-[#f05523] text-[#f05523] hover:bg-[#f05523]/10"
-              onClick={() => {
-                setVisible(false);
-                // Handle reprioritize - apply filter for quick tasks
-                if (pathname === "/dashboard/jobs") {
-                  // If on jobs page, apply filter directly
-                  window.dispatchEvent(new CustomEvent('applyTimeFilter', {
-                    detail: { minutes }
-                  }));
-                } else {
-                  // Store time for filter and navigate to jobs page
-                  sessionStorage.setItem('appointmentTime', minutes.toString());
-                  router.push('/dashboard/jobs');
-                }
-              }}
+    <div className="w-full px-4 py-3 flex justify-end items-center mt-5">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="mr-2" id="help-button">
+            <HelpCircle className="h-6 w-6" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-4" side="bottom" align="end" sideOffset={10}>
+          <div className="space-y-3">
+            <h4 className="font-medium text-base">Need help?</h4>
+            <p className="text-sm text-gray-500">
+              Get familiar with our interface by taking a guided tour of the main features.
+            </p>
+            <Button 
+              className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
+              onClick={handleStartTourClick}
             >
-              Reprioritize
-            </Button>
-           
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setVisible(false)}
-            >
-              Cancel
+              Start Guided Tour
             </Button>
           </div>
-        </div>
-      </div>
+        </PopoverContent>
+      </Popover>
+      
+      <Link href="/dashboard/search">
+        <Button variant="ghost" size="icon" className="mr-2">
+          <Search className="h-6 w-6" />
+        </Button>
+      </Link>
+
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="mr-4 relative" 
+        onClick={handleNotificationClick}
+      >
+        <Bell className="h-6 w-6" />
+        {hasNotification && (
+          <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#f05523]" />
+        )}
+      </Button>
+
+      <Link href="/dashboard/jobs?open=true" onClick={handleCreateJobClick}>
+        <Button className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
+          Create a Job
+        </Button>
+      </Link>
+      <UserButton />
     </div>
   );
 };
 
-export default AppointmentNotification;
+// Export both the component and the event name
+export default Navbar;
+export { TOUR_START_EVENT };
