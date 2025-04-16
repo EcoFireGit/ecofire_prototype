@@ -168,13 +168,18 @@ export async function createPrioriCalendar(userId: string): Promise<calendar_v3.
             
     const calendar = await getCalendar(gcalAuth.auth);
 
-    if(gcalAuth.prioriCalendar && gcalAuth.prioriCalendar.id ) { //exists in db
+    if(gcalAuth.prioriwiseCalendar && gcalAuth.prioriwiseCalendar.id ) { //exists in db
       //does prioriwise calendar exist in google? 
-      const priorCalExists = await calendar.calendars.get({
-        calendarId: gcalAuth.prioriCalendar.id
-      });
-      if(priorCalExists && priorCalExists.data){
-        return priorCalExists.data;
+      try {
+        const priorCalExists = await calendar.calendars.get({
+          calendarId: gcalAuth.prioriwiseCalendar.id
+        });
+
+        if(priorCalExists && priorCalExists.data){
+          return priorCalExists.data;
+        }
+      }catch(error){
+        console.log("calendar does not exist");
       }
     }
 
