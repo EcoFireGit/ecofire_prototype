@@ -10,11 +10,19 @@ import { Gcal, convertGcalsToTableData } from "@/components/gcal/table/columns";
 
 export default function CalendarPage() {
   const [data, setData] = useState<Gcal[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authInitialized, setAuthInitialized] = useState(false); // Track CalendarAuth completion
-  const [selectedRows, setSelectedRows] = useState<Gcal[]>([]); // Store full objects
+  const [authInitialized, setAuthInitialized] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<Gcal[]>([]);
   const { toast } = useToast();
+
+  type CalendarEvent = {
+    date: string;
+    time: string;
+    name: string;
+    calendar: string;
+  };
 
   // Fetch data for the table
   const fetchGcals = async () => {
@@ -37,6 +45,23 @@ export default function CalendarPage() {
     }
   };
 
+  const fetchCalendarEvents = async (calendarId: string) => {
+    try {
+      const response = await fetch(`/api/gcal/calendars/${calendarId}/events`);
+      const result = await response.json();
+      
+      if (result.success && result.data.length > 0) {
+        return result.data;
+      } else {
+        // Return an empty array if no events are found
+        return [];
+      }
+    } catch (err) {
+      console.error(`Error fetching events for calendar ${calendarId}:`, err);
+      return [];
+    }
+  };
+
   const handleCreate = async () => {
     if (selectedRows.length === 0) {
       toast({
@@ -48,26 +73,50 @@ export default function CalendarPage() {
     }
 
     try {
+      // First add the calendars
       const response = await fetch('/api/gcal/calendars', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ calendars: selectedRows }), // Send full objects
+        body: JSON.stringify({ calendars: selectedRows }) // Send full objects
       });
 
       const result = await response.json();
 
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: `${selectedRows.length} calendar(s) added successfully`,
-        });
-        setSelectedRows([]); // Clear selection after successful operation
-        fetchGcals(); // Refresh table data
-      } else {
+      if (!result.success) {
         throw new Error(result.error);
       }
+
+      // Then fetch events for each selected calendar
+      const allEvents = [];
+      for (const row of selectedRows) {
+        const calendarEvents = await fetchCalendarEvents(row.id);
+        
+        if (calendarEvents.length > 0) {
+          const formattedEvents = calendarEvents.map((event: any) => ({
+            date: event.start.dateTime 
+              ? new Date(event.start.dateTime).toLocaleDateString() 
+              : event.start.date,
+            time: event.start.dateTime 
+              ? new Date(event.start.dateTime).toLocaleTimeString() 
+              : 'All Day',
+            name: event.summary,
+            calendar: row.summary,
+          }));
+          allEvents.push(...formattedEvents);
+        }
+      }
+
+      setEvents(allEvents);
+
+      toast({
+        title: "Success",
+        description: `${selectedRows.length} calendar(s) added successfully with ${allEvents.length} events`,
+      });
+      
+      setSelectedRows([]);
+      fetchGcals();
     } catch (error) {
       console.error("Error adding calendars:", error);
       toast({
@@ -77,7 +126,6 @@ export default function CalendarPage() {
       });
     }
   };
-
 
   // Initialize authentication and fetch data
   useEffect(() => {
@@ -95,44 +143,47 @@ export default function CalendarPage() {
         : [...prevSelectedRows, row]
     );
   };
-      return (
-      <>
-        <div className="p-6 max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
-          {/* Render CalendarAuth */}
-          <CalendarAuth />
 
-        </div>
-
-        {authInitialized && (
-        <div className="p-4">
-          <div className="container mx-auto py-6">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">Calendars</h1>
-              <Button onClick={handleCreate} className="bg-blue-500 hover:bg-blue-600">
-                <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar
-              </Button>
-            </div>
-
-            {/* Render Table */}
-            <table className="w-full border-collapse border border-gray-200">
-              <thead>
-                <tr>
-                  <th className="border border-gray-300 p-2 text-left">Select</th>
-                  <th className="border border-gray-300 p-2 text-left">ID</th>
-                  <th className="border border-gray-300 p-2 text-left">Etag</th>
-                  <th className="border border-gray-300 p-2 text-left">Summary</th>
-                  <th className="border border-gray-300 p-2 text-left">Timezone</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row) => (
-                <tr key={row.id} className={`border border-gray-300 ${selectedRows.some((selectedRow)=> selectedRow.id
-                  === row.id) ? 'bg-blue-100' : ''}`}
-                  >
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
+      <CalendarAuth />
+  
+      {authInitialized && (
+        <div className="py-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Calendars</h2>
+            <Button onClick={handleCreate} className="bg-blue-500 hover:bg-blue-600">
+              <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar
+            </Button>
+          </div>
+  
+          {/* Render Calendar Table */}
+          <table className="w-full border-collapse border border-gray-200 mb-8">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2 text-left">Select</th>
+                <th className="border border-gray-300 p-2 text-left">ID</th>
+                <th className="border border-gray-300 p-2 text-left">Etag</th>
+                <th className="border border-gray-300 p-2 text-left">Summary</th>
+                <th className="border border-gray-300 p-2 text-left">Timezone</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row) => (
+                <tr
+                  key={row.id}
+                  className={`border border-gray-300 ${
+                    selectedRows.some((selectedRow) => selectedRow.id === row.id)
+                      ? 'bg-blue-100'
+                      : ''
+                  }`}
+                >
                   <td className="p-2">
-                    <input type="checkbox" checked={selectedRows.some((selectedRow)=> selectedRow.id === row.id)}
-                    onChange={() => toggleRowSelection(row)} // Pass full row object
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.some((selectedRow) => selectedRow.id === row.id)}
+                      onChange={() => toggleRowSelection(row)}
                     />
                   </td>
                   <td className="p-2">{row.id}</td>
@@ -140,13 +191,40 @@ export default function CalendarPage() {
                   <td className="p-2">{row.summary}</td>
                   <td className="p-2">{row.timeZone}</td>
                 </tr>
-                ))}
-              </tbody>
-
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+  
+          {/* Render Events Table */}
+          {events.length > 0 ? (
+            <>
+              <h3 className="text-xl font-semibold mb-4">Calendar Events</h3>
+              <table className="w-full border-collapse border border-gray-200">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-300 p-2 text-left">Date</th>
+                    <th className="border border-gray-300 p-2 text-left">Time</th>
+                    <th className="border border-gray-300 p-2 text-left">Event Name</th>
+                    <th className="border border-gray-300 p-2 text-left">Calendar Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((event, idx) => (
+                    <tr key={idx} className="border border-gray-300">
+                      <td className="p-2">{event.date}</td>
+                      <td className="p-2">{event.time}</td>
+                      <td className="p-2">{event.name}</td>
+                      <td className="p-2">{event.calendar}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : (
+            <p>No events found for the selected calendars.</p> // Fallback message
+          )}
         </div>
-        )}
-      </>
-      );
-      }
+      )}
+    </div>
+  );
+}
