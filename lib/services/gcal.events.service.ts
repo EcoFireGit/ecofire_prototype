@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import { google, calendar_v3 } from 'googleapis';
 import GCalAuth from '../models/gcal-auth.model';
 import {  getAllEventsForTwoWeeks } from './google.calendar.provider';
 
@@ -7,11 +7,13 @@ import dbConnect from '../mongodb';
 import getCalendar from './google.calendar.provider';
 
 
-async function createEvent(userId: string, eventData: any) {    
+export class EventsService {
+
+ async  createEvent(userId: string, eventData: any) {    
 
     try {
     await dbConnect();
-    const prioriwiseCalendarExists = await getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
+    const prioriwiseCalendarExists = await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
     const calendar = await getCalendar(prioriwiseCalendarExists.auth);
     const calendarId = prioriwiseCalendarExists.prioriwiseCalendar.id;
@@ -23,7 +25,7 @@ async function createEvent(userId: string, eventData: any) {
     return response.data;
     
   }catch(error){
-    if (isErrorWithCode(error) && error.code === 404) {
+    if (this.isErrorWithCode(error) && error.code === 404) {
       throw new Error('Calendar not found');
     }
     console.log("Error in createEvent: ", error);
@@ -31,15 +33,15 @@ async function createEvent(userId: string, eventData: any) {
   }
 }
 
-function isErrorWithCode(error: unknown): error is { code: number } {
+ isErrorWithCode(error: unknown): error is { code: number } {
   return typeof error === 'object' && error !== null && 'code' in error;
 }
 
-export async function updateEvent(userId: string, eventId: string, updatedEventDetails: any) {
+ async  updateEvent(userId: string, eventId: string, updatedEventDetails: any) {
 
   try {
     await dbConnect();
-    const prioriwiseCalendarExists = await getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
+    const prioriwiseCalendarExists = await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
     const calendar = await getCalendar(prioriwiseCalendarExists.auth);
     const calendarId = prioriwiseCalendarExists.prioriwiseCalendar.id;
@@ -62,7 +64,7 @@ export async function updateEvent(userId: string, eventId: string, updatedEventD
     });
     return res.data;
   } catch(error){
-    if (isErrorWithCode(error) && error.code === 404) {
+    if (this.isErrorWithCode(error) && error.code === 404) {
       throw new Error('Calendar or Event not found');
     }
     console.log("Error in updateEvent: ", error);
@@ -71,10 +73,10 @@ export async function updateEvent(userId: string, eventId: string, updatedEventD
 }
 
 
-export async function deleteEvent(userId: string, eventId: string) {
+async  deleteEvent(userId: string, eventId: string) {
   try {
     await dbConnect();
-    const prioriwiseCalendarExists = await getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
+    const prioriwiseCalendarExists = await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
       const calendar = await getCalendar(prioriwiseCalendarExists.auth);
       const calendarId = prioriwiseCalendarExists.prioriwiseCalendar.id;
@@ -91,10 +93,10 @@ export async function deleteEvent(userId: string, eventId: string) {
   }
 }
 
-export async function getPrioriwiseEvents(userId: string) {
+async  getPrioriwiseEvents(userId: string) {
   try {
     await dbConnect();
-    const prioriwiseCalendarExists = await getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
+    const prioriwiseCalendarExists = await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
     const events = await getAllEventsForTwoWeeks(prioriwiseCalendarExists.auth, prioriwiseCalendarExists.prioriwiseCalendar.id);
     
@@ -105,10 +107,10 @@ export async function getPrioriwiseEvents(userId: string) {
   }
 }
 
-export async function getPrioriwiseCalendarEvents(userId: string, calendarId: string) {
+async getPrioriwiseCalendarEvents(userId: string, calendarId: string) {
   try {
     await dbConnect();
-    const prioriwiseCalendarExists = await getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
+    const prioriwiseCalendarExists = await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
     const events = await getAllEventsForTwoWeeks(prioriwiseCalendarExists.auth, calendarId);    
     return events;
@@ -117,7 +119,8 @@ export async function getPrioriwiseCalendarEvents(userId: string, calendarId: st
     throw error;
   }
 }
-export async function getCalendarEvents(userId: string, calendarId: string) {
+
+async  getCalendarEvents(userId: string, calendarId: string) {
   try {
     await dbConnect();
     const calendarAuth = await GCalAuth.findOne({ userId: userId});
@@ -132,8 +135,39 @@ export async function getCalendarEvents(userId: string, calendarId: string) {
     throw error;
   }
 }
+ async getUpcomingCalendarEventsFor(userId: string): Promise<calendar_v3.Schema$Event[]> {
+  try {
+    await dbConnect();
+    const calendarAuth = await GCalAuth.findOne({ userId: userId});
+    if (!calendarAuth || !calendarAuth.auth) {
+      console.log("calendars not connected for user: ", userId);
+      return [];
+    }
+    if (!calendarAuth.calendars || calendarAuth.calendars.length === 0) {
+      console.log("calendars not selected for : ", userId);
+      return [];
+    }
+    
+    console.log("continuing for user: ", userId);
+    const allEvents =[];
+    const max_hours = 2; // Define max_hours with an appropriate value
+    //calendarIds
+    const calendarIds = calendarAuth.calendars.map((calendar: { id: string }) => calendar.id);
+    for (const calendarId of calendarIds) {
+      const events = await this.getAllEventsFor(calendarAuth.auth, calendarId);
+      if (events) {
+        allEvents.push(...events);
+      }
+    }
+    console.log("all events for user {}: ", userId, allEvents.length);
+    return allEvents;
+  } catch (error) {
+    console.error('Error retrieving upcoming for user {}:', userId, error);
+    throw error;
+  }
+}
 
-async function getCalendarAuthForUserIfPrioriwiseCalendarExists(userId: string) {
+async getCalendarAuthForUserIfPrioriwiseCalendarExists(userId: string) {
   const prioriwiseCalendarExists = await GCalAuth.findOne({ userId: userId, prioriwiseCalendar: { $ne: null } });
   if (!prioriwiseCalendarExists || !prioriwiseCalendarExists.prioriwiseCalendar || !prioriwiseCalendarExists.prioriwiseCalendar.id) {
     throw new Error('either user or Prioriwise Calendar not connected');
@@ -141,5 +175,35 @@ async function getCalendarAuthForUserIfPrioriwiseCalendarExists(userId: string) 
   return prioriwiseCalendarExists;
 }
 
-export default createEvent;
+
+async  getAllEventsFor(auth: any, calendarId: any): Promise<calendar_v3.Schema$Event[]|null> {
+  try {
+    const calendar = await getCalendar(auth);
+    const now = new Date();
+  
+    const max_hours = Number(process.env.REPRIORITIZE_EVENT_TIME_IN_HOURS!);
+    if (isNaN(max_hours)) {
+      throw new Error('REPRIORITIZE_EVENT_TIME_IN_HOURS must be a valid number');
+    }
+  
+    const endTime = new Date(now.getTime() + max_hours * 60 * 60 * 1000); // Add max_hours to current time
+    const startTime = now.toISOString();
+    const endTimeISO = endTime.toISOString();
+    const res = await calendar.events.list({
+      calendarId: calendarId, 
+      timeMin: startTime, // Events starting after this time
+      timeMax: endTimeISO,   // Events ending before this time
+      singleEvents: true,   // Ensure events that repeat are expanded
+      orderBy: 'startTime', // Order by start time
+    });
+    const events = res.data.items || null;
+    return events;
+  } catch (error) {
+    console.error('Error retrieving events:', error);
+    throw error;
+  }
+}
+  
+}
+
 

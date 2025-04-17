@@ -3,6 +3,16 @@ import Owner from "../models/owner.model";
 import { Owner as OwnerType } from "../models/owner.model";
 
 class OwnerService {
+
+  async getAllApplicationUsers(): Promise<string[]> {
+    try {
+      await dbConnect();
+      const users = await Owner.distinct('userId');
+      return users;
+    } catch (error) {
+      throw new Error('Error fetching users from database');
+    }
+  }  
   async getAllOwners(userId: string): Promise<OwnerType[]> {
     try {
       await dbConnect();
