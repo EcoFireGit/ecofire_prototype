@@ -7,7 +7,7 @@ interface TaskCardsProps {
   data: Task[];
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
-  onComplete: (id: string, completed: boolean) => void;
+  onComplete: (id: string, jobid:string, completed: boolean) => void;
   ownerMap: Record<string, string>;
 }
 
@@ -43,7 +43,7 @@ export function TaskCards({
   }, [data]);
   
   // Custom complete handler that updates local state immediately
-  const handleComplete = async (id: string, completed: boolean) => {
+  const handleComplete = async (id: string, jobid: string, completed: boolean) => {
     // First update the local state for immediate feedback
     setSortedTasks(current => {
       // Update the specific task's completed status
@@ -63,7 +63,7 @@ export function TaskCards({
     });
     
     // Then call the actual handler (which updates the server)
-    await onComplete(id, completed);
+    await onComplete(id, jobid, completed);
   };
   
   // Handle empty state
