@@ -1,8 +1,9 @@
 {
-    "crons": [
-      {
-        "path": "/api/gcal",
-        "schedule": "0 * * * *"
-      }
-    ]
-  }
+  "crons": [
+    {
+      "path": "/api/gcal",
+      "schedule": "0 10 * * *"
+    }
+  ]
+}
+
