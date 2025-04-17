@@ -129,15 +129,4 @@ export class TaskService {
       throw new Error("Error fetching next tasks from database");
     }
   }
-  
-  async getAllUsersWithAssignedTasks(): Promise<string[]> {
-    try {
-      await dbConnect();
-      const users = await Task.distinct('userId');
-      return users;
-    } catch (error) {
-      throw new Error('Error fetching users from database');
-      throw new Error("Error fetching next tasks from database");
-    }
-  }  
 }

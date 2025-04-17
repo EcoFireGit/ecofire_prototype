@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateAuth } from '@/lib/utils/auth-utils';
 import { getAllEventsForTwoWeeks } from '@/lib/services/google.calendar.provider';
-import { EventsService } from "@/lib/services/gcal.events.service";
+import { getCalendarEvents } from "@/lib/services/gcal.events.service";
 
-
-const eventService = new EventsService();
 
 export async function GET(request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -19,7 +17,7 @@ export async function GET(request: NextRequest,
     const userId = authResult.userId;
     const { id } = await params;  // Awaiting params to get id
     
-    const getPrioriCalendarEvents= await eventService.getCalendarEvents(userId, id);
+    const getPrioriCalendarEvents= await getCalendarEvents(userId, id);
 
     return NextResponse.json({
       success: true,

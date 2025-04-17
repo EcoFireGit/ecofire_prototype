@@ -1,9 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import {EventsService} from '@/lib/services/gcal.events.service';
+import createEvent, {getPrioriwiseEvents} from '@/lib/services/gcal.events.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
-
-const eventService = new EventsService();
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }    
-    const savedPrioriCalendarEvent= await eventService.createEvent (userId, eventData);
+    const savedPrioriCalendarEvent= await createEvent (userId, eventData);
 
     return NextResponse.json({
       success: true,
@@ -47,7 +45,7 @@ export async function GET(request: NextRequest) {
     
     const userId = authResult.userId;
     
-    const getPrioriCalendarEvents= await eventService.getPrioriwiseEvents(userId);
+    const getPrioriCalendarEvents= await getPrioriwiseEvents(userId);
 
     return NextResponse.json({
       success: true,
