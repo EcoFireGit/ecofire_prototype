@@ -159,7 +159,7 @@ export async function getCalendarsFromGoogle(userId: string): Promise<calendar_v
   }
 }
  
-export async function createPrioriCalendar(userId: string): Promise<calendar_v3.Schema$Calendar> {
+export async function createPrioriCalendar(userId: string): Promise<{ calendar: calendar_v3.Schema$Calendar, alreadyExists: boolean }> {
   try {
     await dbConnect();
 
@@ -176,7 +176,10 @@ export async function createPrioriCalendar(userId: string): Promise<calendar_v3.
         });
 
         if(priorCalExists && priorCalExists.data){
-          return priorCalExists.data;
+          return { 
+            calendar: priorCalExists.data, 
+            alreadyExists: true 
+          };
         }
       }catch(error){
         console.log("calendar does not exist");
@@ -199,7 +202,10 @@ export async function createPrioriCalendar(userId: string): Promise<calendar_v3.
 
       //save to db
       const savedAuth = gcalAuth.save();
-      return savedAuth.prioriwiseCalendar;
+      return { 
+        calendar: savedAuth.prioriwiseCalendar,
+        alreadyExists: false
+      };
   } catch (error) {
     console.log("Error in createPrioriCalendar" , error);
     throw new Error('Error creating calendar');
