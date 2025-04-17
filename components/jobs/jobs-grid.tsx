@@ -23,7 +23,7 @@ export function JobsGrid({
   selectedJobs
 }: JobsGridProps) {
   return (
-    <div className="w-full grid grid-cols-1 gap-6">
+    <div style={{ width: '900px' }} className="grid grid-cols-1 gap-6">
       {data.length > 0 ? (
         data.map((job) => (
           <div key={job.id} style={{ width: '100%' }}>
