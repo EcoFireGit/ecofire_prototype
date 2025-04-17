@@ -15,7 +15,6 @@ import { JobsGrid } from "@/components/jobs/jobs-grid";
 import FilterComponent from "@/components/filters/filter-component";
 import SortingComponent from "@/components/sorting/sorting-component";
 import { useSearchParams } from "next/navigation";
-import AppointmentNotification from "../gcal/notification";
 import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
 import { QBOCircles } from "@/components/qbo/qbo-circles";
@@ -934,7 +933,6 @@ export default function JobsPage() {
           </div>
         )}
       </div>
-      <AppointmentNotification />
     </div>
   );
 }

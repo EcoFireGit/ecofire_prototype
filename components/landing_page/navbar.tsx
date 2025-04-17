@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { Search, Bell, HelpCircle } from "lucide-react";
+import { Search, Bell, HelpCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Popover,
@@ -45,6 +45,8 @@ const Navbar = () => {
   const [hasNotification, setHasNotification] = useState(false);
   const [notification, setNotification] = useState<NotificationData | null>(null);
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
+  const [appointmentVisible, setAppointmentVisible] = useState(false);
+  const [eventTitle, setEventTitle] = useState<string>("");
   
   // Function to fetch notifications
   const fetchNotifications = async () => {
@@ -79,12 +81,15 @@ const Navbar = () => {
             setNotification(notificationData);
             setHasNotification(true);
             setMinutesRemaining(diffMinutes);
+            // Store the event title
+            setEventTitle(notificationData.upcomingEvent.summary);
             console.log('Notification active - event is in the future');
           } else {
             // Event has passed, clear notification
             setNotification(null);
             setHasNotification(false);
             setMinutesRemaining(null);
+            setEventTitle("");
             console.log('Notification cleared - event has passed');
           }
         } else {
@@ -92,6 +97,7 @@ const Navbar = () => {
           setNotification(null);
           setHasNotification(false);
           setMinutesRemaining(null);
+          setEventTitle("");
           console.log('No valid notification data found');
         }
       } else {
@@ -110,7 +116,7 @@ const Navbar = () => {
     // Set up interval
     const intervalId = setInterval(() => {
       fetchNotifications();
-    }, 100000); // 100 seconds
+    }, 60000); // 60 seconds
     
     // Cleanup interval on component unmount
     return () => clearInterval(intervalId);
@@ -136,22 +142,38 @@ const Navbar = () => {
     if (hasNotification) {
       setHasNotification(false);
       
-      // Pass the event details to the appointment notification
+      // Show the appointment notification directly
       if (notification && minutesRemaining) {
-        const eventDetails = {
-          title: notification.upcomingEvent.summary,
+        console.log('Opening notification with event details:', {
+          title: eventTitle,
           minutes: minutesRemaining
-        };
+        });
         
-        console.log('Opening notification with event details:', eventDetails);
-        
-        // Trigger the appointment notification to show with event details
-        window.dispatchEvent(new CustomEvent("showAppointmentNotification", {
-          detail: eventDetails
-        }));
+        setAppointmentVisible(true);
       } else {
         console.log('No notification data available for display');
       }
+    }
+  };
+
+  // Handle reprioritize button click
+  const handleReprioritize = () => {
+    setAppointmentVisible(false);
+    
+    // Navigate to jobs page with filters if not already there
+    if (pathname === "/dashboard/jobs") {
+      // If on jobs page, apply filter directly
+      if (minutesRemaining) {
+        window.dispatchEvent(new CustomEvent('applyTimeFilter', {
+          detail: { minutes: minutesRemaining }
+        }));
+      }
+    } else {
+      // Store time for filter and navigate to jobs page
+      if (minutesRemaining) {
+        sessionStorage.setItem('appointmentTime', minutesRemaining.toString());
+      }
+      router.push('/dashboard/jobs');
     }
   };
 
@@ -180,54 +202,95 @@ const Navbar = () => {
   };
   
   return (
-    <div className="w-full px-4 py-3 flex justify-end items-center mt-5">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="mr-2" id="help-button">
-            <HelpCircle className="h-6 w-6" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-4" side="bottom" align="end" sideOffset={10}>
-          <div className="space-y-3">
-            <h4 className="font-medium text-base">Need help?</h4>
-            <p className="text-sm text-gray-500">
-              Get familiar with our interface by taking a guided tour of the main features.
-            </p>
-            <Button 
-              className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
-              onClick={handleStartTourClick}
-            >
-              Start Guided Tour
+    <>
+      <div className="w-full px-4 py-3 flex justify-end items-center mt-5">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="mr-2" id="help-button">
+              <HelpCircle className="h-6 w-6" />
             </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-4" side="bottom" align="end" sideOffset={10}>
+            <div className="space-y-3">
+              <h4 className="font-medium text-base">Need help?</h4>
+              <p className="text-sm text-gray-500">
+                Get familiar with our interface by taking a guided tour of the main features.
+              </p>
+              <Button 
+                className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
+                onClick={handleStartTourClick}
+              >
+                Start Guided Tour
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+        
+        <Link href="/dashboard/search">
+          <Button variant="ghost" size="icon" className="mr-2">
+            <Search className="h-6 w-6" />
+          </Button>
+        </Link>
+
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="mr-4 relative" 
+          onClick={handleNotificationClick}
+        >
+          <Bell className="h-6 w-6" />
+          {hasNotification && (
+            <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#f05523]" />
+          )}
+        </Button>
+
+        <Link href="/dashboard/jobs?open=true" onClick={handleCreateJobClick}>
+          <Button className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
+            Create a Job
+          </Button>
+        </Link>
+        <UserButton />
+      </div>
       
-      <Link href="/dashboard/search">
-        <Button variant="ghost" size="icon" className="mr-2">
-          <Search className="h-6 w-6" />
-        </Button>
-      </Link>
-
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="mr-4 relative" 
-        onClick={handleNotificationClick}
-      >
-        <Bell className="h-6 w-6" />
-        {hasNotification && (
-          <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#f05523]" />
-        )}
-      </Button>
-
-      <Link href="/dashboard/jobs?open=true" onClick={handleCreateJobClick}>
-        <Button className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
-          Create a Job
-        </Button>
-      </Link>
-      <UserButton />
-    </div>
+      {/* Appointment Notification Dialog */}
+      {appointmentVisible && minutesRemaining && (
+        <div className="fixed bottom-6 left-[17rem] z-50 bg-white rounded-lg shadow-lg p-4 max-w-md border border-blue-300 animate-in slide-in-from-bottom-10 duration-300">
+          <div className="flex items-start gap-3">
+            <div className="bg-blue-100 p-2 rounded-full">
+              <Clock className="h-5 w-5 text-blue-600" />
+            </div>
+           
+            <div className="flex-1">
+              <p className="text-sm font-medium mb-1">Hey! 👋</p>
+              <h4 className="font-medium text-base mb-1">Google calendar sync</h4>
+              <p className="text-sm mb-1">
+                You have an <span className="font-medium">{eventTitle}</span> in <span className="text-green-600 font-medium">{minutesRemaining} mins</span>.
+              </p>
+              <p className="text-sm text-gray-600 mb-3">Do you want to reprioritize your tasks?</p>
+             
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-[#f05523] text-[#f05523] hover:bg-[#f05523]/10"
+                  onClick={handleReprioritize}
+                >
+                  Reprioritize
+                </Button>
+               
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAppointmentVisible(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
