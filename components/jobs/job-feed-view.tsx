@@ -14,11 +14,15 @@ import { Task } from "@/components/tasks/types";
 import { JobsGrid } from "@/components/jobs/jobs-grid";
 import FilterComponent from "@/components/filters/filter-component";
 import SortingComponent from "@/components/sorting/sorting-component";
+import { useSearchParams } from "next/navigation";
+import { StartTourButton, WelcomeModal } from "../onboarding_tour";
+import { DebugTourElements } from "../onboarding_tour/debug-helper";
+import { QBOCircles } from "@/components/qbo/qbo-circles";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
   jobs: Jobs[],
-  businessFunctions: BusinessFunctionForDropdown[]
+  businessFunctions: BusinessFunctionForDropdown[],
 ): Job[] {
   return jobs.map((job) => {
     // Find the business function name if it exists
@@ -57,7 +61,7 @@ export default function JobsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | undefined>(undefined);
   const [selectedActiveJobs, setSelectedActiveJobs] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [selectedCompletedJobs, setSelectedCompletedJobs] = useState<
     Set<string>
@@ -73,6 +77,7 @@ export default function JobsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
 
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
   // Effect to update sorted jobs when filtered jobs change
   useEffect(() => {
@@ -176,7 +181,7 @@ export default function JobsPage() {
       taskIds.forEach((id) => queryParams.append("ids", id));
 
       const tasksResponse = await fetch(
-        `/api/tasks/batch?${queryParams.toString()}`
+        `/api/tasks/batch?${queryParams.toString()}`,
       );
       const tasksResult = await tasksResponse.json();
 
@@ -248,31 +253,31 @@ export default function JobsPage() {
 
       // Make API call to update all selected jobs
       const promises = jobIds.map((id) =>
-        fetch(`/api/jobs/${id}`, {
+        fetch(`/api/jobs/${id}?updateTasks=true`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ isDone: true }),
-        })
+        }),
       );
 
       await Promise.all(promises);
 
       // Move selected jobs from active to completed
       const jobsToMove = activeJobs.filter((job) =>
-        selectedActiveJobs.has(job.id)
+        selectedActiveJobs.has(job.id),
       );
       const updatedJobs = jobsToMove.map((job) => ({ ...job, isDone: true }));
 
       setActiveJobs((prev) =>
-        prev.filter((job) => !selectedActiveJobs.has(job.id))
+        prev.filter((job) => !selectedActiveJobs.has(job.id)),
       );
       setCompletedJobs((prev) => [...prev, ...updatedJobs]);
 
       // Also update filtered jobs
       setFilteredActiveJobs((prev) =>
-        prev.filter((job) => !selectedActiveJobs.has(job.id))
+        prev.filter((job) => !selectedActiveJobs.has(job.id)),
       );
       setFilteredCompletedJobs((prev) => [...prev, ...updatedJobs]);
 
@@ -306,25 +311,25 @@ export default function JobsPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ isDone: false }),
-        })
+        }),
       );
 
       await Promise.all(promises);
 
       // Move selected jobs from completed to active
       const jobsToMove = completedJobs.filter((job) =>
-        selectedCompletedJobs.has(job.id)
+        selectedCompletedJobs.has(job.id),
       );
       const updatedJobs = jobsToMove.map((job) => ({ ...job, isDone: false }));
 
       setCompletedJobs((prev) =>
-        prev.filter((job) => !selectedCompletedJobs.has(job.id))
+        prev.filter((job) => !selectedCompletedJobs.has(job.id)),
       );
       setActiveJobs((prev) => [...prev, ...updatedJobs]);
 
       // Also update filtered jobs
       setFilteredCompletedJobs((prev) =>
-        prev.filter((job) => !selectedCompletedJobs.has(job.id))
+        prev.filter((job) => !selectedCompletedJobs.has(job.id)),
       );
       setFilteredActiveJobs((prev) => [...prev, ...updatedJobs]);
 
@@ -386,7 +391,7 @@ export default function JobsPage() {
         // Use the business functions we just fetched
         const allJobs = convertJobsToTableData(
           jobsResult.data,
-          currentBusinessFunctions
+          currentBusinessFunctions,
         );
 
         // Separate active and completed jobs
@@ -412,6 +417,34 @@ export default function JobsPage() {
 
   useEffect(() => {
     fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    // Check if "open=true" is in the URL
+    const shouldOpenDialog = searchParams.get("open") === "true";
+
+    // If the parameter exists, open the dialog in create mode
+    if (shouldOpenDialog) {
+      setEditingJob(undefined);
+      setDialogOpen(true);
+    }
+  }, [searchParams]);
+
+  // Add this new useEffect to listen for the custom event from the Navbar
+  useEffect(() => {
+    // Event handler to open the dialog
+    const handleOpenDialog = () => {
+      setEditingJob(undefined);
+      setDialogOpen(true);
+    };
+
+    // Add the event listener
+    window.addEventListener("openJobDialog", handleOpenDialog);
+
+    // Clean up the event listener when component unmounts
+    return () => {
+      window.removeEventListener("openJobDialog", handleOpenDialog);
+    };
   }, []);
 
   // Function to handle filter changes
@@ -523,7 +556,7 @@ export default function JobsPage() {
           // Compare using tag names instead of IDs
           if (
             !selectedTagNames.every((tagName) =>
-              nextTask.tags.includes(tagName)
+              nextTask.tags.includes(tagName),
             )
           ) {
             matches = false;
@@ -619,7 +652,7 @@ export default function JobsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/jobs/${id}`, {
+      const response = await fetch(`/api/jobs/${id}?deleteTasks=true`, {
         method: "DELETE",
       });
 
@@ -763,28 +796,47 @@ export default function JobsPage() {
           />
         </div>
 
-        {viewMode === "grid" ? (
-          <JobsGrid
-            data={sortedActiveJobs} // Use sorted jobs instead of filtered
-            onEdit={handleOpenEdit}
-            onDelete={handleDelete}
-            onSelect={handleActiveSelect}
-            onOpenTasksSidebar={handleOpenTasksSidebar}
-            taskOwnerMap={taskOwnerMap}
-            selectedJobs={selectedActiveJobs}
-          />
-        ) : (
-          <DataTable
-            columns={columns(
-              handleOpenEdit,
-              handleDelete,
-              handleActiveSelect,
-              handleOpenTasksSidebar,
-              taskOwnerMap
+        <div className="flex flex-col xl:flex-row gap-8">
+          {/* Main job grid/table - takes appropriate space based on screen size */}
+          <div className="w-full xl:w-1/2 xl:pr-6">
+            {viewMode === "grid" ? (
+              <JobsGrid
+                data={sortedActiveJobs} // Use sorted jobs instead of filtered
+                onEdit={handleOpenEdit}
+                onDelete={handleDelete}
+                onSelect={handleActiveSelect}
+                onOpenTasksSidebar={handleOpenTasksSidebar}
+                taskOwnerMap={taskOwnerMap}
+                selectedJobs={selectedActiveJobs}
+              />
+            ) : (
+              <DataTable
+                columns={columns(
+                  handleOpenEdit,
+                  handleDelete,
+                  handleActiveSelect,
+                  handleOpenTasksSidebar,
+                  taskOwnerMap,
+                )}
+                data={sortedActiveJobs} // Use sorted jobs instead of filtered
+              />
             )}
-            data={sortedActiveJobs} // Use sorted jobs instead of filtered
-          />
-        )}
+          </div>
+          {/* QBO Circles Component - takes appropriate space with padding */}
+          <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:border-l border-gray-200">
+            <QBOCircles
+              onSelectJob={(jobId) => {
+                // Find the job and open its tasks sidebar
+                const job = [...activeJobs, ...completedJobs].find(
+                  (j) => j.id === jobId,
+                );
+                if (job) {
+                  handleOpenTasksSidebar(job);
+                }
+              }}
+            />
+          </div>
+        </div>
 
         {/* Show completed jobs section if there are any to display or if no filters are active */}
         {(filteredCompletedJobs.length > 0 ||
@@ -817,7 +869,7 @@ export default function JobsPage() {
                   handleDelete,
                   handleCompletedSelect,
                   handleOpenTasksSidebar,
-                  taskOwnerMap
+                  taskOwnerMap,
                 )}
                 data={sortedCompletedJobs} // Use sorted jobs instead of filtered
               />

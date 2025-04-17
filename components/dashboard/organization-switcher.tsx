@@ -26,13 +26,13 @@ export function OrganizationSwitcher() {
     };
 
   return (
-    <div className="p-2">
+    <div className="p-2" id='org-view-toggle'>
       <div className="flex items-center space-x-2">
         <label className="text-sm font-medium">Current View:</label>
         <select 
           value={isOrganization ? currentViewId : 'personal'}
           onChange={handleChange}
-          className="border rounded px-2 py-1 text-sm"
+          className="border rounded px-2 py-1 text-sm text-black"
         >
           <option value="personal">Personal</option>
           {organizations.map(org => (

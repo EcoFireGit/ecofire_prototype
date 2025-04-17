@@ -216,7 +216,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col w-full max-w-4xl pb-48 py-24 mx-auto">
+    <div className="flex flex-col w-full max-w-4xl pb-48 p-10 mx-auto">
       <h1 className="text-2xl font-bold mb-6">Jija Assistant</h1>
 
       {/* Recent Chats Section */}

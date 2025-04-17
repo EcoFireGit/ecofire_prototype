@@ -120,14 +120,7 @@ export default function TaskFeedView() {
       // Try to fetch tasks using the next-steps endpoint first (which we know works)
       let allTasks = [];
       try {
-        // First try to get all tasks
-        const allTasksResponse = await fetch("/api/tasks");
-        const allTasksResult = await allTasksResponse.json();
-
-        if (allTasksResult.success && Array.isArray(allTasksResult.data)) {
-          allTasks = allTasksResult.data;
-        } else {
-          // Fallback to fetching next tasks only
+          // next tasks function fetches next tasks, followed by all tasks.
           console.log("Falling back to next-steps endpoint");
           const nextTasksResponse = await fetch("/api/tasks/next-steps");
           const nextTasksResult = await nextTasksResponse.json();
@@ -138,7 +131,7 @@ export default function TaskFeedView() {
             throw new Error("Failed to fetch tasks from either endpoint");
           }
         }
-      } catch (taskError) {
+      catch (taskError) {
         console.error("Error fetching tasks:", taskError);
         // Try another approach - fetch tasks by job IDs
 
