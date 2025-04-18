@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import {updateEvent, deleteEvent} from '@/lib/services/gcal.events.service';
+import {EventsService } from '@/lib/services/gcal.events.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
+
+ const eventsService = new EventsService();
 
 export async function PATCH(
     request: NextRequest,
@@ -18,7 +20,7 @@ export async function PATCH(
     const prioriUpdateEvent = await request.json();
     const { id } = await params;  // Awaiting params to get id
 
-    const savedPrioriCalendarEvent= await updateEvent (userId,id , prioriUpdateEvent);
+    const savedPrioriCalendarEvent= await eventsService.updateEvent (userId,id , prioriUpdateEvent);
 
     return NextResponse.json({
       success: true,
@@ -51,7 +53,7 @@ export async function DELETE(
         // Ensure params is awaited before using its properties
     const { id } = await params;  // Awaiting params to get id
     
-    const deletedPrioriCalendarEvent= await deleteEvent (userId, id);
+    const deletedPrioriCalendarEvent= await eventsService.deleteEvent (userId, id);
 
     return NextResponse.json({
       success: true,
