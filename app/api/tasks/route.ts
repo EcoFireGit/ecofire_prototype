@@ -2,9 +2,11 @@
 
 import { NextResponse } from 'next/server';
 import { TaskService } from '@/lib/services/task.service';
+import { JobService } from '@/lib/services/job.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
 
 const taskService = new TaskService();
+const jobService = new JobService();
 
 export async function GET(request: Request) {
   try {
@@ -72,7 +74,6 @@ export async function POST(request: Request) {
     }
     
     const task = await taskService.createTask(taskData, userId!);
-    
     return NextResponse.json({
       success: true,
       data: task

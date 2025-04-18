@@ -1,8 +1,46 @@
+import Task  from '../models/task.model';
 import Job from '../models/job.model';
 import { Jobs } from '../models/job.model';
 import dbConnect from '../mongodb';
 
 export class JobService {
+  async setIncompleteTaskAsNextStep(jobId: string): Promise<Jobs | null> {
+    try {
+      await dbConnect();
+      const job = await Job.findById(jobId);
+
+        //find the task from the array that is not complete and set it as nextTask
+      const nextTask = await this.getFirstIncompleteTask(job.tasks);
+      const updatedJob = await Job.findOneAndUpdate(
+        { _id: jobId },
+        { nextTaskId: nextTask }, // Specify the fields to update
+        { new: true }  // returns the updated document
+      );
+
+      return updatedJob;
+    } catch (error) {
+      throw new Error('Error setting next TaskId in database');
+    }
+
+  }
+
+  async  getFirstIncompleteTask(taskIds: string[]): Promise<string | null> {
+    // Pull only the tasks you care about
+  
+    for (let i = 0; i < taskIds.length; i++) {
+
+      const foundTask = await Task.findOne({ _id: taskIds[i] }); // Use findOne for equality
+
+      if (foundTask && foundTask.completed === false) {
+        return foundTask.id; // Return the ID of the first incomplete task
+      }
+
+    }
+    return null;
+
+  }
+  
+
   async getAllJobs(userId: string): Promise<Jobs[]> {
     try {
       await dbConnect();
@@ -19,7 +57,7 @@ export class JobService {
   async getJobById(id: string, userId: string): Promise<Jobs | null> {
     try {
       await dbConnect();
-      const job = await Job.findOne({ _id: id, userId, isDeleted: false }).lean();
+      const job = await Job.findOne({ _id: id, isDeleted: false }).lean();
       return job ? JSON.parse(JSON.stringify(job)) : null;
     } catch (error) {
       throw new Error('Error fetching job from database');
@@ -44,13 +82,16 @@ export class JobService {
     try {
       await dbConnect();
       const updatedJob = await Job.findOneAndUpdate(
-        { _id: id, userId },
+        { _id: id },
         { $set: updateData },
         { new: true, runValidators: true }
-      ).lean();
-      
-      return updatedJob ? JSON.parse(JSON.stringify(updatedJob)) : null;
+      );
+
+      const updatedJobWithNextTask = await this.setIncompleteTaskAsNextStep(id);
+       
+      return updatedJobWithNextTask ? JSON.parse(JSON.stringify(updatedJobWithNextTask)) : null;
     } catch (error) {
+      console.log(error);
       throw new Error('Error updating job in database');
     }
   }
@@ -69,4 +110,15 @@ export class JobService {
       throw new Error('Error deleting job from database');
     }
   }
+
+  async getAllUsersWithAssignedJobs(): Promise<string[]> {
+    try {
+      await dbConnect();
+      const users = await Job.distinct('userId');
+      return users;
+    } catch (error) {
+      throw new Error('Error fetching users from database');
+    }
+  }
+  
 }

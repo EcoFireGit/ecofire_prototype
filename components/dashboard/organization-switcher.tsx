@@ -43,7 +43,7 @@ export function OrganizationSwitcher() {
   };
 
   return (
-    <div className="p-2">
+    <div className="p-2" id='org-view-toggle'>
       <div className="flex items-center space-x-2">
         <label className="text-sm font-medium">Current View:</label>
         <select 

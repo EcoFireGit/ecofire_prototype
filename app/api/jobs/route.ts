@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     const jobData = await request.json();
     const job = await jobService.createJob(jobData, userId!);
 
+    
     return NextResponse.json({
       success: true,
       data: job

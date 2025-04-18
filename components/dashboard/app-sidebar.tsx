@@ -69,6 +69,12 @@ const items = [
     title: "Organizations",
     url: "/dashboard/organizations",
     icon: BriefcaseBusinessIcon,
+  },
+  {
+    title: "Calendar",
+    url: "/dashboard/backstage/gcal",
+    icon: Calendar,
+    id: "gcal-integration",
   }
 ]
 
@@ -88,11 +94,6 @@ const backstageItems = [
     title: "PI Board",
     url: "/dashboard/backstage/pis",
     icon: BarChart2,
-  },
-  {
-    title: "Calendar",
-    url: "/dashboard/backstage/gcal",
-    icon: Calendar,
   },
 ]
 
@@ -152,7 +153,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} id={item.id}>
                   <SidebarMenuButton size={"lg"} asChild>
                     <Link href={item.url}>
                       <item.icon />
@@ -196,7 +197,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <Popover>
               <PopoverTrigger asChild>
-                <SidebarMenuButton size={"lg"}>
+                <SidebarMenuButton size={"lg"} id="wellness-check">
                   <Heart className="text-purple-500 fill-purple-500" />
                   <span>Wellness Check</span>
                 </SidebarMenuButton>
@@ -242,6 +243,8 @@ export function AppSidebar() {
           <SidebarMenuItem>
                 <OrganizationSwitcher />
           </SidebarMenuItem>
+          {/* hiding settings and download business plan as they are empty pages
+          
           <SidebarMenuItem>
             <SidebarMenuButton size={"lg"} asChild>
               <a href="#">
@@ -257,7 +260,7 @@ export function AppSidebar() {
                 <span>Business Success Plan</span>
               </a>
             </SidebarMenuButton>
-          </SidebarMenuItem>
+          </SidebarMenuItem> */}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

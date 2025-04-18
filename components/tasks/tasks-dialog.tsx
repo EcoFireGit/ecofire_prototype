@@ -45,39 +45,31 @@ export function TaskDialog({
   initialData,
   jobId,
 }: TaskDialogProps) {
-  // Form state with typed fields
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
   const [date, setDate] = useState<string | undefined>(undefined);
-  const [requiredHours, setRequiredHours] = useState<number | undefined>(
-    undefined
-  );
-  const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(
-    undefined
-  );
+  const [requiredHours, setRequiredHours] = useState<number | undefined>(undefined);
+  const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(undefined);
   const [joyLevel, setJoyLevel] = useState<JoyLevel | undefined>(undefined);
   const [notes, setNotes] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
 
-  // State for owners fetched from API
   const [owners, setOwners] = useState<Owner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
   const [ownerError, setOwnerError] = useState<string | null>(null);
 
-  // Fetch owners from API
+  // New owner creation
+  const [isCreatingOwner, setIsCreatingOwner] = useState(false);
+  const [newOwnerName, setNewOwnerName] = useState("");
+
   useEffect(() => {
     const fetchOwners = async () => {
       setIsLoadingOwners(true);
       setOwnerError(null);
-
       try {
         const response = await fetch("/api/owners");
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch owners: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`Failed to fetch owners: ${response.status}`);
         const ownersData = await response.json();
         setOwners(ownersData);
       } catch (error) {
@@ -93,10 +85,8 @@ export function TaskDialog({
     }
   }, [open]);
 
-  // Initialize the form when the dialog opens or the initial data changes
   useEffect(() => {
     if (mode === "create") {
-      // Reset for create mode
       setTitle("");
       setOwner(undefined);
       setDate(undefined);
@@ -106,17 +96,13 @@ export function TaskDialog({
       setNotes(undefined);
       setTags([]);
     } else if (initialData) {
-      // Set data for edit mode
       setTitle(initialData.title);
       setOwner(initialData.owner);
-
-      // Format date for input field
       if (initialData.date) {
         setDate(new Date(initialData.date).toISOString().split("T")[0]);
       } else {
         setDate(undefined);
       }
-
       setRequiredHours(initialData.requiredHours);
       setFocusLevel(initialData.focusLevel);
       setJoyLevel(initialData.joyLevel);
@@ -130,13 +116,7 @@ export function TaskDialog({
     setIsSubmitting(true);
 
     try {
-      // Build task object from form fields
-      const task: Partial<Task> = {
-        title,
-        jobId,
-      };
-
-      // Only add optional fields if they have values
+      const task: Partial<Task> = { title, jobId };
       if (owner) task.owner = owner;
       if (date) task.date = `${date}T00:00:00.000Z`;
       if (requiredHours !== undefined) task.requiredHours = requiredHours;
@@ -146,12 +126,9 @@ export function TaskDialog({
       if (tags.length > 0) task.tags = tags;
 
       await onSubmit(task);
-      if (tags.length > 0) {
-        await saveTags(tags);
-      }
+      if (tags.length > 0) await saveTags(tags);
       onOpenChange(false);
 
-      // Reset form if creating new task
       if (mode === "create") {
         setTitle("");
         setOwner(undefined);
@@ -180,11 +157,9 @@ export function TaskDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {/* Title Field */}
+            {/* Title */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">
-                Title
-              </Label>
+              <Label htmlFor="title" className="text-right">Title</Label>
               <Input
                 id="title"
                 value={title}
@@ -194,48 +169,96 @@ export function TaskDialog({
               />
             </div>
 
-            {/* Owner Field */}
+            {/* Owner */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="owner" className="text-right">
-                Owner
-              </Label>
-              <div className="col-span-3">
-                <Select
-                  value={owner || "none"}
-                  onValueChange={(value) =>
-                    setOwner(value === "none" ? undefined : value)
-                  }
-                  disabled={isLoadingOwners}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        isLoadingOwners
-                          ? "Loading owners..."
-                          : "Select an owner"
-                      }
+              <Label htmlFor="owner" className="text-right">Owner</Label>
+              <div className="col-span-3 space-y-2">
+                {!isCreatingOwner ? (
+                  <>
+                    <Select
+                      value={owner || "none"}
+                      onValueChange={(value) => {
+                        if (value === "create") {
+                          setIsCreatingOwner(true);
+                        } else {
+                          setOwner(value === "none" ? undefined : value);
+                        }
+                      }}
+                      disabled={isLoadingOwners}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={isLoadingOwners ? "Loading owners..." : "Select an owner"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {owners.map((ownerItem) => (
+                          <SelectItem key={ownerItem._id} value={ownerItem._id}>
+                            {ownerItem.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="create">+ Add New Owner</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {ownerError && (
+                      <p className="text-sm text-red-500 mt-1">{ownerError}</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      placeholder="New owner name"
+                      value={newOwnerName}
+                      onChange={(e) => setNewOwnerName(e.target.value)}
                     />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {owners.map((ownerItem) => (
-                      <SelectItem key={ownerItem._id} value={ownerItem._id}>
-                        {ownerItem.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {ownerError && (
-                  <p className="text-sm text-red-500 mt-1">{ownerError}</p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={async () => {
+                          if (!newOwnerName.trim()) return;
+                          try {
+                            const response = await fetch("/api/owners", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ name: newOwnerName }),
+                            });
+
+                            if (!response.ok) throw new Error("Failed to create owner");
+
+                            const createdOwner = await response.json();
+                            setOwners((prev) => [...prev, createdOwner]);
+                            setOwner(createdOwner._id);
+                            setNewOwnerName("");
+                            setIsCreatingOwner(false);
+                          } catch (error) {
+                            console.error("Error creating owner:", error);
+                            setOwnerError("Failed to create owner. Try again.");
+                          }
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsCreatingOwner(false);
+                          setNewOwnerName("");
+                          setOwnerError(null);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Date Field */}
+            {/* Date */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="date" className="text-right">
-                Do Date
-              </Label>
+              <Label htmlFor="date" className="text-right">Do Date</Label>
               <Input
                 id="date"
                 type="date"
@@ -245,11 +268,9 @@ export function TaskDialog({
               />
             </div>
 
-            {/* Required Hours Field */}
+            {/* Hours */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="requiredHours" className="text-right">
-                Hours Required
-              </Label>
+              <Label htmlFor="requiredHours" className="text-right">Hours Required</Label>
               <Input
                 id="requiredHours"
                 type="number"
@@ -258,86 +279,61 @@ export function TaskDialog({
                 value={requiredHours === undefined ? "" : requiredHours}
                 onChange={(e) => {
                   const value = e.target.value;
-                  setRequiredHours(
-                    value === "" ? undefined : parseFloat(value)
-                  );
+                  setRequiredHours(value === "" ? undefined : parseFloat(value));
                 }}
                 className="col-span-3"
               />
             </div>
 
-            {/* Focus Level Field */}
+            {/* Focus */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="focusLevel" className="text-right">
-                Focus Level
-              </Label>
+              <Label htmlFor="focusLevel" className="text-right">Focus Level</Label>
               <div className="col-span-3">
                 <Select
                   value={focusLevel || "none"}
-                  onValueChange={(value) => {
-                    if (value === "none") {
-                      setFocusLevel(undefined);
-                    } else {
-                      setFocusLevel(value as FocusLevel);
-                    }
-                  }}
+                  onValueChange={(value) =>
+                    value === "none" ? setFocusLevel(undefined) : setFocusLevel(value as FocusLevel)
+                  }
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select focus level" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    <SelectItem value={FocusLevel.High}>
-                      {FocusLevel.High}
-                    </SelectItem>
-                    <SelectItem value={FocusLevel.Medium}>
-                      {FocusLevel.Medium}
-                    </SelectItem>
-                    <SelectItem value={FocusLevel.Low}>
-                      {FocusLevel.Low}
-                    </SelectItem>
+                    <SelectItem value={FocusLevel.High}>{FocusLevel.High}</SelectItem>
+                    <SelectItem value={FocusLevel.Medium}>{FocusLevel.Medium}</SelectItem>
+                    <SelectItem value={FocusLevel.Low}>{FocusLevel.Low}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Joy Level Field */}
+            {/* Joy */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="joyLevel" className="text-right">
-                Joy Level
-              </Label>
+              <Label htmlFor="joyLevel" className="text-right">Joy Level</Label>
               <div className="col-span-3">
                 <Select
                   value={joyLevel || "none"}
-                  onValueChange={(value) => {
-                    if (value === "none") {
-                      setJoyLevel(undefined);
-                    } else {
-                      setJoyLevel(value as JoyLevel);
-                    }
-                  }}
+                  onValueChange={(value) =>
+                    value === "none" ? setJoyLevel(undefined) : setJoyLevel(value as JoyLevel)
+                  }
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select joy level" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    <SelectItem value={JoyLevel.High}>
-                      {JoyLevel.High}
-                    </SelectItem>
-                    <SelectItem value={JoyLevel.Medium}>
-                      {JoyLevel.Medium}
-                    </SelectItem>
+                    <SelectItem value={JoyLevel.High}>{JoyLevel.High}</SelectItem>
+                    <SelectItem value={JoyLevel.Medium}>{JoyLevel.Medium}</SelectItem>
                     <SelectItem value={JoyLevel.Low}>{JoyLevel.Low}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
+            {/* Tags */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tags" className="text-right">
-                Tags
-              </Label>
+              <Label htmlFor="tags" className="text-right">Tags</Label>
               <div className="col-span-3">
                 <TagInput
                   value={tags}
@@ -350,11 +346,9 @@ export function TaskDialog({
               </div>
             </div>
 
-            {/* Notes Field */}
+            {/* Notes */}
             <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="notes" className="text-right">
-                Notes
-              </Label>
+              <Label htmlFor="notes" className="text-right">Notes</Label>
               <Textarea
                 id="notes"
                 value={notes || ""}
