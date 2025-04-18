@@ -15,11 +15,14 @@ export async function GET(request: NextRequest,
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    
-    const userId = authResult.userId;
-    const { id } = await params;  // Awaiting params to get id
-    
-    const getPrioriCalendarEvents= await eventService.getCalendarEvents(userId!, id);
+
+    const userId = authResult.actualUserId;
+    const { id } = await params; // Awaiting params to get id
+
+    const getPrioriCalendarEvents = await eventService.getCalendarEvents(
+      userId!,
+      id,
+    );
 
     return NextResponse.json({
       success: true,

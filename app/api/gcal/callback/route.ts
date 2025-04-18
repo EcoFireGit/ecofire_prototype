@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     try {
 
-    await processAuthCode(userId, code);
+    await processAuthCode(userId!, code);
       // const serverUrl = process.env.SERVER_URL;
       // return NextResponse.redirect(new URL(serverUrl + '/api/gcal/calendars', req.url));
       return NextResponse.json('Calendar connected');

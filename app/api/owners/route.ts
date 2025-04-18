@@ -83,7 +83,7 @@ async function validateData(name: string) {
   }
 
   const userId = authResult.userId;
-  const exists = await ownerService.checkNameExists(name, userId);
+  const exists = await ownerService.checkNameExists(name, userId!);
   if (exists) {
     throw new ValidationError("Owner name already exists", 400);
   }

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     
     const userId = authResult.userId;
     const prioriCalendar = await request.json();
-    const { calendar: savedPrioriCalendar, alreadyExists } = await createPrioriCalendar(userId);
+    const { calendar: savedPrioriCalendar, alreadyExists } = await createPrioriCalendar(userId!);
 
     return NextResponse.json({
       success: true,
