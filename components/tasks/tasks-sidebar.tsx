@@ -203,7 +203,7 @@ export function TasksSidebar({
       });
       const result = await response.json();
       if (result.success) {
-        // If the completed task was the next task, we need to update the job-- This is now taken care of previous call
+        // If the completed task was the next task, we need to update the job--NEW --> This is now taken care of previous call
         // if (completed && id === nextTaskId) {
         //   // Clear the next task since it's now completed
         //   await updateJobNextTask("none");
