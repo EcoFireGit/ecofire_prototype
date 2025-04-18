@@ -57,7 +57,7 @@ export class JobService {
   async getJobById(id: string, userId: string): Promise<Jobs | null> {
     try {
       await dbConnect();
-      const job = await Job.findOne({ _id: id, userId, isDeleted: false }).lean();
+      const job = await Job.findOne({ _id: id, isDeleted: false }).lean();
       return job ? JSON.parse(JSON.stringify(job)) : null;
     } catch (error) {
       throw new Error('Error fetching job from database');
@@ -87,7 +87,7 @@ export class JobService {
         { new: true, runValidators: true }
       );
 
-      const updatedJobWithNextTask = await this.setIncompleteTaskAsNextStep(updatedJob);
+      const updatedJobWithNextTask = await this.setIncompleteTaskAsNextStep(id);
        
       return updatedJobWithNextTask ? JSON.parse(JSON.stringify(updatedJobWithNextTask)) : null;
     } catch (error) {
