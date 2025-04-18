@@ -131,14 +131,14 @@ export async function POST(req: NextRequest) {
                     const deadlineDate = new Date(outcome.deadline);
 
                     // Check if QBO with same name already exists
-                    const existingQBOs = await qboService.getAllQBOs(userId);
+                    const existingQBOs = await qboService.getAllQBOs(userId!);
                     const existingQBO = existingQBOs.find(
                       (qbo) => qbo.name === outcome.name,
                     );
 
                     if (existingQBO) {
                       // Update the existing QBO
-                      await qboService.updateQBO(existingQBO._id, userId, {
+                      await qboService.updateQBO(existingQBO._id, userId!, {
                         targetValue: outcome.targetValue,
                         deadline: deadlineDate,
                         points: outcome.points,
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
                           points: outcome.points,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(`QBO created for outcome: ${outcome.name}`);
                     }
@@ -226,7 +226,7 @@ export async function POST(req: NextRequest) {
                   const taskService = new TaskService();
 
                   // Get all existing jobs
-                  const existingJobs = await jobService.getAllJobs(userId);
+                  const existingJobs = await jobService.getAllJobs(userId!);
 
                   // Save each job to Job table and create associated tasks
                   for (const key in jobsData) {
@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
                       console.log(`Job already exists: ${job.title}`);
 
                       // Update the job notes if needed
-                      await jobService.updateJob(jobId, userId, {
+                      await jobService.updateJob(jobId, userId!, {
                         notes: `Updated during onboarding for ${businessName}`,
                       });
 
@@ -371,7 +371,7 @@ export async function POST(req: NextRequest) {
                   const piService = new PIService();
 
                   // Get existing PIs to check for duplicates
-                  const existingPIs = await piService.getAllPIs(userId);
+                  const existingPIs = await piService.getAllPIs(userId!);
 
                   // Save each PI
                   for (const key in piData) {
@@ -387,7 +387,7 @@ export async function POST(req: NextRequest) {
 
                     if (existingPI) {
                       // Update the existing PI
-                      await piService.updatePI(existingPI._id, userId, {
+                      await piService.updatePI(existingPI._id, userId!, {
                         targetValue: pi.targetValue,
                         deadline: deadlineDate,
                         notes: `Updated during onboarding for ${businessName}`,
@@ -403,7 +403,7 @@ export async function POST(req: NextRequest) {
                           deadline: deadlineDate,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(`PI created: ${pi.name}`);
                     }
@@ -444,8 +444,8 @@ export async function POST(req: NextRequest) {
       const jobService = new JobService();
       const piService = new PIService();
 
-      let jobs = await jobService.getAllJobs(userId);
-      let pis = await piService.getAllPIs(userId);
+      let jobs = await jobService.getAllJobs(userId!);
+      let pis = await piService.getAllPIs(userId!);
 
       // Create a context string with jobs and PIs information for the AI
       const jobsContext = jobs
@@ -500,7 +500,7 @@ export async function POST(req: NextRequest) {
 
                   // Get existing mappings to check for duplicates
                   const existingMappings =
-                    await mappingService.getAllMappingJP(userId);
+                    await mappingService.getAllMappingJP(userId!);
 
                   // Save each mapping
                   for (const key in mappingsData) {
@@ -516,7 +516,7 @@ export async function POST(req: NextRequest) {
                       // Update the existing mapping
                       await mappingService.updateMappingJP(
                         existingMapping._id,
-                        userId,
+                        userId!,
                         {
                           piImpactValue: mapping.piImpactValue,
                           piTarget: mapping.piTarget,
@@ -538,7 +538,7 @@ export async function POST(req: NextRequest) {
                           piTarget: mapping.piTarget,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(
                         `Mapping created: ${mapping.jobName} -> ${mapping.piName}`,
@@ -584,8 +584,8 @@ export async function POST(req: NextRequest) {
       const piService = new PIService();
       const qboService = new QBOService();
 
-      let pis = await piService.getAllPIs(userId);
-      let qbos = await qboService.getAllQBOs(userId);
+      let pis = await piService.getAllPIs(userId!);
+      let qbos = await qboService.getAllQBOs(userId!);
 
       // Create a context string with PIs and QBOs information for the AI
       const pisContext = pis
@@ -642,7 +642,7 @@ export async function POST(req: NextRequest) {
 
                   // Get existing mappings to check for duplicates
                   const existingMappings =
-                    await piQboMappingService.getAllMappings(userId);
+                    await piQboMappingService.getAllMappings(userId!);
 
                   // Save each mapping
                   for (const key in mappingsData) {
@@ -658,7 +658,7 @@ export async function POST(req: NextRequest) {
                       // Update the existing mapping
                       await piQboMappingService.updateMapping(
                         existingMapping._id,
-                        userId,
+                        userId!,
                         {
                           piTarget: mapping.piTarget,
                           qboTarget: mapping.qboTarget,
@@ -682,7 +682,7 @@ export async function POST(req: NextRequest) {
                           qboImpact: mapping.qboImpact,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(
                         `PI-QBO Mapping created: ${mapping.piName} -> ${mapping.qboName}`,

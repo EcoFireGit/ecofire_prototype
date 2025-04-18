@@ -20,7 +20,7 @@ export async function PATCH(
     const prioriUpdateEvent = await request.json();
     const { id } = await params;  // Awaiting params to get id
 
-    const savedPrioriCalendarEvent= await eventsService.updateEvent (userId,id , prioriUpdateEvent);
+    const savedPrioriCalendarEvent= await eventsService.updateEvent (userId!,id , prioriUpdateEvent);
 
     return NextResponse.json({
       success: true,

@@ -139,7 +139,6 @@ const SearchPage = () => {
     try {
       const itemId = editingItem?.id || editingItem?._id;
       if (!itemId) return;
-      
       const response = await fetch(`/api/jobs/${itemId}`, {
         method: 'PUT',
         headers: {
@@ -152,7 +151,7 @@ const SearchPage = () => {
       
       if (result.success) {
         toast({
-          title: "Success",
+          title: "Success", 
           description: "Job updated successfully",
         });
         

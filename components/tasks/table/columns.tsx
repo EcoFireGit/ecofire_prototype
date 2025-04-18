@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 export const columns = (
   onEdit: (task: Task) => void,
   onDelete: (id: string) => void,
-  onComplete: (id: string, completed: boolean) => void,
+  onComplete: (id: string, jobid:string, completed: boolean) => void,
   ownerMap: Record<string, string> = {}
 ): ColumnDef<Task>[] => [
   {
@@ -30,7 +30,7 @@ export const columns = (
       return (
         <Checkbox
           checked={task.completed}
-          onCheckedChange={(value) => onComplete(task.id, !!value)}
+          onCheckedChange={(value) => onComplete(task.id, task.jobId, !!value)}
           aria-label="Mark as completed"
         />
       );

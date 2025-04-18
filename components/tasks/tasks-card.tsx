@@ -24,7 +24,7 @@ interface TaskCardProps {
     task: Task;
     onEdit: (task: Task) => void;
     onDelete: (id: string) => void;
-    onComplete: (id: string, completed: boolean) => void;
+    onComplete: (id: string, jobid: string, completed: boolean) => void;
     ownerMap: Record<string, string>;
 }
 
@@ -69,7 +69,7 @@ export function TaskCard({
         
         try {
             // Call the original onComplete handler
-            await onComplete(task.id, value);
+            await onComplete(task.id, task.jobId, value);
             
             // Then trigger a refresh of the job progress - this should happen after
             // the task is successfully marked as complete
@@ -191,7 +191,7 @@ export function TaskCard({
                                 router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`);
                             }}
                         >
-                            <PawPrint className="h-4 w-4" />
+                            <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
                         </Button>
 
                         <AlertDialog>
