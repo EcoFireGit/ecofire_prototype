@@ -4,7 +4,7 @@ import { Jobs } from '../models/job.model';
 import dbConnect from '../mongodb';
 
 export class JobService {
-  async setIncompleteTaskAsNextStep(jobId: string) {
+  async setIncompleteTaskAsNextStep(jobId: string): Promise<Jobs | null> {
     try {
       await dbConnect();
       const job = await Job.findById(jobId);
@@ -18,7 +18,7 @@ export class JobService {
         { new: true }  // returns the updated document
       );
 
-      console.log("updated job", updatedJob);
+      return updatedJob;
     } catch (error) {
       throw new Error('Error setting next TaskId in database');
     }
@@ -91,9 +91,9 @@ export class JobService {
       //find the task from the array that is not complete and set it as nextTask
       const tasks = updateData.tasks as string[];
       const nextTask = await this.getFirstIncompleteTask(tasks);
-      await this.setIncompleteTaskAsNextStep(id);
+      const updatedJobWithNextTask = await this.setIncompleteTaskAsNextStep(id);
        
-      return updatedJob ? JSON.parse(JSON.stringify(updatedJob)) : null;
+      return updatedJobWithNextTask ? JSON.parse(JSON.stringify(updatedJobWithNextTask)) : null;
     } catch (error) {
       throw new Error('Error updating job in database');
     }

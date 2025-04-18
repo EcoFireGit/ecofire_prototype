@@ -25,7 +25,7 @@ export async function PUT( request: NextRequest,
     //update job and set next task
     const updtedJob = await jobService.setIncompleteTaskAsNextStep(id);
 
-    if (!updatedTask) {
+    if (!updtedJob) {
       return NextResponse.json(
         {
           success: false,
@@ -38,7 +38,7 @@ export async function PUT( request: NextRequest,
     //after task has been completed 
     return NextResponse.json({
       success: true,
-      data: updatedTask
+      data: updtedJob
     });
   } catch (error) {
     console.error('Error in PUT /api/tasks:', error);
