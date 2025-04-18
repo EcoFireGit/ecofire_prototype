@@ -73,18 +73,15 @@ const Navbar = () => {
       if (!gcalResponse.ok) {
         throw new Error("Failed to fetch Google Calendar data");
       } else {
-        console.log("Fetching notifications...");
         const response = await fetch("/api/notifications");
         if (!response.ok) {
           throw new Error("Failed to fetch notifications");
         }
 
         const data = await response.json();
-        console.log("Notification data received:", data);
 
         if (data.success && data.data) {
           const notificationData = data.data as NotificationData;
-          console.log("Parsed notification data:", notificationData);
 
           // Check if there's a notification
           if (notificationData && notificationData.upcomingEvent) {
@@ -96,10 +93,6 @@ const Navbar = () => {
             const diffMs = eventTime.getTime() - currentTime.getTime();
             const diffMinutes = Math.floor(diffMs / 60000);
 
-            console.log("Event time:", eventTime);
-            console.log("Current time:", currentTime);
-            console.log("Minutes remaining until event:", diffMinutes);
-
             // Only set notification if event hasn't passed
             if (diffMinutes > 0) {
               setNotification(notificationData);
@@ -107,14 +100,12 @@ const Navbar = () => {
               setMinutesRemaining(diffMinutes);
               // Store the event title
               setEventTitle(notificationData.upcomingEvent.summary);
-              console.log("Notification active - event is in the future");
             } else {
               // Event has passed, clear notification
               setNotification(null);
               setHasNotification(false);
               setMinutesRemaining(null);
               setEventTitle("");
-              console.log("Notification cleared - event has passed");
             }
           } else {
             // No notification data
@@ -122,10 +113,7 @@ const Navbar = () => {
             setHasNotification(false);
             setMinutesRemaining(null);
             setEventTitle("");
-            console.log("No valid notification data found");
           }
-        } else {
-          console.log("No notification data in response or request failed");
         }
       }
     } catch (error) {
@@ -163,20 +151,29 @@ const Navbar = () => {
   };
 
   // Handle notification click
-  const handleNotificationClick = () => {
-    if (hasNotification) {
+  const handleNotificationClick = async () => {
+    if (hasNotification && notification) {
+      // Mark notification as read by calling the API
+      const notificationId = notification._id;
+      
+      if (notificationId) {
+        try {
+          await fetch(`/api/notifications/${notificationId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+        } catch (error) {
+          console.error('Error marking notification as read:', error);
+        }
+      }
+
       setHasNotification(false);
 
       // Show the appointment notification directly
-      if (notification && minutesRemaining) {
-        console.log("Opening notification with event details:", {
-          title: eventTitle,
-          minutes: minutesRemaining,
-        });
-
+      if (minutesRemaining) {
         setAppointmentVisible(true);
-      } else {
-        console.log("No notification data available for display");
       }
     }
   };
@@ -206,12 +203,9 @@ const Navbar = () => {
 
   // Handle start tour button click
   const handleStartTourClick = () => {
-    console.log("Start Tour button clicked", { currentPath: pathname });
-
     if (pathname === "/dashboard/jobs") {
       // If already on jobs page, use a direct event for immediate response
-      console.log("Already on jobs page, using direct event");
-
+      
       // 1. Add tour parameter to URL for consistency/bookmarking
       const timestamp = Date.now();
       const newUrl = `/dashboard/jobs?tour=true&t=${timestamp}`;
@@ -219,11 +213,9 @@ const Navbar = () => {
 
       // 2. Dispatch a direct custom event for immediate handling
       const directEvent = new CustomEvent(TOUR_START_EVENT);
-      console.log("Dispatching direct tour start event");
       window.dispatchEvent(directEvent);
     } else {
       // Navigate to jobs page with tour query param
-      console.log("Navigating to jobs page with tour parameter");
       router.push("/dashboard/jobs?tour=true");
     }
   };
@@ -304,7 +296,7 @@ const Navbar = () => {
                 Google calendar sync
               </h4>
               <p className="text-sm mb-1">
-                You have a "<span className="font-medium">{eventTitle}</span>" event in{" "}
+                You have an <span className="font-medium">{eventTitle}</span> in{" "}
                 <span className="text-green-600 font-medium">
                   {formatTimeRemaining(minutesRemaining)}
                 </span>
