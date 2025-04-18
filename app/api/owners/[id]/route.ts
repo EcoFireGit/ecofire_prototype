@@ -25,7 +25,7 @@ export async function PUT(
       );
     }
    
-    const owner = await ownerService.updateOwner(id, name, userId);
+    const owner = await ownerService.updateOwner(id, name, userId!);
    
     if (!owner) {
       return NextResponse.json(
@@ -57,7 +57,7 @@ export async function DELETE(
    
     const userId = authResult.userId;
     const { id } = await params;
-    const success = await ownerService.deleteOwner(id, userId);
+    const success = await ownerService.deleteOwner(id, userId!);
    
     if (!success) {
       return NextResponse.json(
