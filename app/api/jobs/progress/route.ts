@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Calculate progress for all jobs
-    const progressData = await taskProgressService.calculateMultipleJobsProgress(jobIds, userId);
+    const progressData = await taskProgressService.calculateMultipleJobsProgress(jobIds, userId!);
     
     return NextResponse.json({
       success: true,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get task counts for the job
-    const taskCounts = await taskProgressService.getTaskCounts(jobId, userId);
+    const taskCounts = await taskProgressService.getTaskCounts(jobId, userId!);
     
     return NextResponse.json({
       success: true,

@@ -20,7 +20,7 @@ export async function GET(
     const { id } = await params; // Awaiting params to get id
 
     const getPrioriCalendarEvents = await eventService.getCalendarEvents(
-      userId,
+      userId!,
       id,
     );
 

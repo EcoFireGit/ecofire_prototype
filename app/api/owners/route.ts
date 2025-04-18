@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
     await validateData(name);
-    const owner = await ownerService.createOwner(name, userId);
+    const owner = await ownerService.createOwner(name, userId!);
     return NextResponse.json(owner);
   } catch (error) {
     console.error("Failed to create owner:", error);
@@ -71,7 +71,7 @@ async function validateData(name: string) {
   }
 
   const userId = authResult.userId;
-  const exists = await ownerService.checkNameExists(name, userId);
+  const exists = await ownerService.checkNameExists(name, userId!);
   if (exists) {
     throw new ValidationError("Owner name already exists", 400);
   }
