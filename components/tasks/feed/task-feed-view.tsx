@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TaskDialog } from "@/components/tasks/tasks-dialog";
 import FilterComponent from "@/components/filters/filter-component";
 import TaskSortingComponent from "@/components/sorting/task-sorting-component";
+import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,10 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Type imports only
-import type { Task } from "@/lib/models/task.model";
+//import type { Task } from "@/lib/models/task.model";
+import { Job } from "@/components/jobs/table/columns";
+import { Task } from "../types";
+
 import type { Jobs } from "@/lib/models/job.model";
 
 export default function TaskFeedView() {
@@ -41,6 +45,8 @@ export default function TaskFeedView() {
   // State for task dialog
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
 
   // State for confirmation dialogs
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
@@ -585,12 +591,136 @@ export default function TaskFeedView() {
     });
   };
 
+  const handleAddTask = () => {
+    setDialogMode("create");
+    setCurrentTask(undefined);
+    setTaskDialogOpen(true);
+  };
+
   // Edit task
   const handleEditTask = (task: any) => {
     setEditingTask(task);
     setTaskDialogOpen(true);
   };
 
+   const handleTaskSubmit = async (taskData: Partial<Task>) => {
+      try {
+        // Make sure tags is always defined as an array
+        const processedTaskData = {
+          ...taskData,
+          tags: taskData.tags || [],
+        };
+  
+        if (dialogMode === "create") {
+          // Create new task
+          const response = await fetch("/api/tasks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(processedTaskData),
+          });
+  
+          const result = await response.json();
+  
+          if (result.success) {
+            // Map from MongoDB _id to id for frontend consistency
+            const newTask: Task = {
+              id: result.data._id,
+              title: result.data.title,
+              owner: result.data.owner,
+              date: result.data.date,
+              requiredHours: result.data.requiredHours,
+              focusLevel: result.data.focusLevel,
+              joyLevel: result.data.joyLevel,
+              notes: result.data.notes,
+              tags: result.data.tags || [],
+              jobId: result.data.jobId,
+              completed: result.data.completed,
+              isNextTask: false,
+            };
+  
+            // Add task ID to job's tasks array
+         
+            setTasks([...tasks, newTask]);
+            toast({
+              title: "Success",
+              description: "Task created successfully",
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to create task",
+              variant: "destructive",
+            });
+          }
+        } else {
+          // Update existing task
+          if (!currentTask) return;
+  
+          const response = await fetch(`/api/tasks/${currentTask.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(processedTaskData),
+          });
+  
+          const result = await response.json();
+  
+          if (result.success) {
+            // Map from MongoDB _id to id for frontend consistency
+            const updatedTask: Task = {
+              id: result.data._id,
+              title: result.data.title,
+              owner: result.data.owner,
+              date: result.data.date,
+              requiredHours: result.data.requiredHours,
+              focusLevel: result.data.focusLevel,
+              joyLevel: result.data.joyLevel,
+              notes: result.data.notes,
+              tags: result.data.tags || [],
+              jobId: result.data.jobId,
+              completed: result.data.completed,
+              isNextTask: false,
+            };
+  
+            // If the task completion status changed, trigger a progress update
+            if (currentTask.completed !== updatedTask.completed) {
+              const event = new CustomEvent('job-progress-update', { 
+                detail: { jobId: result.data.jobId } 
+              });
+              window.dispatchEvent(event);
+            }
+  
+            setTasks(
+              tasks.map((task) =>
+                task.id === updatedTask.id ? updatedTask : task
+              )
+            );
+  
+            toast({
+              title: "Success",
+              description: "Task updated successfully",
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to update task",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error submitting task:", error);
+        toast({
+          title: "Error",
+          description: "Failed to submit task",
+          variant: "destructive",
+        });
+      }
+    };
+    
   // Handle task update
   const handleTaskUpdate = async (taskData: any) => {
     try {
@@ -707,7 +837,15 @@ export default function TaskFeedView() {
 
   return (
     <div className="container mx-auto p-4">
+
       {/* Add the FilterComponent and TaskSortingComponent at the top */}
+
+      <div className="mb-4">
+              <Button onClick={handleAddTask} className="w-full">
+                <Plus className="h-4 w-4 mr-2" /> Add Task
+              </Button>
+            </div>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <FilterComponent
           onFilterChange={handleFilterChange}
@@ -743,16 +881,16 @@ export default function TaskFeedView() {
       </div>
 
       {/* Task Edit Dialog */}
-      {editingTask && (
+      {/* {editingTask && ( */}
         <TaskDialog
-          mode="edit"
+           mode={dialogMode}
           open={taskDialogOpen}
           onOpenChange={setTaskDialogOpen}
           onSubmit={handleTaskUpdate}
           initialData={editingTask}
           jobId={editingTask.jobId}
         />
-      )}
+      {/* )} */}
 
       {/* Task Completion Confirmation Dialog */}
       <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
@@ -804,6 +942,10 @@ export default function TaskFeedView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
     </div>
   );
 }
+
+
+
