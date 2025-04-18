@@ -8,10 +8,9 @@ export class JobService {
     try {
       await dbConnect();
       const job = await Job.findById(jobId);
-      const tasks = job.tasks as string[];
 
         //find the task from the array that is not complete and set it as nextTask
-      const nextTask = await this.getFirstIncompleteTask(tasks);
+      const nextTask = await this.getFirstIncompleteTask(job.tasks);
       const updatedJob = await Job.findOneAndUpdate(
         { _id: jobId },
         { nextTaskId: nextTask }, // Specify the fields to update
@@ -83,18 +82,16 @@ export class JobService {
     try {
       await dbConnect();
       const updatedJob = await Job.findOneAndUpdate(
-        { _id: id, userId },
+        { _id: id },
         { $set: updateData },
         { new: true, runValidators: true }
-      ).lean();
+      );
 
-      //find the task from the array that is not complete and set it as nextTask
-      const tasks = updateData.tasks as string[];
-      const nextTask = await this.getFirstIncompleteTask(tasks);
-      const updatedJobWithNextTask = await this.setIncompleteTaskAsNextStep(id);
+      const updatedJobWithNextTask = await this.setIncompleteTaskAsNextStep(updatedJob);
        
       return updatedJobWithNextTask ? JSON.parse(JSON.stringify(updatedJobWithNextTask)) : null;
     } catch (error) {
+      console.log(error);
       throw new Error('Error updating job in database');
     }
   }

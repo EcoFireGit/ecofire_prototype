@@ -66,7 +66,6 @@ export async function PUT(
     
     const { id } = await params;
     const updateData = await request.json();
-    console.log('Updated Data:', updateData);
 
     const updatedJob = await jobService.updateJob(id, userId!, updateData);
     
@@ -81,7 +80,6 @@ export async function PUT(
     } 
     
     
-    console.log('Updated job:', updatedJob);
     const forceUpdateTasks = request.nextUrl.searchParams.get('updateTasks') === 'true';
 
     if(forceUpdateTasks) {
