@@ -46,6 +46,7 @@ export default function TaskFeedView() {
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [taskToComplete, setTaskToComplete] = useState<{
     id: string;
+    jobId: string;
     title: string;
   } | null>(null);
 
@@ -397,9 +398,9 @@ export default function TaskFeedView() {
   }, []);
 
   // Function to complete a task
-  const completeTask = async (id: string) => {
+  const completeTask = async (jobid:string, id: string) => {
     try {
-      const response = await fetch(`/api/tasks/${id}`, {
+      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -436,23 +437,25 @@ export default function TaskFeedView() {
           )
         );
 
-        // If this task is a next task for a job, update the job
-        const jobsWithThisNextTask = Object.values(jobs).filter(
-          (job: any) => job.nextTaskId === id
-        );
+        //No need to update job because task udpate will handle it in the backend
 
-        // Update each job found
-        for (const job of jobsWithThisNextTask) {
-          await fetch(`/api/jobs/${job._id}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              nextTaskId: null,
-            }),
-          });
-        }
+            // If this task is a next task for a job, update the job
+            // const jobsWithThisNextTask = Object.values(jobs).filter(
+            //   (job: any) => job.nextTaskId === id
+            // );
+
+            // // Update each job found
+            // for (const job of jobsWithThisNextTask) {
+            //   await fetch(`/api/jobs/${job._id}`, {
+            //     method: "PUT",
+            //     headers: {
+            //       "Content-Type": "application/json",
+            //     },
+            //     body: JSON.stringify({
+            //       nextTaskId: null,
+            //     }),
+            //   });
+            // }
 
         // Filter out the task after a brief delay
         setTimeout(() => {
@@ -488,7 +491,7 @@ export default function TaskFeedView() {
       // Find the task title for the confirmation dialog
       const task = tasks.find((t) => t._id === id);
       if (task) {
-        setTaskToComplete({ id, title: task.title });
+        setTaskToComplete({ id, jobId: task.jobId, title: task.title });
         setCompleteDialogOpen(true);
       }
     } else {
@@ -776,7 +779,7 @@ export default function TaskFeedView() {
             <Button
               onClick={() => {
                 if (taskToComplete) {
-                  completeTask(taskToComplete.id);
+                  completeTask(taskToComplete.jobId, taskToComplete.id);
                   setCompleteDialogOpen(false);
                 }
               }}

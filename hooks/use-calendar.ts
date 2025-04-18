@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { useState } from 'react';
+import { Toast } from '@/components/ui/toast';
 
-export default function useCalendar() {
+export default function useCalendar(toast?: any) {
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [isGetting, setIsGetting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -54,7 +55,6 @@ export default function useCalendar() {
   const handleCreatePrioriCalendar = async () => {
     setIsCreating(true);
     try {
-
       const response = await fetch('/api/gcal/calendars/prioriwise', {
         method: 'POST',
         headers: {
@@ -65,10 +65,33 @@ export default function useCalendar() {
       if (response.ok) {
         const data = await response.json();
         console.log("response: " + JSON.stringify(data));
-
+        
+        if (data.alreadyExists) {
+          if (toast) {
+            toast({
+              title: "Calendar Already Exists",
+              description: "The Prioriwise calendar has already been created",
+              variant: "destructive",
+            });
+          }
+        } else {
+          if (toast) {
+            toast({
+              title: "Success",
+              description: "Prioriwise calendar created successfully",
+            });
+          }
+        }
       }
     } catch (error) {
-      console.error('Error Creating  Prioriwise failed:', error);
+      console.error('Error Creating Prioriwise failed:', error);
+      if (toast) {
+        toast({
+          title: "Error",
+          description: "Failed to create Prioriwise calendar",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsCreating(false);
     }
