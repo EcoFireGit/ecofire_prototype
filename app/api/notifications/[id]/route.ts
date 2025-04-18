@@ -16,7 +16,7 @@ export async function PATCH(
       return authResult.response;
     }
     
-    const userId = authResult.userId;
+    const userId = authResult.actualUserId;
     const { id } = await params;
 
     // Enhanced validation

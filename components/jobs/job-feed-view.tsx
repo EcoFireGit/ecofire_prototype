@@ -418,6 +418,7 @@ export default function JobsPage() {
   useEffect(() => {
     fetchJobs();
   }, []);
+  
 
   useEffect(() => {
     // Check if "open=true" is in the URL
@@ -567,6 +568,43 @@ export default function JobsPage() {
 
     return matches;
   };
+
+  // Effect to reapply filters when jobs are loaded
+useEffect(() => {
+  // Only run this when we have loaded jobs and are not in loading state
+  if (!loading && activeJobs.length > 0) {
+    // Check if we have activeFilters already set (from initialFilters or previous state)
+    if (Object.keys(activeFilters).length > 0) {
+      console.log('Reapplying filters on page navigation/load:', activeFilters);
+      
+      // Reapply the filters to the jobs
+      // This is essentially the same as handleFilterChange but we're calling it directly
+      // with our existing activeFilters
+      
+      // Filter active jobs
+      const filteredActive = activeJobs.filter((job) => {
+        return matchesFilters(job, activeFilters);
+      });
+
+      // Filter completed jobs - only apply non-status filters
+      const nonStatusFilters = { ...activeFilters };
+      delete nonStatusFilters.isDone;
+
+      const filteredCompleted = completedJobs.filter((job) => {
+        // If isDone filter is true, show completed jobs, otherwise hide them
+        if (activeFilters.isDone === true) {
+          return matchesFilters(job, nonStatusFilters);
+        } else {
+          return false; // Hide completed jobs if not explicitly showing them
+        }
+      });
+
+      // Update the filtered jobs lists
+      setFilteredActiveJobs(filteredActive);
+      setFilteredCompletedJobs(filteredCompleted);
+    }
+  }
+}, [loading, activeJobs, completedJobs, activeFilters]);
 
   // Handler for sort changes
   const handleActiveSortChange = (sortedJobs: Job[]) => {

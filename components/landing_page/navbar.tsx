@@ -39,6 +39,22 @@ interface NotificationData {
   };
 }
 
+// Function to format minutes into hours and minutes
+const formatTimeRemaining = (minutes: number): string => {
+  if (minutes < 60) {
+    return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+  }
+  
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  if (remainingMinutes === 0) {
+    return `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+  }
+  
+  return `${hours} ${hours === 1 ? 'hr' : 'hrs'} ${remainingMinutes} ${remainingMinutes === 1 ? 'min' : 'mins'}`;
+};
+
 const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -288,9 +304,9 @@ const Navbar = () => {
                 Google calendar sync
               </h4>
               <p className="text-sm mb-1">
-                You have an <span className="font-medium">{eventTitle}</span> in{" "}
+                You have a "<span className="font-medium">{eventTitle}</span>" event in{" "}
                 <span className="text-green-600 font-medium">
-                  {minutesRemaining} mins
+                  {formatTimeRemaining(minutesRemaining)}
                 </span>
                 .
               </p>
