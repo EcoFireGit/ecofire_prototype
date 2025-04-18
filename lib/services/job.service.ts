@@ -87,7 +87,12 @@ export class JobService {
         { $set: updateData },
         { new: true, runValidators: true }
       ).lean();
-      
+
+      //find the task from the array that is not complete and set it as nextTask
+      const tasks = updateData.tasks as string[];
+      const nextTask = await this.getFirstIncompleteTask(tasks);
+      await this.setIncompleteTaskAsNextStep(id);
+       
       return updatedJob ? JSON.parse(JSON.stringify(updatedJob)) : null;
     } catch (error) {
       throw new Error('Error updating job in database');

@@ -74,15 +74,6 @@ export async function POST(request: Request) {
     }
     
     const task = await taskService.createTask(taskData, userId!);
-    
-    //does job have any next task ? set the new task as next task , if none is set up already
-    const job =  await jobService.getJobById(taskData.jobId, userId);
-    if(job?.nextTaskId != null) {
-      job.nextTaskId=task.id;
-      const updatedJob = await jobService.updateJob(taskData.jonId, userId, job);
-      console.log("updated Job with Task Id", updatedJob?.nextTaskId);
-    }
-
     return NextResponse.json({
       success: true,
       data: task
