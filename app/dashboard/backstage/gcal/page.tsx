@@ -144,66 +144,6 @@ export default function CalendarPage() {
     );
   };
 
-  const handleGetGcal = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/api/gcal', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "GCal  retrieved successfully",
-        });
-        console.log("result :", result);
-      } else {
-        throw new Error(result.error || 'Failed to get gcal');
-      }
-    } catch (error) {
-      console.error("Error getting GCal :", error);
-      toast({
-        title: "Error",
-        description: "Failed to get GCal ",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleGetNotifications = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/api/notifications', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "GCal notifications retrieved successfully",
-        });
-        console.log("GCal notifications:", result);
-      } else {
-        throw new Error(result.error || 'Failed to get notifications');
-      }
-    } catch (error) {
-      console.error("Error getting GCal notifications:", error);
-      toast({
-        title: "Error",
-        description: "Failed to get GCal notifications",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
@@ -219,6 +159,7 @@ export default function CalendarPage() {
             >
               <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar
             </Button>
+            {/* removing the testing buttons 
             <Button
               onClick={handleGetGcal}
               className="bg-green-500 hover:bg-green-600"
@@ -230,7 +171,7 @@ export default function CalendarPage() {
               className="bg-green-500 hover:bg-green-600"
             >
               Get api/notification (Testing)
-            </Button>
+            </Button> */}
           </div>
 
           {/* Render Calendar Table */}
