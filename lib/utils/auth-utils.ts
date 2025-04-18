@@ -29,7 +29,7 @@ export async function validateAuth() {
   // Get active organization from cookie (fast, no DB call)
   const cookieStore = await cookies();
   const activeOrgCookie = cookieStore.get(ACTIVE_ORG_COOKIE);
-  let activeOrgId = null;
+  let activeOrgId = userId; // Default to personal view (userId)
   
   if (activeOrgCookie) {
     try {
@@ -47,7 +47,7 @@ export async function validateAuth() {
         
         if (!hasAccess) {
           // Reset to personal view if user doesn't have access
-          activeOrgId = null;
+          activeOrgId = userId;
           cookieStore.set(
             ACTIVE_ORG_COOKIE, 
             JSON.stringify(null), 
@@ -58,7 +58,7 @@ export async function validateAuth() {
     } catch (e) {
       // Invalid cookie, ignore and reset to null
       console.error('Invalid active org cookie:', e);
-      activeOrgId = null;
+      activeOrgId = userId; // Reset to personal view
       cookieStore.set(ACTIVE_ORG_COOKIE, JSON.stringify(null), { path: '/' });
     }
   }
