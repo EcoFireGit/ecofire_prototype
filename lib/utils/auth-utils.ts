@@ -74,7 +74,7 @@ export async function validateAuth(): Promise<AuthResult> {
     // to ensure we have the latest organization selection
     const cookieStore = await cookies();
     const activeOrgCookie = cookieStore.get(ACTIVE_ORG_COOKIE);
-    let activeOrgId = null;
+    let activeOrgId = userId; // Default to personal view (userId)
     
     if (activeOrgCookie) {
       try {
@@ -90,7 +90,7 @@ export async function validateAuth(): Promise<AuthResult> {
           );
           
           if (!hasAccess) {
-            activeOrgId = null;
+            activeOrgId = userId;
             cookieStore.set(
               ACTIVE_ORG_COOKIE,
               JSON.stringify(null),
@@ -100,7 +100,7 @@ export async function validateAuth(): Promise<AuthResult> {
         }
       } catch (e) {
         console.error('Invalid active org cookie:', e);
-        activeOrgId = null;
+        activeOrgId = userId; // Reset to personal view
         cookieStore.set(ACTIVE_ORG_COOKIE, JSON.stringify(null), { path: '/' });
       }
     }

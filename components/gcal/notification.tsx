@@ -42,17 +42,19 @@ interface NotificationData {
 // Function to format minutes into hours and minutes
 const formatTimeRemaining = (minutes: number): string => {
   if (minutes < 60) {
-    return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+    return `${minutes} ${minutes === 1 ? "min" : "mins"}`;
   }
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  
+
   if (remainingMinutes === 0) {
-    return `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+    return `${hours} ${hours === 1 ? "hr" : "hrs"}`;
   }
-  
-  return `${hours} ${hours === 1 ? 'hr' : 'hrs'} ${remainingMinutes} ${remainingMinutes === 1 ? 'min' : 'mins'}`;
+
+  return `${hours} ${hours === 1 ? "hr" : "hrs"} ${remainingMinutes} ${
+    remainingMinutes === 1 ? "min" : "mins"
+  }`;
 };
 
 const Navbar = () => {
@@ -73,15 +75,18 @@ const Navbar = () => {
       if (!gcalResponse.ok) {
         throw new Error("Failed to fetch Google Calendar data");
       } else {
+        console.log("Fetching notifications...");
         const response = await fetch("/api/notifications");
         if (!response.ok) {
           throw new Error("Failed to fetch notifications");
         }
 
         const data = await response.json();
+        console.log("Notification data received:", data);
 
         if (data.success && data.data) {
           const notificationData = data.data as NotificationData;
+          console.log("Parsed notification data:", notificationData);
 
           // Check if there's a notification
           if (notificationData && notificationData.upcomingEvent) {
@@ -93,6 +98,10 @@ const Navbar = () => {
             const diffMs = eventTime.getTime() - currentTime.getTime();
             const diffMinutes = Math.floor(diffMs / 60000);
 
+            console.log("Event time:", eventTime);
+            console.log("Current time:", currentTime);
+            console.log("Minutes remaining until event:", diffMinutes);
+
             // Only set notification if event hasn't passed
             if (diffMinutes > 0) {
               setNotification(notificationData);
@@ -100,12 +109,14 @@ const Navbar = () => {
               setMinutesRemaining(diffMinutes);
               // Store the event title
               setEventTitle(notificationData.upcomingEvent.summary);
+              console.log("Notification active - event is in the future");
             } else {
               // Event has passed, clear notification
               setNotification(null);
               setHasNotification(false);
               setMinutesRemaining(null);
               setEventTitle("");
+              console.log("Notification cleared - event has passed");
             }
           } else {
             // No notification data
@@ -113,7 +124,10 @@ const Navbar = () => {
             setHasNotification(false);
             setMinutesRemaining(null);
             setEventTitle("");
+            console.log("No valid notification data found");
           }
+        } else {
+          console.log("No notification data in response or request failed");
         }
       }
     } catch (error) {
@@ -152,28 +166,39 @@ const Navbar = () => {
 
   // Handle notification click
   const handleNotificationClick = async () => {
-    if (hasNotification && notification) {
+    if (hasNotification) {
       // Mark notification as read by calling the API
-      const notificationId = notification._id;
-      
-      if (notificationId) {
+      if (notification && notification._id) {
         try {
-          await fetch(`/api/notifications/${notificationId}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
+          const response = await fetch(
+            `/api/notifications/${notification._id}`,
+            {
+              method: "PATCH",
             }
-          });
+          );
+
+          if (!response.ok) {
+            console.error("Failed to mark notification as read");
+          } else {
+            console.log("Notification marked as read successfully");
+          }
         } catch (error) {
-          console.error('Error marking notification as read:', error);
+          console.error("Error marking notification as read:", error);
         }
       }
 
       setHasNotification(false);
 
       // Show the appointment notification directly
-      if (minutesRemaining) {
+      if (notification && minutesRemaining) {
+        console.log("Opening notification with event details:", {
+          title: eventTitle,
+          minutes: minutesRemaining,
+        });
+
         setAppointmentVisible(true);
+      } else {
+        console.log("No notification data available for display");
       }
     }
   };
@@ -203,9 +228,12 @@ const Navbar = () => {
 
   // Handle start tour button click
   const handleStartTourClick = () => {
+    console.log("Start Tour button clicked", { currentPath: pathname });
+
     if (pathname === "/dashboard/jobs") {
       // If already on jobs page, use a direct event for immediate response
-      
+      console.log("Already on jobs page, using direct event");
+
       // 1. Add tour parameter to URL for consistency/bookmarking
       const timestamp = Date.now();
       const newUrl = `/dashboard/jobs?tour=true&t=${timestamp}`;
@@ -213,9 +241,11 @@ const Navbar = () => {
 
       // 2. Dispatch a direct custom event for immediate handling
       const directEvent = new CustomEvent(TOUR_START_EVENT);
+      console.log("Dispatching direct tour start event");
       window.dispatchEvent(directEvent);
     } else {
       // Navigate to jobs page with tour query param
+      console.log("Navigating to jobs page with tour parameter");
       router.push("/dashboard/jobs?tour=true");
     }
   };

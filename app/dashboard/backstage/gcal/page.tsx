@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-import CalendarAuth from '@/components/gcal/calendar-auth';
+import CalendarAuth from "@/components/gcal/calendar-auth";
 import { Gcal, convertGcalsToTableData } from "@/components/gcal/table/columns";
 
 export default function CalendarPage() {
@@ -28,7 +28,7 @@ export default function CalendarPage() {
   const fetchGcals = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/gcal/calendars');
+      const response = await fetch("/api/gcal/calendars");
       const result = await response.json();
 
       if (result.success) {
@@ -38,8 +38,8 @@ export default function CalendarPage() {
         setError(result.error);
       }
     } catch (err) {
-      setError('Failed to fetch Calendars');
-      console.error('Error fetching Calendars:', err);
+      setError("Failed to fetch Calendars");
+      console.error("Error fetching Calendars:", err);
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ export default function CalendarPage() {
     try {
       const response = await fetch(`/api/gcal/calendars/${calendarId}/events`);
       const result = await response.json();
-      
+
       if (result.success && result.data.length > 0) {
         return result.data;
       } else {
@@ -74,12 +74,12 @@ export default function CalendarPage() {
 
     try {
       // First add the calendars
-      const response = await fetch('/api/gcal/calendars', {
-        method: 'POST',
+      const response = await fetch("/api/gcal/calendars", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ calendars: selectedRows }) // Send full objects
+        body: JSON.stringify({ calendars: selectedRows }), // Send full objects
       });
 
       const result = await response.json();
@@ -92,15 +92,15 @@ export default function CalendarPage() {
       const allEvents = [];
       for (const row of selectedRows) {
         const calendarEvents = await fetchCalendarEvents(row.id);
-        
+
         if (calendarEvents.length > 0) {
           const formattedEvents = calendarEvents.map((event: any) => ({
-            date: event.start.dateTime 
-              ? new Date(event.start.dateTime).toLocaleDateString() 
+            date: event.start.dateTime
+              ? new Date(event.start.dateTime).toLocaleDateString()
               : event.start.date,
-            time: event.start.dateTime 
-              ? new Date(event.start.dateTime).toLocaleTimeString() 
-              : 'All Day',
+            time: event.start.dateTime
+              ? new Date(event.start.dateTime).toLocaleTimeString()
+              : "All Day",
             name: event.summary,
             calendar: row.summary,
           }));
@@ -114,7 +114,7 @@ export default function CalendarPage() {
         title: "Success",
         description: `${selectedRows.length} calendar(s) added successfully with ${allEvents.length} events`,
       });
-      
+
       setSelectedRows([]);
       fetchGcals();
     } catch (error) {
@@ -148,16 +148,32 @@ export default function CalendarPage() {
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Calendar Integration</h1>
       <CalendarAuth />
-  
+
       {authInitialized && (
         <div className="py-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Calendars</h2>
-            <Button onClick={handleCreate} className="bg-blue-500 hover:bg-blue-600">
+            <Button
+              onClick={handleCreate}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
               <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar
             </Button>
+            {/* removing the testing buttons 
+            <Button
+              onClick={handleGetGcal}
+              className="bg-green-500 hover:bg-green-600"
+            >
+              Get api/gcal (Testing)
+            </Button>
+            <Button
+              onClick={handleGetNotifications}
+              className="bg-green-500 hover:bg-green-600"
+            >
+              Get api/notification (Testing)
+            </Button> */}
           </div>
-  
+
           {/* Render Calendar Table */}
           <table className="w-full border-collapse border border-gray-200 mb-8">
             <thead>
@@ -165,8 +181,12 @@ export default function CalendarPage() {
                 <th className="border border-gray-300 p-2 text-left">Select</th>
                 <th className="border border-gray-300 p-2 text-left">ID</th>
                 <th className="border border-gray-300 p-2 text-left">Etag</th>
-                <th className="border border-gray-300 p-2 text-left">Summary</th>
-                <th className="border border-gray-300 p-2 text-left">Timezone</th>
+                <th className="border border-gray-300 p-2 text-left">
+                  Summary
+                </th>
+                <th className="border border-gray-300 p-2 text-left">
+                  Timezone
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -174,15 +194,19 @@ export default function CalendarPage() {
                 <tr
                   key={row.id}
                   className={`border border-gray-300 ${
-                    selectedRows.some((selectedRow) => selectedRow.id === row.id)
-                      ? 'bg-blue-100'
-                      : ''
+                    selectedRows.some(
+                      (selectedRow) => selectedRow.id === row.id
+                    )
+                      ? "bg-blue-100"
+                      : ""
                   }`}
                 >
                   <td className="p-2">
                     <input
                       type="checkbox"
-                      checked={selectedRows.some((selectedRow) => selectedRow.id === row.id)}
+                      checked={selectedRows.some(
+                        (selectedRow) => selectedRow.id === row.id
+                      )}
                       onChange={() => toggleRowSelection(row)}
                     />
                   </td>
@@ -194,7 +218,7 @@ export default function CalendarPage() {
               ))}
             </tbody>
           </table>
-  
+
           {/* Render Events Table */}
           {events.length > 0 ? (
             <>
@@ -202,10 +226,18 @@ export default function CalendarPage() {
               <table className="w-full border-collapse border border-gray-200">
                 <thead>
                   <tr>
-                    <th className="border border-gray-300 p-2 text-left">Date</th>
-                    <th className="border border-gray-300 p-2 text-left">Time</th>
-                    <th className="border border-gray-300 p-2 text-left">Event Name</th>
-                    <th className="border border-gray-300 p-2 text-left">Calendar Name</th>
+                    <th className="border border-gray-300 p-2 text-left">
+                      Date
+                    </th>
+                    <th className="border border-gray-300 p-2 text-left">
+                      Time
+                    </th>
+                    <th className="border border-gray-300 p-2 text-left">
+                      Event Name
+                    </th>
+                    <th className="border border-gray-300 p-2 text-left">
+                      Calendar Name
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
