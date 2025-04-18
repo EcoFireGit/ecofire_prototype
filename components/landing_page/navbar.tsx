@@ -43,91 +43,100 @@ const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [hasNotification, setHasNotification] = useState(false);
-  const [notification, setNotification] = useState<NotificationData | null>(null);
+  const [notification, setNotification] = useState<NotificationData | null>(
+    null
+  );
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [appointmentVisible, setAppointmentVisible] = useState(false);
   const [eventTitle, setEventTitle] = useState<string>("");
-  
-  // Function to fetch notifications
+
+  // Function to first fetch api/gcal to create notifications in the backend and then fetch notifications
   const fetchNotifications = async () => {
     try {
-      console.log('Fetching notifications...');
-      const response = await fetch('/api/notifications');
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
-      }
-      
-      const data = await response.json();
-      console.log('Notification data received:', data);
-      
-      if (data.success && data.data) {
-        const notificationData = data.data as NotificationData;
-        console.log('Parsed notification data:', notificationData);
-        
-        // Check if there's a notification
-        if (notificationData && notificationData.upcomingEvent) {
-          // Calculate time remaining
-          const eventTime = new Date(notificationData.upcomingEvent.start.dateTime);
-          const currentTime = new Date();
-          const diffMs = eventTime.getTime() - currentTime.getTime();
-          const diffMinutes = Math.floor(diffMs / 60000);
-          
-          console.log('Event time:', eventTime);
-          console.log('Current time:', currentTime);
-          console.log('Minutes remaining until event:', diffMinutes);
-          
-          // Only set notification if event hasn't passed
-          if (diffMinutes > 0) {
-            setNotification(notificationData);
-            setHasNotification(true);
-            setMinutesRemaining(diffMinutes);
-            // Store the event title
-            setEventTitle(notificationData.upcomingEvent.summary);
-            console.log('Notification active - event is in the future');
+      const gcalResponse = await fetch("/api/gcal");
+      if (!gcalResponse.ok) {
+        throw new Error("Failed to fetch Google Calendar data");
+      } else {
+        console.log("Fetching notifications...");
+        const response = await fetch("/api/notifications");
+        if (!response.ok) {
+          throw new Error("Failed to fetch notifications");
+        }
+
+        const data = await response.json();
+        console.log("Notification data received:", data);
+
+        if (data.success && data.data) {
+          const notificationData = data.data as NotificationData;
+          console.log("Parsed notification data:", notificationData);
+
+          // Check if there's a notification
+          if (notificationData && notificationData.upcomingEvent) {
+            // Calculate time remaining
+            const eventTime = new Date(
+              notificationData.upcomingEvent.start.dateTime
+            );
+            const currentTime = new Date();
+            const diffMs = eventTime.getTime() - currentTime.getTime();
+            const diffMinutes = Math.floor(diffMs / 60000);
+
+            console.log("Event time:", eventTime);
+            console.log("Current time:", currentTime);
+            console.log("Minutes remaining until event:", diffMinutes);
+
+            // Only set notification if event hasn't passed
+            if (diffMinutes > 0) {
+              setNotification(notificationData);
+              setHasNotification(true);
+              setMinutesRemaining(diffMinutes);
+              // Store the event title
+              setEventTitle(notificationData.upcomingEvent.summary);
+              console.log("Notification active - event is in the future");
+            } else {
+              // Event has passed, clear notification
+              setNotification(null);
+              setHasNotification(false);
+              setMinutesRemaining(null);
+              setEventTitle("");
+              console.log("Notification cleared - event has passed");
+            }
           } else {
-            // Event has passed, clear notification
+            // No notification data
             setNotification(null);
             setHasNotification(false);
             setMinutesRemaining(null);
             setEventTitle("");
-            console.log('Notification cleared - event has passed');
+            console.log("No valid notification data found");
           }
         } else {
-          // No notification data
-          setNotification(null);
-          setHasNotification(false);
-          setMinutesRemaining(null);
-          setEventTitle("");
-          console.log('No valid notification data found');
+          console.log("No notification data in response or request failed");
         }
-      } else {
-        console.log('No notification data in response or request failed');
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
     }
   };
-  
+
   // Set up polling for notifications every 60 seconds
   useEffect(() => {
     // Fetch on initial load
     fetchNotifications();
-    
+
     // Set up interval
     const intervalId = setInterval(() => {
       fetchNotifications();
     }, 60000); // 60 seconds
-    
+
     // Cleanup interval on component unmount
     return () => clearInterval(intervalId);
   }, []);
-  
+
   // Handle create job button click
-  const handleCreateJobClick = (e: { preventDefault: () => void; }) => {
+  const handleCreateJobClick = (e: { preventDefault: () => void }) => {
     // If already on jobs page, prevent default navigation and use custom event
     if (pathname === "/dashboard/jobs") {
       e.preventDefault();
-     
+
       // Create and dispatch a custom event that the JobsPage can listen for
       const event = new CustomEvent("openJobDialog");
       window.dispatchEvent(event);
@@ -141,17 +150,17 @@ const Navbar = () => {
   const handleNotificationClick = () => {
     if (hasNotification) {
       setHasNotification(false);
-      
+
       // Show the appointment notification directly
       if (notification && minutesRemaining) {
-        console.log('Opening notification with event details:', {
+        console.log("Opening notification with event details:", {
           title: eventTitle,
-          minutes: minutesRemaining
+          minutes: minutesRemaining,
         });
-        
+
         setAppointmentVisible(true);
       } else {
-        console.log('No notification data available for display');
+        console.log("No notification data available for display");
       }
     }
   };
@@ -159,37 +168,39 @@ const Navbar = () => {
   // Handle reprioritize button click
   const handleReprioritize = () => {
     setAppointmentVisible(false);
-    
+
     // Navigate to jobs page with filters if not already there
     if (pathname === "/dashboard/jobs") {
       // If on jobs page, apply filter directly
       if (minutesRemaining) {
-        window.dispatchEvent(new CustomEvent('applyTimeFilter', {
-          detail: { minutes: minutesRemaining }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("applyTimeFilter", {
+            detail: { minutes: minutesRemaining },
+          })
+        );
       }
     } else {
       // Store time for filter and navigate to jobs page
       if (minutesRemaining) {
-        sessionStorage.setItem('appointmentTime', minutesRemaining.toString());
+        sessionStorage.setItem("appointmentTime", minutesRemaining.toString());
       }
-      router.push('/dashboard/jobs');
+      router.push("/dashboard/jobs");
     }
   };
 
   // Handle start tour button click
   const handleStartTourClick = () => {
     console.log("Start Tour button clicked", { currentPath: pathname });
-    
+
     if (pathname === "/dashboard/jobs") {
       // If already on jobs page, use a direct event for immediate response
       console.log("Already on jobs page, using direct event");
-      
+
       // 1. Add tour parameter to URL for consistency/bookmarking
       const timestamp = Date.now();
       const newUrl = `/dashboard/jobs?tour=true&t=${timestamp}`;
       window.history.pushState({}, "", newUrl);
-      
+
       // 2. Dispatch a direct custom event for immediate handling
       const directEvent = new CustomEvent(TOUR_START_EVENT);
       console.log("Dispatching direct tour start event");
@@ -200,23 +211,34 @@ const Navbar = () => {
       router.push("/dashboard/jobs?tour=true");
     }
   };
-  
+
   return (
     <>
       <div className="w-full px-4 py-3 flex justify-end items-center mt-5">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="mr-2" id="help-button">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-2"
+              id="help-button"
+            >
               <HelpCircle className="h-6 w-6" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-4" side="bottom" align="end" sideOffset={10}>
+          <PopoverContent
+            className="w-72 p-4"
+            side="bottom"
+            align="end"
+            sideOffset={10}
+          >
             <div className="space-y-3">
               <h4 className="font-medium text-base">Need help?</h4>
               <p className="text-sm text-gray-500">
-                Get familiar with our interface by taking a guided tour of the main features.
+                Get familiar with our interface by taking a guided tour of the
+                main features.
               </p>
-              <Button 
+              <Button
                 className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
                 onClick={handleStartTourClick}
               >
@@ -225,17 +247,17 @@ const Navbar = () => {
             </div>
           </PopoverContent>
         </Popover>
-        
+
         <Link href="/dashboard/search">
           <Button variant="ghost" size="icon" className="mr-2">
             <Search className="h-6 w-6" />
           </Button>
         </Link>
 
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="mr-4 relative" 
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-4 relative"
           onClick={handleNotificationClick}
         >
           <Bell className="h-6 w-6" />
@@ -251,7 +273,7 @@ const Navbar = () => {
         </Link>
         <UserButton />
       </div>
-      
+
       {/* Appointment Notification Dialog */}
       {appointmentVisible && minutesRemaining && (
         <div className="fixed bottom-6 left-[17rem] z-50 bg-white rounded-lg shadow-lg p-4 max-w-md border border-blue-300 animate-in slide-in-from-bottom-10 duration-300">
@@ -259,15 +281,23 @@ const Navbar = () => {
             <div className="bg-blue-100 p-2 rounded-full">
               <Clock className="h-5 w-5 text-blue-600" />
             </div>
-           
+
             <div className="flex-1">
               <p className="text-sm font-medium mb-1">Hey! 👋</p>
-              <h4 className="font-medium text-base mb-1">Google calendar sync</h4>
+              <h4 className="font-medium text-base mb-1">
+                Google calendar sync
+              </h4>
               <p className="text-sm mb-1">
-                You have an <span className="font-medium">{eventTitle}</span> in <span className="text-green-600 font-medium">{minutesRemaining} mins</span>.
+                You have an <span className="font-medium">{eventTitle}</span> in{" "}
+                <span className="text-green-600 font-medium">
+                  {minutesRemaining} mins
+                </span>
+                .
               </p>
-              <p className="text-sm text-gray-600 mb-3">Do you want to reprioritize your tasks?</p>
-             
+              <p className="text-sm text-gray-600 mb-3">
+                Do you want to reprioritize your tasks?
+              </p>
+
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -277,7 +307,7 @@ const Navbar = () => {
                 >
                   Reprioritize
                 </Button>
-               
+
                 <Button
                   variant="ghost"
                   size="sm"
