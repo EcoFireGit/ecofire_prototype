@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     return authResult.response;
   }
   
-  const userId = authResult.userId;
+  const userId = authResult.actualUserId;
 
   const url = req.nextUrl;
   const code = url.searchParams.get('code');

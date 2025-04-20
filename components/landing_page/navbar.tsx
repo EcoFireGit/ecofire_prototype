@@ -296,7 +296,7 @@ const Navbar = () => {
                 Google calendar sync
               </h4>
               <p className="text-sm mb-1">
-                You have an <span className="font-medium">{eventTitle}</span> in{" "}
+                You have a "<span className="font-medium">{eventTitle}</span>" event in{" "}
                 <span className="text-green-600 font-medium">
                   {formatTimeRemaining(minutesRemaining)}
                 </span>
