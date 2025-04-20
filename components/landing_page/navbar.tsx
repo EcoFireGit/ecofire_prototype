@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Search, Bell, HelpCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Search, Bell, HelpCircle, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
 import {
   Popover,
   PopoverContent,
@@ -219,6 +221,7 @@ const Navbar = () => {
       router.push("/dashboard/jobs?tour=true");
     }
   };
+
 
   return (
     <>
