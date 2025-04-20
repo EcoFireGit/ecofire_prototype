@@ -129,7 +129,7 @@ const Navbar = () => {
     // Set up interval
     const intervalId = setInterval(() => {
       fetchNotifications();
-    }, 60000); // 60 seconds
+    }, 60*60*1000); // fetch notification every 1 hour 
 
     // Cleanup interval on component unmount
     return () => clearInterval(intervalId);
