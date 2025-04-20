@@ -18,6 +18,23 @@ interface AuthResult {
   response?: NextResponse;
 }
 
+/**
+ * Get user's email from Clerk - separate function to avoid unnecessary API calls
+ * Only call this when email is actually needed
+ */
+export async function getUserEmail(): Promise<string> {
+  try {
+    const user = await currentUser();
+    if (!user) return '';
+    
+    const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+    return primaryEmail?.emailAddress || '';
+  } catch (error) {
+    console.error('Failed to get user email:', error);
+    return '';
+  }
+}
+
 export async function validateAuth(): Promise<AuthResult> {
   try {
     // Get fresh userId from Clerk on every request
@@ -74,18 +91,12 @@ export async function validateAuth(): Promise<AuthResult> {
     // The viewId now depends on the active organization 
     const viewId = activeOrgId !== userId ? activeOrgId : userId;
     
-    // Get user info on every request
-    const user = await currentUser();
-    const primaryEmail = user?.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
-    const email = primaryEmail?.emailAddress || '';
-    
-    // Return the result without caching
+    // Return the result without fetching email - email will be fetched separately when needed
     return {
       isAuthorized: true,
       userId: viewId,  // This sets userId to viewId which changes with org
       actualUserId: userId,
-      isOrganization: activeOrgId !== userId,
-      email
+      isOrganization: activeOrgId !== userId
     };
   } catch (error) {
     // Handle rate limiting errors
