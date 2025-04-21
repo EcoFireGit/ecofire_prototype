@@ -212,9 +212,9 @@ export default function Dashboard() {
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 gap-8">
+      <div className="flex flex-col gap-8 w-full">
         {/* QBO Progress Chart */}
-        <div>
+        <div className="w-full">
           {loading && qbos.length === 0 ? (
             <div className="flex justify-center items-center h-64">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -236,7 +236,7 @@ export default function Dashboard() {
         </div>
         
         {/* Top 5 Recommended Jobs */}
-        <div>
+        <div className="w-full">
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold">Top Recommended Jobs</h2>
             <Button 
