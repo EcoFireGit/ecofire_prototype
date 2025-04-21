@@ -418,6 +418,7 @@ export default function JobsPage() {
   useEffect(() => {
     fetchJobs();
   }, []);
+  
 
   useEffect(() => {
     // Check if "open=true" is in the URL
@@ -567,6 +568,43 @@ export default function JobsPage() {
 
     return matches;
   };
+
+  // Effect to reapply filters when jobs are loaded
+useEffect(() => {
+  // Only run this when we have loaded jobs and are not in loading state
+  if (!loading && activeJobs.length > 0) {
+    // Check if we have activeFilters already set (from initialFilters or previous state)
+    if (Object.keys(activeFilters).length > 0) {
+      console.log('Reapplying filters on page navigation/load:', activeFilters);
+      
+      // Reapply the filters to the jobs
+      // This is essentially the same as handleFilterChange but we're calling it directly
+      // with our existing activeFilters
+      
+      // Filter active jobs
+      const filteredActive = activeJobs.filter((job) => {
+        return matchesFilters(job, activeFilters);
+      });
+
+      // Filter completed jobs - only apply non-status filters
+      const nonStatusFilters = { ...activeFilters };
+      delete nonStatusFilters.isDone;
+
+      const filteredCompleted = completedJobs.filter((job) => {
+        // If isDone filter is true, show completed jobs, otherwise hide them
+        if (activeFilters.isDone === true) {
+          return matchesFilters(job, nonStatusFilters);
+        } else {
+          return false; // Hide completed jobs if not explicitly showing them
+        }
+      });
+
+      // Update the filtered jobs lists
+      setFilteredActiveJobs(filteredActive);
+      setFilteredCompletedJobs(filteredCompleted);
+    }
+  }
+}, [loading, activeJobs, completedJobs, activeFilters]);
 
   // Handler for sort changes
   const handleActiveSortChange = (sortedJobs: Job[]) => {
@@ -796,9 +834,9 @@ export default function JobsPage() {
           />
         </div>
 
-        <div className="flex flex-col md:flex-row gap-12">
-          {/* Main job grid/table - takes 2/3 of the space */}
-          <div className="md:w-3/5 md:pr-6">
+        <div className="flex flex-col xl:flex-row gap-8">
+          {/* Main job grid/table - takes appropriate space based on screen size */}
+          <div className="w-full xl:w-1/2 xl:pr-6">
             {viewMode === "grid" ? (
               <JobsGrid
                 data={sortedActiveJobs} // Use sorted jobs instead of filtered
@@ -823,8 +861,8 @@ export default function JobsPage() {
             )}
           </div>
           
-          {/* QBO Circles Component - takes 2/5 of the space with padding */}
-          <div className="md:w-2/5 mb-8 md:sticky md:top-20 md:self-start md:pl-10 md:border-l border-gray-200">
+          {/* QBO Circles Component - takes appropriate space with padding */}
+          <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:border-l border-gray-200">
             <QBOCircles 
               onSelectJob={(jobId) => {
                 // Find the job and open its tasks sidebar

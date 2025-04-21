@@ -192,9 +192,9 @@ export function TasksSidebar({
     }
   };
 
-  const handleCompleteTask = async (id: string, completed: boolean) => {
+  const handleCompleteTask = async (id: string, jobid:string, completed: boolean) => {
     try {
-      const response = await fetch(`/api/tasks/${id}`, {
+      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -203,11 +203,11 @@ export function TasksSidebar({
       });
       const result = await response.json();
       if (result.success) {
-        // If the completed task was the next task, we need to update the job
-        if (completed && id === nextTaskId) {
-          // Clear the next task since it's now completed
-          await updateJobNextTask("none");
-        }
+        // If the completed task was the next task, we need to update the job--NEW --> This is now taken care of previous call
+        // if (completed && id === nextTaskId) {
+        //   // Clear the next task since it's now completed
+        //   await updateJobNextTask("none");
+        // }
 
         // Use the function form of setState to ensure you're working with the latest state
         setTasks(prevTasks => {

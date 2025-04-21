@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }    
-    const savedPrioriCalendarEvent= await eventService.createEvent (userId, eventData);
-   
+    const savedPrioriCalendarEvent= await eventService.createEvent (userId!, eventData);
+
     return NextResponse.json({
       success: true,
       data: savedPrioriCalendarEvent
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     
     const userId = authResult.userId;
     
-    const getPrioriCalendarEvents= await eventService.getPrioriwiseEvents(userId);
+    const getPrioriCalendarEvents= await eventService.getPrioriwiseEvents(userId!);
 
     return NextResponse.json({
       success: true,

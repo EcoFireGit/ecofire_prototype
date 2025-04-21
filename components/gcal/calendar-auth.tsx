@@ -1,6 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import useCalendar from '@/hooks/use-calendar';
+import { useToast } from '@/hooks/use-toast';
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/select";
 
 export default function CalendarAuth() {
+  const { toast } = useToast();
   const {
     isAuthorizing,
     isGetting,
@@ -22,7 +24,7 @@ export default function CalendarAuth() {
     handleCalendarSelect,
     handleGetEvents,
     events
-  } = useCalendar();
+  } = useCalendar(toast);
 
   return (
     <div className="space-y-4">
