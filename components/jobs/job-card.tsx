@@ -41,7 +41,8 @@ export function JobCard({
   onSelect,
   onOpenTasksSidebar,
   isSelected,
-  taskOwnerMap
+  taskOwnerMap,
+  hideCheckbox = false
 }: JobCardProps) {
   const router = useRouter();
   const [progress, setProgress] = useState<number>(0);
