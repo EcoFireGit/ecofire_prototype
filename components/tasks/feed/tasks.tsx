@@ -9,7 +9,7 @@ import {
   Circle,
   Smile,
   FileText,
-  PawPrint
+  PawPrint,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -195,7 +195,7 @@ export function NextTasks({
                         }}
                         title="Add to calendar"
                       >
-                        <Calendar className="h-4 w-4" /> Add to Calender
+                        <Calendar className="h-4 w-4" /> Add to Calendar
                       </Button>
                     )}
                     <div className="flex flex-col gap-2">
@@ -233,11 +233,13 @@ export function NextTasks({
                         className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`);
+                          router.push(
+                            `/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`,
+                          );
                         }}
                         title="Ask Jija about this task"
                       >
-                        <PawPrint className="h-4 w-4" />
+                        <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
                       </Button>
 
                       {onDeleteTask && (
@@ -249,7 +251,7 @@ export function NextTasks({
                             e.stopPropagation();
                             if (
                               window.confirm(
-                                "Are you sure you want to delete this task?"
+                                "Are you sure you want to delete this task?",
                               )
                             ) {
                               onDeleteTask(task._id);
@@ -278,7 +280,7 @@ export function NextTasks({
                       <div className="flex items-center">
                         <Circle
                           className={`h-4 w-4 mr-1 ${getFocusLevelColor(
-                            task.focusLevel
+                            task.focusLevel,
                           )}`}
                           fill="currentColor"
                         />
@@ -292,7 +294,7 @@ export function NextTasks({
                       <div className="flex items-center">
                         <Smile
                           className={`h-4 w-4 mr-1 ${getJoyLevelColor(
-                            task.joyLevel
+                            task.joyLevel,
                           )}`}
                         />
                         <span className="text-sm">Joy: {task.joyLevel}</span>
@@ -371,3 +373,4 @@ function NextTasksSkeletonLoader() {
 }
 
 export default NextTasks;
+
