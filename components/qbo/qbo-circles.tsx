@@ -155,7 +155,15 @@ export function QBOCircles({ onSelectJob }: QBOCircleProps) {
                         {qbo.name}
                       </div>
                       <div className="text-xs text-center opacity-80">
-                        {qbo.points} points
+                        {(() => {
+                          // Calculate total points across all QBOs
+                          const totalPoints = qbos.reduce((sum, q) => sum + (q.points || 0), 0);
+                          // Calculate percentage for this QBO
+                          const percentage = totalPoints > 0 
+                            ? Math.round((qbo.points / totalPoints) * 100) 
+                            : 0;
+                          return `${percentage}% (${qbo.points} points)`;
+                        })()}
                       </div>
                       <div className="mt-2 w-full overflow-hidden text-center">
                         {jobs.length === 0 ? (
