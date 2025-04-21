@@ -397,7 +397,7 @@ export default function TaskFeedView() {
   }, []);
 
   // Function to complete a task
-  const completeTask = async (jobid:string, id: string) => {
+  const completeTask = async (jobid: string, id: string) => {
     try {
       const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
@@ -438,23 +438,23 @@ export default function TaskFeedView() {
 
         //No need to update job because task udpate will handle it in the backend
 
-            // If this task is a next task for a job, update the job
-            // const jobsWithThisNextTask = Object.values(jobs).filter(
-            //   (job: any) => job.nextTaskId === id
-            // );
+        // If this task is a next task for a job, update the job
+        // const jobsWithThisNextTask = Object.values(jobs).filter(
+        //   (job: any) => job.nextTaskId === id
+        // );
 
-            // // Update each job found
-            // for (const job of jobsWithThisNextTask) {
-            //   await fetch(`/api/jobs/${job._id}`, {
-            //     method: "PUT",
-            //     headers: {
-            //       "Content-Type": "application/json",
-            //     },
-            //     body: JSON.stringify({
-            //       nextTaskId: null,
-            //     }),
-            //   });
-            // }
+        // // Update each job found
+        // for (const job of jobsWithThisNextTask) {
+        //   await fetch(`/api/jobs/${job._id}`, {
+        //     method: "PUT",
+        //     headers: {
+        //       "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify({
+        //       nextTaskId: null,
+        //     }),
+        //   });
+        // }
 
         // Filter out the task after a brief delay
         setTimeout(() => {
@@ -591,8 +591,14 @@ export default function TaskFeedView() {
         return;
       }
 
-      // Calculate start and end times (1-hour duration)
-      const startDate = new Date(task.date);
+      // Use current local time as the start time
+      const startDate = new Date();
+      // Keep the date from the task but use current time
+      startDate.setFullYear(
+        new Date(task.date).getFullYear(),
+        new Date(task.date).getMonth(),
+        new Date(task.date).getDate(),
+      );
       const endDate = new Date(
         startDate.getTime() + task.requiredHours * 60 * 60 * 1000,
       );
