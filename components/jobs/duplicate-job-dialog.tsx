@@ -145,7 +145,7 @@ export function DuplicateJobDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Duplicate Job</DialogTitle>
