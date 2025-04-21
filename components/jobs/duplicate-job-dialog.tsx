@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -58,9 +59,6 @@ export function DuplicateJobDialog({
 
     onSubmit(submissionData);
     onOpenChange(false);
-    // Trigger a refresh of the jobs list and reset form
-    window.dispatchEvent(new CustomEvent('jobs-update'));
-    setFormData({});
   };
 
   return (

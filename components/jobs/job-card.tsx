@@ -271,8 +271,7 @@ export function JobCard({
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={(e) => {
-            e.preventDefault();
+          onClick={async (e) => {
             e.stopPropagation();
             setIsDuplicateDialogOpen(true);
           }}
