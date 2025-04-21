@@ -53,7 +53,6 @@ export function DuplicateJobDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const submissionData = { ...formData };
-    console.log("DEBUG: Inside duplicate-job-dialog.tsx handleSubmit");
     if (submissionData.dueDate) {
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
@@ -66,9 +65,6 @@ export function DuplicateJobDialog({
 
     try {
       // Create the duplicated job
-      console.log(
-        "DEBUG: Inside duplicate-job-dialog.tsx handleSubmit try block",
-      );
       const jobResponse = await fetch("/api/jobs", {
         method: "POST",
         headers: {
@@ -145,7 +141,7 @@ export function DuplicateJobDialog({
           title: "Job Duplicated",
           description: `Successfully duplicated "${sourceJob.title}" with all its tasks`,
         });
-        
+
         // Close the dialog and refresh the page
         onOpenChange(false);
         window.location.reload();
@@ -156,7 +152,8 @@ export function DuplicateJobDialog({
       console.error("Error during job duplication:", error);
       toast({
         title: "Duplication Failed",
-        description: "There was an error duplicating the job. Please try again.",
+        description:
+          "There was an error duplicating the job. Please try again.",
         variant: "destructive",
       });
     }
@@ -164,7 +161,10 @@ export function DuplicateJobDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
+      <DialogContent
+        className="sm:max-w-[425px]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Duplicate Job</DialogTitle>
