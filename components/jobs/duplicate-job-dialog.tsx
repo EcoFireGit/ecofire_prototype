@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { Job } from "./table/columns";
+import { useToast } from "@/hooks/use-toast";
 
 interface DuplicateJobDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function DuplicateJobDialog({
   sourceJob,
 }: DuplicateJobDialogProps) {
   const [formData, setFormData] = useState<Partial<Job>>({});
+  const { toast } = useToast();
 
   useEffect(() => {
     if (open && sourceJob) {
@@ -132,6 +134,12 @@ export function DuplicateJobDialog({
           }
         }
 
+        // Show success toast
+        toast({
+          title: "Job Duplicated",
+          description: `Successfully duplicated "${sourceJob.title}" with all its tasks`,
+        });
+        
         // Close the dialog and refresh the page
         onOpenChange(false);
         window.location.reload();
@@ -140,6 +148,11 @@ export function DuplicateJobDialog({
       }
     } catch (error) {
       console.error("Error during job duplication:", error);
+      toast({
+        title: "Duplication Failed",
+        description: "There was an error duplicating the job. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

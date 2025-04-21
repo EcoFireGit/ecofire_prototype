@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Edit, Trash2, PawPrint, Copy } from "lucide-react";
 import { DuplicateJobDialog } from "./duplicate-job-dialog";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,7 @@ export function JobCard({
 }: JobCardProps) {
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
   const [progress, setProgress] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [taskCounts, setTaskCounts] = useState<TaskCounts>({
@@ -406,12 +408,23 @@ export function JobCard({
                 }
               }
 
+              // Show success toast
+              toast({
+                title: "Job Duplicated",
+                description: `Successfully duplicated "${currentJob.title}" with all its tasks`,
+              });
+              
               // Close the dialog and refresh the jobs list
               setIsDuplicateDialogOpen(false);
               window.location.reload();
             }
           } catch (error) {
             console.error("Error duplicating job:", error);
+            toast({
+              title: "Duplication Failed",
+              description: "There was an error duplicating the job. Please try again.",
+              variant: "destructive",
+            });
           }
         }}
       />
