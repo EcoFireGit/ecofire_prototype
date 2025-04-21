@@ -92,7 +92,8 @@ export default function Dashboard() {
       
       // Sort jobs - can add more complex sorting logic here as needed
       // For now, simple sorting by impact score (higher is better)
-      jobs.sort((a: Job, b: Job) => b.impact - a.impact);
+      // Ensure impact values are defined with fallback to 0
+      jobs.sort((a: Job, b: Job) => (b.impact || 0) - (a.impact || 0));
       
       // Get the top 5 jobs
       const top5Jobs = jobs.slice(0, 5);
