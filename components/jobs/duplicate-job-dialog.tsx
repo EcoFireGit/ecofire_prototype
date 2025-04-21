@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -49,7 +48,7 @@ export function DuplicateJobDialog({
     }
   }, [open, sourceJob]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const submissionData = { ...formData };
 
@@ -57,8 +56,88 @@ export function DuplicateJobDialog({
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
 
-    onSubmit(submissionData);
-    onOpenChange(false);
+    try {
+      // Create the duplicated job
+      const jobResponse = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData),
+      });
+
+      const jobResult = await jobResponse.json();
+
+      if (jobResult.success && jobResult.data) {
+        const newJobId = jobResult.data._id;
+        const newJobTitle = jobResult.data.title;
+
+        // Fetch tasks of the original job
+        const tasksResponse = await fetch(`/api/tasks?jobId=${sourceJob.id}`);
+        const tasksResult = await tasksResponse.json();
+
+        if (tasksResult.success && tasksResult.data) {
+          // Create new tasks for the duplicated job
+          for (const task of tasksResult.data) {
+            const newTask = {
+              ...task,
+              jobId: newJobId,
+              completed: false,
+            };
+            delete newTask._id;
+            delete newTask.id;
+
+            await fetch('/api/tasks', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(newTask),
+            });
+          }
+        }
+
+        // Fetch all PI-job mappings to find those associated with the original job
+        const mappingsResponse = await fetch('/api/pi-job-mappings');
+        const mappingsResult = await mappingsResponse.json();
+
+        if (mappingsResult.success && mappingsResult.data) {
+          // Filter mappings to get only those for the original job
+          const originalJobMappings = mappingsResult.data.filter(
+            (mapping: any) => mapping.jobId === sourceJob.id
+          );
+
+          // Create new mappings for each original mapping
+          for (const mapping of originalJobMappings) {
+            const newMapping = {
+              jobId: newJobId,
+              jobName: newJobTitle,
+              piId: mapping.piId,
+              piName: mapping.piName,
+              piImpactValue: mapping.piImpactValue,
+              piTarget: mapping.piTarget || 0,
+              notes: `Duplicated from job: ${sourceJob.title}`
+            };
+
+            await fetch('/api/pi-job-mappings', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(newMapping),
+            });
+          }
+        }
+
+        // Close the dialog and refresh the page
+        onOpenChange(false);
+        window.location.reload();
+      } else {
+        throw new Error(jobResult.error || 'Failed to create job');
+      }
+    } catch (error) {
+      console.error('Error during job duplication:', error);
+    }
   };
 
   return (
