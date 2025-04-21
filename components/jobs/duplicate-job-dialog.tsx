@@ -58,6 +58,9 @@ export function DuplicateJobDialog({
 
     try {
       // Create the duplicated job
+      console.log(
+        "DEBUG: Inside duplicate-job-dialog.tsx handleSubmit try block",
+      );
       const jobResponse = await fetch("/api/jobs", {
         method: "POST",
         headers: {
