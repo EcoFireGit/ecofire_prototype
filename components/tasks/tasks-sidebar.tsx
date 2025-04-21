@@ -11,16 +11,24 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
+import {
+  Plus,
+  PawPrint,
+  Calendar,
+  Briefcase,
+  FileText,
+  GripVertical,
+} from "lucide-react";
 import { TaskDialog } from "./tasks-dialog";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
 import { useToast } from "@/hooks/use-toast";
 import { NextTaskSelector } from "./next-task-selector";
-import { TaskProvider } from "@/hooks/task-context"; // Import the TaskProvider
-import { TaskCard } from "./tasks-card"; // Make sure to import the updated TaskCard
+import { TaskProvider } from "@/hooks/task-context";
+import { TaskCard } from "./tasks-card";
 import { useTaskContext } from "@/hooks/task-context";
 import { useRouter } from "next/navigation";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 // Owner interface
 interface Owner {
@@ -50,6 +58,8 @@ export function TasksSidebar({
   const [owners, setOwners] = useState<Owner[]>([]);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
   const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
+  const [showSaveOrder, setShowSaveOrder] = useState(false);
+  const [hasOrderChanged, setHasOrderChanged] = useState(false);
 
   const { toast } = useToast();
   const { refreshJobOwner } = useTaskContext();
@@ -192,7 +202,11 @@ export function TasksSidebar({
     }
   };
 
-  const handleCompleteTask = async (id: string, jobid:string, completed: boolean) => {
+  const handleCompleteTask = async (
+    id: string,
+    jobid: string,
+    completed: boolean
+  ) => {
     try {
       const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
@@ -203,28 +217,21 @@ export function TasksSidebar({
       });
       const result = await response.json();
       if (result.success) {
-        // If the completed task was the next task, we need to update the job--NEW --> This is now taken care of previous call
-        // if (completed && id === nextTaskId) {
-        //   // Clear the next task since it's now completed
-        //   await updateJobNextTask("none");
-        // }
-
         // Use the function form of setState to ensure you're working with the latest state
-        setTasks(prevTasks => {
-          return prevTasks.map(task => {
+        setTasks((prevTasks) => {
+          return prevTasks.map((task) => {
             if (task.id === id) {
               // Update completed status and remove isNextTask if it's being completed
-              return { 
-                ...task, 
+              return {
+                ...task,
                 completed,
                 // If the task is being completed and it was the next task, remove that status
-                isNextTask: completed ? false : task.isNextTask 
+                isNextTask: completed ? false : task.isNextTask,
               };
             }
             return task;
           });
         });
-
       } else {
         toast({
           title: "Error",
@@ -291,7 +298,6 @@ export function TasksSidebar({
       });
     }
   };
-
 
   const updateJobNextTask = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
@@ -376,8 +382,8 @@ export function TasksSidebar({
             await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
 
             // Trigger a refresh of the job progress since we added a new task
-            const event = new CustomEvent('job-progress-update', { 
-              detail: { jobId: selectedJob.id } 
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
             });
             window.dispatchEvent(event);
           }
@@ -427,8 +433,8 @@ export function TasksSidebar({
 
           // If the task completion status changed, trigger a progress update
           if (currentTask.completed !== updatedTask.completed && selectedJob) {
-            const event = new CustomEvent('job-progress-update', { 
-              detail: { jobId: selectedJob.id } 
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
             });
             window.dispatchEvent(event);
           }
@@ -482,6 +488,88 @@ export function TasksSidebar({
       console.error("Error updating job tasks:", error);
       throw error;
     }
+  };
+
+  // Save the new order of tasks
+  const saveTasksOrder = async () => {
+    if (!selectedJob) return;
+
+    try {
+      // Get all task IDs in their current order
+      const taskIds = tasks.map((task) => task.id);
+
+      // Call the new API endpoint
+      const response = await fetch("/api/tasks/order", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jobId: selectedJob.id,
+          taskIds: taskIds,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setShowSaveOrder(false);
+        setHasOrderChanged(false);
+
+        toast({
+          title: "Success",
+          description: "Task order updated successfully",
+        });
+
+        // Refresh jobs if needed
+        if (typeof onRefreshJobs === "function") {
+          onRefreshJobs();
+        }
+      } else {
+        throw new Error(result.error || "Failed to update task order");
+      }
+    } catch (error) {
+      console.error("Error saving task order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save task order",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle drag end event
+  const onDragEnd = (result: any) => {
+    // If dropped outside the list or trying to move the next task
+    if (!result.destination) {
+      return;
+    }
+
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+
+    // Get the dragged task
+    const draggedTask = tasks[sourceIndex];
+
+    // Don't allow the next task to be reordered
+    if (draggedTask.isNextTask) {
+      toast({
+        title: "Cannot reorder next task",
+        description: "The next task must remain at the top",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Reorder tasks array
+    const newTasks = Array.from(tasks);
+    const [removed] = newTasks.splice(sourceIndex, 1);
+    newTasks.splice(destinationIndex, 0, removed);
+
+    // Update state
+    setTasks(newTasks);
+    setShowSaveOrder(true);
+    setHasOrderChanged(true);
   };
 
   if (!selectedJob) {
@@ -539,7 +627,16 @@ export function TasksSidebar({
                       <h3 className="text-sm font-semibold">Notes</h3>
                     </div>
                     <div className="pl-6">
-                      <div className="text-sm text-muted-foreground" style={{ whiteSpace: 'pre-wrap', overflowY: 'auto', overflowX: 'hidden', maxHeight: '10rem', wordBreak: 'break-word' }}>
+                      <div
+                        className="text-sm text-muted-foreground"
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          overflowY: "auto",
+                          overflowX: "hidden",
+                          maxHeight: "10rem",
+                          wordBreak: "break-word",
+                        }}
+                      >
                         {selectedJob.notes}
                       </div>
                     </div>
@@ -553,7 +650,9 @@ export function TasksSidebar({
                     <div className="flex items-start">
                       <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
                       <div>
-                        <span className="text-xs text-gray-500">Business Function</span>
+                        <span className="text-xs text-gray-500">
+                          Business Function
+                        </span>
                         <p className="text-sm font-medium">
                           {selectedJob.businessFunctionName}
                         </p>
@@ -593,7 +692,7 @@ export function TasksSidebar({
               </Button>
             </div>
 
-            {/* Tasks List */}
+            {/* Tasks List with Drag and Drop */}
             {isLoading ? (
               <div className="flex justify-center p-8">
                 <p>Loading tasks...</p>
@@ -601,21 +700,107 @@ export function TasksSidebar({
             ) : (
               <div className="space-y-4">
                 {sortedTasks.length > 0 ? (
-                  sortedTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onEdit={handleEditTask}
-                      onDelete={handleDeleteTask}
-                      onComplete={handleCompleteTask}
-                      ownerMap={ownerMap}
-                    />
-                  ))
+                  <DragDropContext onDragEnd={onDragEnd}>
+                    <Droppable droppableId="tasks-list" isDropDisabled={false}>
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className="space-y-3"
+                        >
+                          {sortedTasks.map((task, index) => (
+                            <Draggable
+                              key={task.id}
+                              draggableId={task.id}
+                              index={index}
+                              isDragDisabled={task.isNextTask}
+                            >
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  className={`${
+                                    snapshot.isDragging ? "opacity-70" : ""
+                                  }`}
+                                  style={{
+                                    ...provided.draggableProps.style,
+                                  }}
+                                >
+                                  <div className="flex items-start">
+                                    {/* The drag handle - this is what we need to fix */}
+                                    <div
+                                      {...provided.dragHandleProps}
+                                      className={`flex items-center justify-center h-full min-h-[80px] px-2 cursor-grab ${
+                                        task.isNextTask
+                                          ? "opacity-20 cursor-not-allowed"
+                                          : ""
+                                      }`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onMouseDown={(e) => {
+                                        if (!task.isNextTask) {
+                                          // Let the drag handle work normally
+                                        } else {
+                                          // Prevent dragging for next tasks
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          toast({
+                                            title: "Can't reorder next task",
+                                            description:
+                                              "The next task must remain at the top",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <GripVertical className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <TaskCard
+                                        task={task}
+                                        onEdit={handleEditTask}
+                                        onDelete={handleDeleteTask}
+                                        onComplete={handleCompleteTask}
+                                        ownerMap={ownerMap}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 ) : (
                   <div className="p-8 text-center text-gray-500 border rounded-md">
                     No tasks for this job yet.
                   </div>
                 )}
+              </div>
+            )}
+            {/* Save Order Notification */}
+            {showSaveOrder && (
+              <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 z-50 border border-gray-200">
+                <p className="text-sm mb-2">Save the new task order?</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Revert the changes
+                      fetchTasks();
+                      setShowSaveOrder(false);
+                      setHasOrderChanged(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={saveTasksOrder}>
+                    Save Order
+                  </Button>
+                </div>
               </div>
             )}
           </TaskProvider>

@@ -1,6 +1,7 @@
 import Task from "../models/task.model";
 import { Task as TaskInterface } from "../models/task.model";
 import dbConnect from "../mongodb";
+import Job from "../models/job.model"; // Import the Job model
 
 export class TaskService {
   async getTasksByJobId(
@@ -137,7 +138,37 @@ export class TaskService {
       return users;
     } catch (error) {
       throw new Error('Error fetching users from database');
-      throw new Error("Error fetching next tasks from database");
     }
-  }  
+  }
+
+  //method to update the tasks order in a job
+  async updateTasksOrder(
+    jobId: string,
+    userId: string,
+    taskIds: string[]
+  ): Promise<boolean> {
+    try {
+      await dbConnect();
+      
+      // Find the job
+      const job = await Job.findOne({
+        _id: jobId,
+        userId,
+        $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
+      });
+      
+      if (!job) {
+        throw new Error("Job not found");
+      }
+      
+      // Update the job with the new tasks order
+      job.tasks = taskIds;
+      await job.save();
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating tasks order:", error);
+      throw new Error("Error updating tasks order in database");
+    }
+  }
 }
