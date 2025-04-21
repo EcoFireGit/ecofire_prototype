@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TasksSidebar } from '@/components/tasks/tasks-sidebar';
 
 export default function Dashboard() {
   const [qbos, setQbos] = useState<QBOs[]>([]);
@@ -19,6 +20,8 @@ export default function Dashboard() {
   const [topJobs, setTopJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [taskOwnerMap, setTaskOwnerMap] = useState<Record<string, string>>({});
+  const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -187,7 +190,9 @@ export default function Dashboard() {
   }, []);
 
   const handleOpenTasksSidebar = (job: Job) => {
-    router.push(`/dashboard/jobs?jobId=${job.id}`);
+    // Open the tasks sidebar directly instead of redirecting
+    setSelectedJob(job);
+    setTasksSidebarOpen(true);
   };
 
   const handleSelectJob = (jobId: string, checked: boolean) => {
@@ -211,6 +216,13 @@ export default function Dashboard() {
           Refresh Data
         </Button>
       </div>
+      
+      {/* Tasks Sidebar */}
+      <TasksSidebar
+        open={tasksSidebarOpen}
+        onOpenChange={setTasksSidebarOpen}
+        selectedJob={selectedJob}
+      />
       
       <div className="flex flex-col gap-8 w-full">
         {/* QBO Progress Chart */}
