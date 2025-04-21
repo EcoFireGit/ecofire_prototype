@@ -200,7 +200,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="w-full px-4 py-8">
+    <div className="w-full px-4 py-8 max-w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Button 
@@ -224,7 +224,7 @@ export default function Dashboard() {
         selectedJob={selectedJob}
       />
       
-      <div className="grid gap-8 w-full max-w-none">
+      <div className="grid grid-cols-1 gap-8 w-full max-w-full">
         {/* QBO Progress Chart */}
         <div className="w-full">
           {loading && qbos.length === 0 ? (
