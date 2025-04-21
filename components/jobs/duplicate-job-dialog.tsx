@@ -57,8 +57,12 @@ export function DuplicateJobDialog({
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
 
-    onSubmit(submissionData);
+    await onSubmit(submissionData);
     onOpenChange(false);
+    setFormData({});
+    // Force a refresh using a custom event
+    const event = new CustomEvent('jobs-update');
+    window.dispatchEvent(event);
   };
 
   return (
