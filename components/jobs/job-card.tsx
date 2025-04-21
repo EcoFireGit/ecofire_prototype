@@ -366,73 +366,7 @@ export function JobCard({
         open={isDuplicateDialogOpen}
         onOpenChange={setIsDuplicateDialogOpen}
         sourceJob={currentJob}
-        onSubmit={async (duplicateJobData) => {
-          // Show initial toast notification immediately
-          toast({
-            title: "Duplicating Job",
-            description: `Creating a copy of "${currentJob.title}" with all its tasks...`,
-          });
-          
-          try {
-            // Create the new job
-            console.log("DEBUG: Inside job-card.tsx handleSubmit");
-            const response = await fetch("/api/jobs", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(duplicateJobData),
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-              // Fetch tasks of the original job
-              const tasksResponse = await fetch(
-                `/api/tasks?jobId=${currentJob.id}`,
-              );
-              const tasksResult = await tasksResponse.json();
-
-              if (tasksResult.success && tasksResult.data) {
-                // Create new tasks for the duplicated job
-                for (const task of tasksResult.data) {
-                  const newTask = {
-                    ...task,
-                    jobId: result.data._id,
-                    completed: false,
-                  };
-                  delete newTask._id;
-                  delete newTask.id;
-
-                  await fetch("/api/tasks", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(newTask),
-                  });
-                }
-              }
-
-              // Show success toast
-              toast({
-                title: "Job Duplicated",
-                description: `Successfully duplicated "${currentJob.title}" with all its tasks`,
-              });
-              
-              // Close the dialog and refresh the jobs list
-              setIsDuplicateDialogOpen(false);
-              window.location.reload();
-            }
-          } catch (error) {
-            console.error("Error duplicating job:", error);
-            toast({
-              title: "Duplication Failed",
-              description: "There was an error duplicating the job. Please try again.",
-              variant: "destructive",
-            });
-          }
-        }}
+        onSubmit={() => {}} // The actual duplication logic is handled inside DuplicateJobDialog
       />
     </div>
   );
