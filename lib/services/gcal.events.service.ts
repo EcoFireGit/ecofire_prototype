@@ -163,7 +163,6 @@ export class EventsService {
 
       console.log("continuing for user: ", userId);
       const allEvents = [];
-      const max_hours = 2; // Define max_hours with an appropriate value
       //calendarIds
       const calendarIds = calendarAuth.calendars.map(
         (calendar: { id: string }) => calendar.id,
