@@ -26,7 +26,7 @@ interface JobCardProps {
   onSelect: (jobId: string, checked: boolean) => void;
   onOpenTasksSidebar: (job: Job) => void;
   isSelected: boolean;
-  taskOwnerMap?: Record<string, string>; 
+  taskOwnerMap?: Record<string, string>;
 }
 
 interface TaskCounts {
@@ -41,15 +41,18 @@ export function JobCard({
   onSelect,
   onOpenTasksSidebar,
   isSelected,
-  taskOwnerMap
+  taskOwnerMap,
 }: JobCardProps) {
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const router = useRouter();
   const [progress, setProgress] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [taskCounts, setTaskCounts] = useState<TaskCounts>({ total: 0, completed: 0 });
+  const [taskCounts, setTaskCounts] = useState<TaskCounts>({
+    total: 0,
+    completed: 0,
+  });
   const [currentJob, setCurrentJob] = useState<Job>(job);
-  
+
   // Update currentJob when props change
   useEffect(() => {
     setCurrentJob(job);
@@ -61,22 +64,22 @@ export function JobCard({
       setLoading(true);
       const response = await fetch(`/api/jobs/progress?ids=${job.id}`);
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         setProgress(result.data[job.id] || 0);
       }
-      
+
       // Also fetch task counts
-      const countsResponse = await fetch('/api/jobs/progress', {
-        method: 'POST',
+      const countsResponse = await fetch("/api/jobs/progress", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ jobId: job.id }),
       });
-      
+
       const countsResult = await countsResponse.json();
-      
+
       if (countsResult.success && countsResult.data) {
         setTaskCounts(countsResult.data);
       }
@@ -92,13 +95,14 @@ export function JobCard({
     try {
       const response = await fetch(`/api/jobs/${job.id}`);
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         // Update the local job state with fresh data
         setCurrentJob({
           ...result.data,
           // Preserve the businessFunctionName since it might not be included in the API response
-          businessFunctionName: result.data.businessFunctionName || job.businessFunctionName
+          businessFunctionName:
+            result.data.businessFunctionName || job.businessFunctionName,
         });
       }
     } catch (error) {
@@ -125,15 +129,15 @@ export function JobCard({
 
     // Add event listener
     window.addEventListener(
-      'job-progress-update', 
-      handleProgressUpdate as EventListener
+      "job-progress-update",
+      handleProgressUpdate as EventListener,
     );
-    
+
     // Clean up on unmount
     return () => {
       window.removeEventListener(
-        'job-progress-update', 
-        handleProgressUpdate as EventListener
+        "job-progress-update",
+        handleProgressUpdate as EventListener,
       );
     };
   }, [job.id]);
@@ -150,15 +154,15 @@ export function JobCard({
 
     // Add event listener
     window.addEventListener(
-      'job-owner-update', 
-      handleOwnerUpdate as EventListener
+      "job-owner-update",
+      handleOwnerUpdate as EventListener,
     );
-    
+
     // Clean up on unmount
     return () => {
       window.removeEventListener(
-        'job-owner-update', 
-        handleOwnerUpdate as EventListener
+        "job-owner-update",
+        handleOwnerUpdate as EventListener,
       );
     };
   }, [job.id]);
@@ -191,15 +195,17 @@ export function JobCard({
   // Get function color
   const getFunctionColor = () => {
     const functionName = currentJob.businessFunctionName?.toLowerCase() || "";
-    if (functionName.includes("product")) return "bg-orange-100 text-orange-800";
+    if (functionName.includes("product"))
+      return "bg-orange-100 text-orange-800";
     if (functionName.includes("design")) return "bg-green-100 text-green-800";
-    if (functionName.includes("engineering")) return "bg-blue-100 text-blue-800";
+    if (functionName.includes("engineering"))
+      return "bg-blue-100 text-blue-800";
     return "bg-gray-100 text-gray-800"; // Default color
   };
 
   return (
-    <div 
-      style={{ width: '100%', minHeight: '180px' }}
+    <div
+      style={{ width: "100%", minHeight: "180px" }}
       className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
         isSelected ? "ring-2 ring-primary" : ""
       }`}
@@ -216,27 +222,29 @@ export function JobCard({
                 aria-label="Select job"
               />
             </div>
-            <span className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}>
+            <span
+              className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}
+            >
               {currentJob.businessFunctionName || "No function"}
             </span>
           </div>
-          <span className="text-sm font-medium">
-            {getOwnerName()}
-          </span>
+          <span className="text-sm font-medium">{getOwnerName()}</span>
         </div>
-        
+
         {/* Job title */}
         <div className="mb-6 pl-6">
           <h3 className="text-base font-semibold">{currentJob.title}</h3>
         </div>
-        
+
         {/* Bottom section with task count, due date, and progress */}
         <div className="flex items-center justify-between pl-6">
           <div className="space-y-1">
             <p className="text-sm text-gray-500">{getTaskCount()}</p>
-            <p className="text-sm text-gray-500">Due date: {formatDate(currentJob.dueDate)}</p>
+            <p className="text-sm text-gray-500">
+              Due date: {formatDate(currentJob.dueDate)}
+            </p>
           </div>
-          
+
           <div className="relative w-14 h-14">
             {loading ? (
               <div className="h-full w-full flex items-center justify-center">
@@ -244,19 +252,39 @@ export function JobCard({
               </div>
             ) : (
               <svg className="w-full h-full" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="16" fill="none" stroke="#f0f0f0" strokeWidth="3"></circle>
-                <circle 
-                  cx="18" 
-                  cy="18" 
-                  r="16" 
-                  fill="none" 
-                  stroke={progress > 50 ? "#4CAF50" : progress > 0 ? "#FFC107" : "#f0f0f0"} 
-                  strokeWidth="3" 
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="16"
+                  fill="none"
+                  stroke="#f0f0f0"
+                  strokeWidth="3"
+                ></circle>
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="16"
+                  fill="none"
+                  stroke={
+                    progress > 50
+                      ? "#4CAF50"
+                      : progress > 0
+                        ? "#FFC107"
+                        : "#f0f0f0"
+                  }
+                  strokeWidth="3"
                   strokeDasharray={`${progress} 100`}
                   strokeLinecap="round"
                   transform="rotate(-90 18 18)"
                 ></circle>
-                <text x="18" y="21" textAnchor="middle" fontSize="9" fill="#000" fontWeight="bold">
+                <text
+                  x="18"
+                  y="21"
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="#000"
+                  fontWeight="bold"
+                >
                   {progress}%
                 </text>
               </svg>
@@ -264,9 +292,12 @@ export function JobCard({
           </div>
         </div>
       </div>
-      
+
       {/* Action buttons */}
-      <div className="flex justify-end p-2 border-t" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex justify-end p-2 border-t"
+        onClick={(e) => e.stopPropagation()}
+      >
         <Button
           variant="ghost"
           size="icon"
@@ -278,10 +309,10 @@ export function JobCard({
         >
           <Copy className="h-4 w-4" />
         </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8" 
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
           onClick={(e) => {
             e.stopPropagation();
             onEdit(currentJob);
@@ -289,7 +320,7 @@ export function JobCard({
         >
           <Edit className="h-4 w-4" />
         </Button>
-        
+
         <Button
           variant="ghost"
           size="icon"
@@ -297,7 +328,9 @@ export function JobCard({
           title="Ask Jija about this job"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
+            router.push(
+              `/dashboard/jija?jobTitle=${encodeURIComponent(currentJob.title)}`,
+            );
           }}
         >
           <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />
@@ -334,10 +367,11 @@ export function JobCard({
         onSubmit={async (duplicateJobData) => {
           try {
             // Create the new job
-            const response = await fetch('/api/jobs', {
-              method: 'POST',
+            console.log("DEBUG: Inside job-card.tsx handleSubmit");
+            const response = await fetch("/api/jobs", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
               },
               body: JSON.stringify(duplicateJobData),
             });
@@ -346,7 +380,9 @@ export function JobCard({
 
             if (result.success) {
               // Fetch tasks of the original job
-              const tasksResponse = await fetch(`/api/tasks?jobId=${currentJob.id}`);
+              const tasksResponse = await fetch(
+                `/api/tasks?jobId=${currentJob.id}`,
+              );
               const tasksResult = await tasksResponse.json();
 
               if (tasksResult.success && tasksResult.data) {
@@ -360,10 +396,10 @@ export function JobCard({
                   delete newTask._id;
                   delete newTask.id;
 
-                  await fetch('/api/tasks', {
-                    method: 'POST',
+                  await fetch("/api/tasks", {
+                    method: "POST",
                     headers: {
-                      'Content-Type': 'application/json',
+                      "Content-Type": "application/json",
                     },
                     body: JSON.stringify(newTask),
                   });
@@ -375,7 +411,7 @@ export function JobCard({
               window.location.reload();
             }
           } catch (error) {
-            console.error('Error duplicating job:', error);
+            console.error("Error duplicating job:", error);
           }
         }}
       />
