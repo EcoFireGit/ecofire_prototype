@@ -238,7 +238,7 @@ export default function Dashboard() {
         {/* Top 5 Recommended Jobs */}
         <div className="w-full">
           <div className="mb-4 flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Top Recommended Jobs</h2>
+            <h2 className="text-xl font-semibold">Top Impactful Jobs</h2>
             <Button 
               variant="ghost" 
               onClick={() => router.push('/dashboard/jobs')}
