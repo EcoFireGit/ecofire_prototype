@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, PawPrint } from "lucide-react";
+import { Edit, Trash2, PawPrint, Copy } from "lucide-react";
+import { DuplicateJobDialog } from "./duplicate-job-dialog";
 import { useRouter } from "next/navigation";
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ export function JobCard({
   isSelected,
   taskOwnerMap
 }: JobCardProps) {
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const router = useRouter();
   const [progress, setProgress] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
@@ -265,6 +267,17 @@ export function JobCard({
       
       {/* Action buttons */}
       <div className="flex justify-end p-2 border-t" onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={async (e) => {
+            e.stopPropagation();
+            setIsDuplicateDialogOpen(true);
+          }}
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -313,6 +326,58 @@ export function JobCard({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      <DuplicateJobDialog
+        open={isDuplicateDialogOpen}
+        onOpenChange={setIsDuplicateDialogOpen}
+        sourceJob={currentJob}
+        onSubmit={async (duplicateJobData) => {
+          try {
+            // Create the new job
+            const response = await fetch('/api/jobs', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(duplicateJobData),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              // Fetch tasks of the original job
+              const tasksResponse = await fetch(`/api/tasks?jobId=${currentJob.id}`);
+              const tasksResult = await tasksResponse.json();
+
+              if (tasksResult.success && tasksResult.data) {
+                // Create new tasks for the duplicated job
+                for (const task of tasksResult.data) {
+                  const newTask = {
+                    ...task,
+                    jobId: result.data._id,
+                    completed: false,
+                  };
+                  delete newTask._id;
+                  delete newTask.id;
+
+                  await fetch('/api/tasks', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newTask),
+                  });
+                }
+              }
+
+              // Trigger a refresh of the jobs list
+              window.dispatchEvent(new CustomEvent('jobs-update'));
+            }
+          } catch (error) {
+            console.error('Error duplicating job:', error);
+          }
+        }}
+      />
     </div>
   );
 }
