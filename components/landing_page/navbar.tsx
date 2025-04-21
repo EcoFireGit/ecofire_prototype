@@ -42,17 +42,17 @@ interface NotificationData {
 // Function to format minutes into hours and minutes
 const formatTimeRemaining = (minutes: number): string => {
   if (minutes < 60) {
-    return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+    return `${minutes} ${minutes === 1 ? "min" : "mins"}`;
   }
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  
+
   if (remainingMinutes === 0) {
-    return `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+    return `${hours} ${hours === 1 ? "hr" : "hrs"}`;
   }
-  
-  return `${hours} ${hours === 1 ? 'hr' : 'hrs'} ${remainingMinutes} ${remainingMinutes === 1 ? 'min' : 'mins'}`;
+
+  return `${hours} ${hours === 1 ? "hr" : "hrs"} ${remainingMinutes} ${remainingMinutes === 1 ? "min" : "mins"}`;
 };
 
 const Navbar = () => {
@@ -60,7 +60,7 @@ const Navbar = () => {
   const pathname = usePathname();
   const [hasNotification, setHasNotification] = useState(false);
   const [notification, setNotification] = useState<NotificationData | null>(
-    null
+    null,
   );
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [appointmentVisible, setAppointmentVisible] = useState(false);
@@ -87,7 +87,7 @@ const Navbar = () => {
           if (notificationData && notificationData.upcomingEvent) {
             // Calculate time remaining
             const eventTime = new Date(
-              notificationData.upcomingEvent.start.dateTime
+              notificationData.upcomingEvent.start.dateTime,
             );
             const currentTime = new Date();
             const diffMs = eventTime.getTime() - currentTime.getTime();
@@ -129,7 +129,7 @@ const Navbar = () => {
     // Set up interval
     const intervalId = setInterval(() => {
       fetchNotifications();
-    }, 60000); // 60 seconds
+    }, 60 * 60000); // 60 minutes
 
     // Cleanup interval on component unmount
     return () => clearInterval(intervalId);
@@ -155,17 +155,17 @@ const Navbar = () => {
     if (hasNotification && notification) {
       // Mark notification as read by calling the API
       const notificationId = notification._id;
-      
+
       if (notificationId) {
         try {
           await fetch(`/api/notifications/${notificationId}`, {
-            method: 'PATCH',
+            method: "PATCH",
             headers: {
-              'Content-Type': 'application/json'
-            }
+              "Content-Type": "application/json",
+            },
           });
         } catch (error) {
-          console.error('Error marking notification as read:', error);
+          console.error("Error marking notification as read:", error);
         }
       }
 
@@ -189,7 +189,7 @@ const Navbar = () => {
         window.dispatchEvent(
           new CustomEvent("applyTimeFilter", {
             detail: { minutes: minutesRemaining },
-          })
+          }),
         );
       }
     } else {
@@ -205,7 +205,7 @@ const Navbar = () => {
   const handleStartTourClick = () => {
     if (pathname === "/dashboard/jobs") {
       // If already on jobs page, use a direct event for immediate response
-      
+
       // 1. Add tour parameter to URL for consistency/bookmarking
       const timestamp = Date.now();
       const newUrl = `/dashboard/jobs?tour=true&t=${timestamp}`;
@@ -219,7 +219,6 @@ const Navbar = () => {
       router.push("/dashboard/jobs?tour=true");
     }
   };
-
 
   return (
     <>
@@ -297,7 +296,8 @@ const Navbar = () => {
                 Google calendar sync
               </h4>
               <p className="text-sm mb-1">
-                You have a "<span className="font-medium">{eventTitle}</span>" event in{" "}
+                You have a "<span className="font-medium">{eventTitle}</span>"
+                event in{" "}
                 <span className="text-green-600 font-medium">
                   {formatTimeRemaining(minutesRemaining)}
                 </span>
@@ -336,3 +336,4 @@ const Navbar = () => {
 // Export both the component and the event name
 export default Navbar;
 export { TOUR_START_EVENT };
+

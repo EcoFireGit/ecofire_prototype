@@ -23,6 +23,7 @@ export async function GET(
       userId!,
       id,
     );
+    console.log(`Found ${getPrioriCalendarEvents.length} events`);
 
     return NextResponse.json(
       {
@@ -39,4 +40,3 @@ export async function GET(
     );
   }
 }
-
