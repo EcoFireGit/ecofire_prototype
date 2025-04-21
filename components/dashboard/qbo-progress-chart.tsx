@@ -27,7 +27,7 @@ interface QBOProgressChartProps {
 const QBOProgressChart: React.FC<QBOProgressChartProps> = ({ 
   qbos = [], 
   className = '',
-  width = '50%',
+  width = '100%',
   onRefresh
 }) => {
   const [progressData, setProgressData] = useState<QBOProgressData[]>([]);

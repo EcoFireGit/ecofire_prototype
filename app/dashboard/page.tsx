@@ -240,7 +240,6 @@ export default function Dashboard() {
             <div>
               <QBOProgressChart 
                 qbos={qbos} 
-                width="100%" 
                 onRefresh={fetchQBOs}
               />
             </div>
