@@ -370,8 +370,9 @@ export function JobCard({
                 }
               }
 
-              // Trigger a refresh of the jobs list
-              window.dispatchEvent(new CustomEvent('jobs-update'));
+              // Close the dialog and refresh the jobs list
+              setIsDuplicateDialogOpen(false);
+              window.location.reload();
             }
           } catch (error) {
             console.error('Error duplicating job:', error);
