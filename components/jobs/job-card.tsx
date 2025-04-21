@@ -367,6 +367,12 @@ export function JobCard({
         onOpenChange={setIsDuplicateDialogOpen}
         sourceJob={currentJob}
         onSubmit={async (duplicateJobData) => {
+          // Show initial toast notification immediately
+          toast({
+            title: "Duplicating Job",
+            description: `Creating a copy of "${currentJob.title}" with all its tasks...`,
+          });
+          
           try {
             // Create the new job
             console.log("DEBUG: Inside job-card.tsx handleSubmit");

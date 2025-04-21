@@ -58,6 +58,12 @@ export function DuplicateJobDialog({
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
 
+    // Show initial toast notification immediately
+    toast({
+      title: "Duplicating Job",
+      description: `Creating a copy of "${sourceJob.title}" with all its tasks...`,
+    });
+
     try {
       // Create the duplicated job
       console.log(
