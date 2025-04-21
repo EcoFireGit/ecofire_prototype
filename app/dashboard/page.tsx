@@ -190,8 +190,8 @@ export default function Dashboard() {
     router.push(`/dashboard/jobs?jobId=${job.id}`);
   };
 
-  const handleSelectJob = () => {
-    // No selection functionality needed here, just open sidebar
+  const handleSelectJob = (jobId: string, checked: boolean) => {
+    // Not used in dashboard, but required by JobCard component
   };
 
   return (
