@@ -287,6 +287,7 @@ export default function Dashboard() {
                   onOpenTasksSidebar={handleOpenTasksSidebar}
                   isSelected={false}
                   taskOwnerMap={taskOwnerMap}
+                  hideCheckbox={true}
                 />
               ))}
             </div>

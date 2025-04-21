@@ -26,6 +26,7 @@ interface JobCardProps {
   onOpenTasksSidebar: (job: Job) => void;
   isSelected: boolean;
   taskOwnerMap?: Record<string, string>; 
+  hideCheckbox?: boolean;
 }
 
 interface TaskCounts {
@@ -207,13 +208,15 @@ export function JobCard({
         {/* Top section with checkbox, function name, and owner */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <div onClick={(e) => e.stopPropagation()}>
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
-                aria-label="Select job"
-              />
-            </div>
+            {!hideCheckbox && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
+                  aria-label="Select job"
+                />
+              </div>
+            )}
             <span className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}>
               {currentJob.businessFunctionName || "No function"}
             </span>
