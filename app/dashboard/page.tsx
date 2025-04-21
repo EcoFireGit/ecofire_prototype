@@ -224,7 +224,7 @@ export default function Dashboard() {
         selectedJob={selectedJob}
       />
       
-      <div className="grid gap-8 w-full">
+      <div className="grid gap-8 w-full max-w-none">
         {/* QBO Progress Chart */}
         <div className="w-full">
           {loading && qbos.length === 0 ? (
