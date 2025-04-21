@@ -49,7 +49,7 @@ export function DuplicateJobDialog({
     }
   }, [open, sourceJob]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submissionData = { ...formData };
 
@@ -57,12 +57,8 @@ export function DuplicateJobDialog({
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
 
-    await onSubmit(submissionData);
+    onSubmit(submissionData);
     onOpenChange(false);
-    setFormData({});
-    // Force a refresh using a custom event
-    const event = new CustomEvent('jobs-update');
-    window.dispatchEvent(event);
   };
 
   return (
