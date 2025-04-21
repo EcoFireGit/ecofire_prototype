@@ -54,13 +54,29 @@ export default function Dashboard() {
         throw new Error(result.error || 'Failed to fetch jobs');
       }
       
-      // Convert API response to Job format
+      // Fetch business functions to map IDs to names
+      const bfResponse = await fetch('/api/business-functions');
+      const bfResult = await bfResponse.json();
+      
+      // Create a map of business function IDs to names
+      const businessFunctionMap: Record<string, string> = {};
+      if (bfResult.success && Array.isArray(bfResult.data)) {
+        bfResult.data.forEach((bf: any) => {
+          if (bf._id && bf.name) {
+            businessFunctionMap[bf._id] = bf.name;
+          }
+        });
+      }
+      
+      // Convert API response to Job format with resolved business function names
       let jobs = result.data.map((job: any) => ({
         id: job._id,
         title: job.title,
         notes: job.notes || undefined,
         businessFunctionId: job.businessFunctionId || undefined,
-        businessFunctionName: job.businessFunctionName || undefined,
+        businessFunctionName: job.businessFunctionId && businessFunctionMap[job.businessFunctionId] 
+          ? businessFunctionMap[job.businessFunctionId] 
+          : job.businessFunctionName || undefined,
         dueDate: job.dueDate ? new Date(job.dueDate).toISOString() : undefined,
         isDone: job.isDone || false,
         nextTaskId: job.nextTaskId || undefined,
