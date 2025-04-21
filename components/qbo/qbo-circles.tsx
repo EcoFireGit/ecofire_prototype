@@ -119,44 +119,72 @@ export function QBOCircles({ onSelectJob }: QBOCircleProps) {
 
           return (
             <div key={qbo._id} className="relative group">
-              {/* Normal circle (displayed by default) */}
-              <Card
-                className={`flex flex-col items-center justify-center p-4 rounded-full border-2 ${colorClass} cursor-pointer transition-all duration-300 ease-in-out min-w-[180px] min-h-[180px] max-w-[180px] max-h-[180px] overflow-hidden mx-auto group-hover:opacity-0 group-hover:invisible`}
-              >
-                <div className="font-bold text-center mb-2">{qbo.name}</div>
-                <div className="mt-2 w-full overflow-hidden text-center">
-                  {jobs.length === 0 ? (
-                    <div className="text-xs italic">No jobs mapped</div>
-                  ) : (
-                    <div className="flex flex-wrap justify-center gap-1.5">
-                      {jobs.map((job) => (
-                        <span 
-                          key={job._id} 
-                          className="inline-flex items-center justify-center p-1"
-                        >
-                          <svg 
-                            className="h-4 w-4" 
-                            viewBox="0 0 24 24" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round"
-                          >
-                            <path d="M10 13a3 3 0 0 1-3-3V5a3 3 0 0 1 6 0v5a3 3 0 0 1-3 3z" />
-                            <path d="M10 13v3m-4-3h8" />
-                          </svg>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Card>
-              
-              {/* Expanded circle (displayed on hover) */}
-              <Card
-                className={`absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center p-5 rounded-3xl border-2 ${colorClass} cursor-pointer transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible min-w-[280px] min-h-[280px] max-h-none overflow-y-auto z-10 shadow-lg`}
-              >
+              {/* Calculate size based on QBO points */}
+              {(() => {
+                // Base size for circles
+                const baseSize = 180;
+                const baseExpandedSize = 280;
+                
+                // Calculate size factor based on points (min 1, max 2)
+                // This means circles will be between 1x and 2x the base size
+                const pointsValue = qbo.points || 1;
+                const sizeFactor = Math.max(1, Math.min(2, 1 + (pointsValue / 10)));
+                
+                // Calculate actual dimensions
+                const size = Math.round(baseSize * sizeFactor);
+                const expandedSize = Math.round(baseExpandedSize * sizeFactor);
+                
+                return (
+                  <>
+                    {/* Normal circle (displayed by default) */}
+                    <Card
+                      className={`flex flex-col items-center justify-center p-4 rounded-full border-2 ${colorClass} cursor-pointer transition-all duration-300 ease-in-out overflow-hidden mx-auto group-hover:opacity-0 group-hover:invisible`}
+                      style={{ 
+                        width: `${size}px`, 
+                        height: `${size}px`,
+                        minWidth: `${size}px`,
+                        minHeight: `${size}px`
+                      }}
+                    >
+                      <div className="font-bold text-center mb-2">{qbo.name}</div>
+                      <div className="text-xs text-center opacity-80">{qbo.points} points</div>
+                      <div className="mt-2 w-full overflow-hidden text-center">
+                        {jobs.length === 0 ? (
+                          <div className="text-xs italic">No jobs mapped</div>
+                        ) : (
+                          <div className="flex flex-wrap justify-center gap-1.5">
+                            {jobs.map((job) => (
+                              <span 
+                                key={job._id} 
+                                className="inline-flex items-center justify-center p-1"
+                              >
+                                <svg 
+                                  className="h-4 w-4" 
+                                  viewBox="0 0 24 24" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  strokeWidth="2" 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M10 13a3 3 0 0 1-3-3V5a3 3 0 0 1 6 0v5a3 3 0 0 1-3 3z" />
+                                  <path d="M10 13v3m-4-3h8" />
+                                </svg>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                    
+                    {/* Expanded circle (displayed on hover) */}
+                    <Card
+                      className={`absolute top-0 left-1/2 -translate-x-1/2 flex flex-col items-center p-5 rounded-3xl border-2 ${colorClass} cursor-pointer transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible max-h-none overflow-y-auto z-10 shadow-lg`}
+                      style={{ 
+                        width: `${expandedSize}px`, 
+                        minHeight: `${expandedSize}px` 
+                      }}
+                    >
                 <div className="font-bold text-center mb-3 text-lg">{qbo.name}</div>
                 <div className="w-full text-left">
                   {jobs.length === 0 ? (
