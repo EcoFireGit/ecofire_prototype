@@ -102,8 +102,8 @@ export default function Dashboard() {
       // Fetch task owners for the top jobs
       if (top5Jobs.length > 0) {
         const taskIds = top5Jobs
-          .filter(job => job.nextTaskId)
-          .map(job => job.nextTaskId as string);
+          .filter((job: Job) => job.nextTaskId)
+          .map((job: Job) => job.nextTaskId as string);
           
         if (taskIds.length > 0) {
           await fetchTaskOwners(taskIds);
