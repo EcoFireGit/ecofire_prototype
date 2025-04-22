@@ -786,15 +786,26 @@ export default function TaskFeedView() {
   };
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="p-4 w-full">
+ <div className="flex gap-2">
+ <div className="w-full max-w-none">
+ <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Tasks</h1>
+          
+      
 
       {/* Add the FilterComponent and TaskSortingComponent at the top */}
 
       <div className="mb-4">
-              <Button onClick={handleAddTask} className="w-full">
-                <Plus className="h-4 w-4 mr-2" /> Add Task
-              </Button>
+
+           <Button onClick={handleAddTask}>
+              <Plus className="mr-2 h-4 w-4" /> Create Task
+            </Button>
             </div>
+            </div>
+            </div>
+            </div>
+            
 
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <FilterComponent
