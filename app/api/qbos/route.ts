@@ -19,7 +19,7 @@ export async function GET() {
       return authResult.response;
     }
     
-    const userId = authResult.userId;
+    const userId = authResult.isOrganization ? authResult.actualUserId : authResult.userId;
     const qbos = await qboService.getAllQBOs(userId!);
    
     return NextResponse.json({
@@ -47,9 +47,9 @@ export async function POST(request: Request) {
       return authResult.response;
     }
     
-    const userId = authResult.userId;
+    const userId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const qboData = await request.json();
-    await validateData(qboData.name);
+    await validateData(qboData.name, userId!);
     const qbo = await qboService.createQBO(qboData, userId!);
     await updateJobImpactValues(userId!);
     return NextResponse.json({
@@ -77,9 +77,9 @@ export async function POST(request: Request) {
   }
 }
 
-async function validateData(name: string) {
+async function validateData(name: string, userId: string) {
   await validateString(name);
-  const exists = await qboService.checkNameExists(name);
+  const exists = await qboService.checkNameExists(name, userId);
   if(exists) {
     throw new ValidationError('QBO name already exists', 400);
   }
