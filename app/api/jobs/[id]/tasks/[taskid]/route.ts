@@ -22,8 +22,11 @@ export async function PUT( request: NextRequest,
     const updateData = await request.json();
     const updatedTask = await taskService.updateTask(taskid, userId!, updateData);
    
+
+    if(updateData.completed === true){
     //update job and set next task
-    const updtedJob = await jobService.setIncompleteTaskAsNextStep(id);
+      const updtedJob = await jobService.setIncompleteTaskAsNextStep(id);
+    }
 
     if (!updatedTask) {
       return NextResponse.json(

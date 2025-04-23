@@ -87,9 +87,7 @@ export class JobService {
         { new: true, runValidators: true }
       );
 
-      const updatedJobWithNextTask = await this.setIncompleteTaskAsNextStep(id);
-       
-      return updatedJobWithNextTask ? JSON.parse(JSON.stringify(updatedJobWithNextTask)) : null;
+      return updatedJob ? JSON.parse(JSON.stringify(updatedJob)) : null;
     } catch (error) {
       console.log(error);
       throw new Error('Error updating job in database');
