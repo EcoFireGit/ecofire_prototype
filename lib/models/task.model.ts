@@ -42,6 +42,7 @@ const TaskSchema = new mongoose.Schema<Task>({
   requiredHours: {
     type: Number,
     default: 0,
+    set: (v: number | null) => v == null ? 0 : v,    
     required: false,
   },
   focusLevel: {
