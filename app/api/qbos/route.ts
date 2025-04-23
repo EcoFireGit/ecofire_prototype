@@ -19,7 +19,7 @@ export async function GET() {
       return authResult.response;
     }
     
-    const userId = authResult.isOrganization ? authResult.actualUserId : authResult.userId;
+    const userId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const qbos = await qboService.getAllQBOs(userId!);
    
     return NextResponse.json({
