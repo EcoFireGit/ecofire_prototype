@@ -4,11 +4,13 @@ import { Jobs } from '../models/job.model';
 import dbConnect from '../mongodb';
 
 export class JobService {
-  async setIncompleteTaskAsNextStep(jobId: string): Promise<Jobs | null> {
+  async setIncompleteTaskAsNextStep(jobId: string, taskId: string): Promise<Jobs | null> {
     try {
       await dbConnect();
       const job = await Job.findById(jobId);
-
+      if(!job || !job.tasks){
+        throw new Error('Job/Tasks not found');
+      }
         //find the task from the array that is not complete and set it as nextTask
       const nextTask = await this.getFirstIncompleteTask(job.tasks);
       const updatedJob = await Job.findOneAndUpdate(
