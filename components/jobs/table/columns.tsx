@@ -107,15 +107,14 @@ export const columns = (
     cell: ({ row }) => {
       const dueDate = row.getValue("dueDate") as string | undefined;
       if (!dueDate) return "No due date";
-
-      // Parse the date and format it
+  
+      // Parse the date and preserve the UTC date
       const date = new Date(dueDate);
-      const year = date.getUTCFullYear();
-      const month = date.getUTCMonth();
-      const day = date.getUTCDate();
-
-      const displayDate = new Date(year, month, day);
-
+      
+      // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
+      const utcDateString = date.toISOString().split('T')[0];
+      const displayDate = new Date(utcDateString + 'T00:00:00');
+  
       return displayDate.toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
