@@ -23,9 +23,9 @@ export async function PUT( request: NextRequest,
     const updatedTask = await taskService.updateTask(taskid, userId!, updateData);
    
 
-    if(updateData.completed === true){//update job and set next task
+    if(updateData.completed === true){//set next task if nextTaskId is same as taskid
     
-      const updtedJob = await jobService.setIncompleteTaskAsNextStep(id);
+      const updtedJob = await jobService.setIncompleteTaskAsNextStep(id, taskid);
     }
 
     if (!updatedTask) {

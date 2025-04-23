@@ -9,9 +9,18 @@ export class JobService {
       await dbConnect();
       const job = await Job.findById(jobId);
       if(!job || !job.tasks){
-        throw new Error('Job/Tasks not found');
+        throw new Error('Job or Tasks not found');
       }
-        //find the task from the array that is not complete and set it as nextTask
+
+      if(!job.tasks.includes(taskId)){
+        throw new Error('TaskId not found in job tasks');
+      } 
+
+      if(job.nextTaskId !== taskId){
+        return job;
+      }
+        //find the task from the array that is not comple
+        // te and set it as nextTask
       const nextTask = await this.getFirstIncompleteTask(job.tasks);
       const updatedJob = await Job.findOneAndUpdate(
         { _id: jobId },
