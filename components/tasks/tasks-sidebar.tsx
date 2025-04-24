@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -128,10 +128,20 @@ export function TasksSidebar({
   const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
   const [showSaveOrder, setShowSaveOrder] = useState<boolean>(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // This flag will track if we've already done the initial sort
+  const initialSortDoneRef = useRef(false);
 
   const { toast } = useToast();
   const { refreshJobOwner, refreshJobProgress } = useTaskContext();
   const router = useRouter();
+
+  // Reset the initialSortDone flag when the sidebar is closed
+  useEffect(() => {
+    if (!open) {
+      initialSortDoneRef.current = false;
+    }
+  }, [open]);
 
   // Set up sensors for drag operations
   const sensors = useSensors(
@@ -176,6 +186,8 @@ export function TasksSidebar({
   // Fetch tasks when job changes
   useEffect(() => {
     if (selectedJob) {
+      // Reset the initialSortDone flag when the job changes
+      initialSortDoneRef.current = false;
       fetchTasks();
       // Set the next task ID from the job
       setNextTaskId(selectedJob.nextTaskId);
@@ -195,7 +207,7 @@ export function TasksSidebar({
 
       if (result.success) {
         // Map from MongoDB _id to id for frontend consistency
-        const formattedTasks = result.data.map((task: any) => ({
+        let formattedTasks = result.data.map((task: any) => ({
           id: task._id,
           title: task.title,
           owner: task.owner,
@@ -209,6 +221,38 @@ export function TasksSidebar({
           completed: task.completed,
           isNextTask: task._id === selectedJob.nextTaskId,
         }));
+
+        // On initial load, sort tasks based on job.tasks array
+        if (!initialSortDoneRef.current && selectedJob.tasks && Array.isArray(selectedJob.tasks)) {
+          console.log("Performing initial sort based on job.tasks order");
+          console.log("Job tasks array:", selectedJob.tasks);
+          
+          // Sort tasks according to job.tasks array order
+          formattedTasks.sort((a: any, b: any) => {
+            // Next task always comes first
+            if (a.isNextTask) return -1;
+            if (b.isNextTask) return 1;
+            
+            // Then use the job.tasks array order
+            const aIndex = selectedJob.tasks ? selectedJob.tasks.indexOf(a.id) : -1;
+            const bIndex = selectedJob.tasks ? selectedJob.tasks.indexOf(b.id) : -1;
+            
+            // If both tasks are in the tasks array, sort by their index
+            if (aIndex !== -1 && bIndex !== -1) {
+              return aIndex - bIndex;
+            }
+            
+            // If only a is in the tasks array, prioritize it
+            if (aIndex !== -1) return -1;
+            
+            // If only b is in the tasks array, prioritize it
+            if (bIndex !== -1) return 1;
+            
+            return 0;
+          });
+          
+          initialSortDoneRef.current = true;
+        }
 
         setTasks(formattedTasks);
       } else {
@@ -605,6 +649,9 @@ export function TasksSidebar({
       // Get all task IDs in their current order
       const taskIds = tasks.map(task => task.id);
       
+      // Log the order we're about to save
+      console.log("Saving task order:", taskIds);
+      
       // Call the API endpoint
       const response = await fetch("/api/tasks/order", {
         method: "PUT",
@@ -627,6 +674,19 @@ export function TasksSidebar({
           description: "Task order updated successfully",
         });
         
+        // Update the local selectedJob object with the new task order
+        if (selectedJob) {
+          // Create a copy of the job with updated tasks array
+          const updatedJob = { 
+            ...selectedJob,
+            tasks: taskIds 
+          };
+          
+          // Replace the selectedJob reference (this won't update the parent component,
+          // but it will ensure the correct order if we need to use it locally)
+          Object.assign(selectedJob, updatedJob);
+        }
+        
         // Refresh jobs if needed
         if (typeof onRefreshJobs === "function") {
           onRefreshJobs();
@@ -648,13 +708,13 @@ export function TasksSidebar({
     return null;
   }
 
-  // Sort tasks to show the next task first
+  // Sort tasks - only prioritize the next task, allowing drag and drop to manage the rest
   const sortedTasks = [...tasks].sort((a, b) => {
-    // If a is the next task, it comes first
+    // Next task always comes first
     if (a.isNextTask) return -1;
-    // If b is the next task, it comes first
     if (b.isNextTask) return 1;
-    // Otherwise, keep the original order
+    
+    // For all other tasks, keep their current order
     return 0;
   });
 
