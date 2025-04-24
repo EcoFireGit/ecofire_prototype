@@ -23,7 +23,10 @@ export async function GET() {
   // For each organization, check the user's role
   const orgsWithRoles = await Promise.all(
     organizations.map(async (org) => {
-      const userRole = await userOrgService.getUserRole(userId!, org._id);
+      const userRole = await userOrgService.getUserRole(
+        userId!,
+        org._id as string,
+      );
       return {
         ...org, // Organization is already a plain object thanks to lean()
         userRole,
