@@ -40,15 +40,22 @@ export function TaskCard({
     const { refreshJobProgress } = useTaskContext();
 
     // Format the date
-    const formatDate = (dateString?: string | Date) => {
+    const formatDate = (dateString?: string) => {
         if (!dateString) return null;
+        
+        // Parse the date and preserve the UTC date
         const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
+        
+        // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
+        const utcDateString = date.toISOString().split('T')[0];
+        const displayDate = new Date(utcDateString + 'T00:00:00');
+      
+        return displayDate.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         });
-    };
+      };
 
     // Get owner name from owner ID
     const getOwnerName = () => {
@@ -186,7 +193,7 @@ export function TaskCard({
                                 router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`);
                             }}
                         >
-                            <PawPrint className="h-4 w-4" />
+                            <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
                         </Button>
 
                         <AlertDialog>

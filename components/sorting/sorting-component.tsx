@@ -25,10 +25,21 @@ const SortingComponent: React.FC<SortingComponentProps> = ({
   taskDetails = {}
 }) => {
   const [sortOption, setSortOption] = useState<SortOption>("recommended");
-
+  
+  // Apply sorting when sortOption changes or when jobs change
   useEffect(() => {
     sortJobs(sortOption);
-  }, [sortOption, jobs]);
+  }, [sortOption, jobs, taskDetails]);
+
+  // Reset to recommended sort when jobs array changes (after filtering)
+  useEffect(() => {
+    // Only reset if we have jobs to sort
+    if (jobs.length > 0) {
+      // Ensure we're using the recommended sort when jobs change
+      sortJobs("recommended");
+      setSortOption("recommended");
+    }
+  }, [jobs]);
 
   const sortJobs = (option: SortOption) => {
     // Make a copy of the jobs array to avoid mutating the original

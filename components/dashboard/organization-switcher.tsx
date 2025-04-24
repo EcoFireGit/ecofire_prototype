@@ -3,7 +3,7 @@
 
 import { useView } from '@/lib/contexts/view-context';
 import { useUser } from '@clerk/nextjs';
-import React from 'react';
+import React, { useState } from 'react';
 
 export function OrganizationSwitcher() {
   const { user } = useUser();
@@ -14,16 +14,33 @@ export function OrganizationSwitcher() {
     organizations,
     currentOrganization
   } = useView();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (value === 'personal') {
-      await setOrganizationView(null);
-    } else {
-      await setOrganizationView(value);
+    try {
+      setIsLoading(true);
+      const value = e.target.value;
+      let success;
+      
+      if (value === 'personal') {
+        success = await setOrganizationView(null);
+      } else {
+        success = await setOrganizationView(value);
+      }
+      
+      if (success) {
+        window.location.reload();
+      } else {
+        // If switching fails, reset loading state
+        setIsLoading(false);
+        alert('Failed to switch organization view. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error switching organization:', error);
+      setIsLoading(false);
+      alert('An error occurred while switching organizations.');
     }
-    window.location.reload();
-    };
+  };
 
   return (
     <div className="p-2" id='org-view-toggle'>
@@ -32,7 +49,8 @@ export function OrganizationSwitcher() {
         <select 
           value={isOrganization ? currentViewId : 'personal'}
           onChange={handleChange}
-          className="border rounded px-2 py-1 text-sm text-black"
+          disabled={isLoading}
+          className={`border rounded px-2 py-1 text-sm text-black ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <option value="personal">Personal</option>
           {organizations.map(org => (

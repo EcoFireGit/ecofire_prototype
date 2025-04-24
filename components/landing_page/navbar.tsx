@@ -129,7 +129,7 @@ const Navbar = () => {
     // Set up interval
     const intervalId = setInterval(() => {
       fetchNotifications();
-    }, 60000); // 60 seconds
+    }, 60*60*1000); // fetch notification every 1 hour 
 
     // Cleanup interval on component unmount
     return () => clearInterval(intervalId);
@@ -220,6 +220,7 @@ const Navbar = () => {
     }
   };
 
+
   return (
     <>
       <div className="w-full px-4 py-3 flex justify-end items-center mt-5">
@@ -296,7 +297,7 @@ const Navbar = () => {
                 Google calendar sync
               </h4>
               <p className="text-sm mb-1">
-                You have an <span className="font-medium">{eventTitle}</span> in{" "}
+                You have a "<span className="font-medium">{eventTitle}</span>" event in{" "}
                 <span className="text-green-600 font-medium">
                   {formatTimeRemaining(minutesRemaining)}
                 </span>

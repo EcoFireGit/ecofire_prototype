@@ -204,7 +204,7 @@ export function AppSidebar() {
               </PopoverTrigger>
               <PopoverContent className="w-64 p-3" side="right" align="start" sideOffset={10}>
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">How are you feeling today?</h4>
+                  <h4 className="text-sm font-medium">How are you feeling right now?</h4>
                   <p className="text-xs text-gray-500">Choose your mood to get Job suggestions</p>
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <button 

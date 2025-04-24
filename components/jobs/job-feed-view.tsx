@@ -79,10 +79,28 @@ export default function JobsPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
+  // Helper function to sort by recommended criteria
+  const sortByRecommended = (jobs: Job[]): Job[] => {
+    return [...jobs].sort((a, b) => {
+      // First compare due dates (null dates go to the end)
+      const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      
+      if (dateA !== dateB) {
+        return dateA - dateB; // Ascending by date
+      }
+      
+      // If dates are the same (or both null), sort by impact descending
+      const impactA = a.impact || 0;
+      const impactB = b.impact || 0;
+      return impactB - impactA; // Descending by impact
+    });
+  };
+
   // Effect to update sorted jobs when filtered jobs change
   useEffect(() => {
-    setSortedActiveJobs(filteredActiveJobs);
-    setSortedCompletedJobs(filteredCompletedJobs);
+    // We don't need this anymore as sorting is handled by the SortingComponent
+    // or directly by our filter handlers
   }, [filteredActiveJobs, filteredCompletedJobs]);
 
   // Fetch business functions
@@ -398,12 +416,16 @@ export default function JobsPage() {
         const activeJobs = allJobs.filter((job) => !job.isDone);
         const completedJobs = allJobs.filter((job) => job.isDone);
 
+        // Apply sorting to the initial jobs
+        const sortedActiveJobs = sortByRecommended(activeJobs);
+        const sortedCompletedJobs = sortByRecommended(completedJobs);
+
         setActiveJobs(activeJobs);
         setFilteredActiveJobs(activeJobs);
-        setSortedActiveJobs(activeJobs);
+        setSortedActiveJobs(sortedActiveJobs);
         setCompletedJobs(completedJobs);
         setFilteredCompletedJobs(completedJobs);
-        setSortedCompletedJobs(completedJobs);
+        setSortedCompletedJobs(sortedCompletedJobs);
       } else {
         setError(jobsResult.error);
       }
@@ -456,6 +478,10 @@ export default function JobsPage() {
       // If no filters are active, show all jobs
       setFilteredActiveJobs(activeJobs);
       setFilteredCompletedJobs(completedJobs);
+      
+      // Apply recommended sort to unfiltered jobs
+      setSortedActiveJobs(sortByRecommended(activeJobs));
+      setSortedCompletedJobs(sortByRecommended(completedJobs));
       return;
     }
 
@@ -479,6 +505,10 @@ export default function JobsPage() {
 
     setFilteredActiveJobs(filteredActive);
     setFilteredCompletedJobs(filteredCompleted);
+    
+    // Apply recommended sorting immediately
+    setSortedActiveJobs(sortByRecommended(filteredActive));
+    setSortedCompletedJobs(sortByRecommended(filteredCompleted));
   };
 
   // Helper function to check if a job matches filters
@@ -577,10 +607,6 @@ useEffect(() => {
     if (Object.keys(activeFilters).length > 0) {
       console.log('Reapplying filters on page navigation/load:', activeFilters);
       
-      // Reapply the filters to the jobs
-      // This is essentially the same as handleFilterChange but we're calling it directly
-      // with our existing activeFilters
-      
       // Filter active jobs
       const filteredActive = activeJobs.filter((job) => {
         return matchesFilters(job, activeFilters);
@@ -602,6 +628,10 @@ useEffect(() => {
       // Update the filtered jobs lists
       setFilteredActiveJobs(filteredActive);
       setFilteredCompletedJobs(filteredCompleted);
+      
+      // Apply the recommended sort immediately
+      setSortedActiveJobs(sortByRecommended(filteredActive));
+      setSortedCompletedJobs(sortByRecommended(filteredCompleted));
     }
   }
 }, [loading, activeJobs, completedJobs, activeFilters]);

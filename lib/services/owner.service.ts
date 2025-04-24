@@ -39,11 +39,11 @@ class OwnerService {
         { name },
         { new: true },
       ).lean();
-
+     
       if (!owner) {
         return null;
       }
-
+     
       return JSON.parse(JSON.stringify(owner));
     } catch (error) {
       throw new Error("Error updating owner in database");
@@ -70,16 +70,50 @@ class OwnerService {
       if (!owner) {
         return false;
       }
+     
 
       const result = await Owner.findOneAndDelete({
         _id: id,
         userId,
       });
+     
 
       return !!result;
     } catch (error) {
       console.log(error);
-      throw new Error("Error deleting owner from database");
+      throw new Error('Error deleting owner from database');
+    }
+  }
+
+  async ensureDefaultOwner(
+    userId: string,
+    email: string
+  ): Promise<OwnerType | null> {
+    if (!email) {
+      return null; // Skip if no email is available
+    }
+    
+    try {
+      await dbConnect();
+      
+      // Extract name from email (everything before @)
+      const defaultName = email.split('@')[0];
+      
+      // Check if any owners exist for this user
+      const existingOwners = await Owner.find({ userId }).lean();
+      
+      // If no owners exist for this user, create the default one
+      if (existingOwners.length === 0) {
+        const defaultOwner = await this.createOwner(defaultName, userId);
+        return defaultOwner;
+      }
+      
+      // If we already have owners, don't create a default one
+      // This ensures we only create the default owner when the user has no owners
+      return null;
+    } catch (error) {
+      console.error('Error ensuring default owner:', error);
+      return null; // Return null instead of throwing to avoid breaking the main flow
     }
   }
 }

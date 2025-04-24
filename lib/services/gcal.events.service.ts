@@ -1,6 +1,6 @@
 import { google, calendar_v3 } from 'googleapis';
 import GCalAuth from '../models/gcal-auth.model';
-import {  getAllEventsForTwoWeeks } from './google.calendar.provider';
+import {  getAllEventsForTimeInEnvironmentSetting } from './google.calendar.provider';
 
 
 import dbConnect from '../mongodb';
@@ -98,7 +98,7 @@ async  getPrioriwiseEvents(userId: string) {
     await dbConnect();
     const prioriwiseCalendarExists = await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
-    const events = await getAllEventsForTwoWeeks(prioriwiseCalendarExists.auth, prioriwiseCalendarExists.prioriwiseCalendar.id);
+    const events = await getAllEventsForTimeInEnvironmentSetting(prioriwiseCalendarExists.auth, prioriwiseCalendarExists.prioriwiseCalendar.id);
     
     return events;
   } catch (error) {
@@ -112,7 +112,7 @@ async getPrioriwiseCalendarEvents(userId: string, calendarId: string) {
     await dbConnect();
     const prioriwiseCalendarExists = await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
-    const events = await getAllEventsForTwoWeeks(prioriwiseCalendarExists.auth, calendarId);    
+    const events = await getAllEventsForTimeInEnvironmentSetting(prioriwiseCalendarExists.auth, calendarId);    
     return events;
   } catch (error) {
     console.error('Error retrieving events for calendar {}:', calendarId, error);
@@ -128,7 +128,7 @@ async  getCalendarEvents(userId: string, calendarId: string) {
       throw new Error('either user does not exist or calendar not connected');
     }
   
-    const events = await getAllEventsForTwoWeeks(calendarAuth.auth, calendarId);    
+    const events = await getAllEventsForTimeInEnvironmentSetting(calendarAuth.auth, calendarId);    
     return events;
   } catch (error) {
     console.error('Error retrieving events for calendar {}:', calendarId, error);
@@ -167,7 +167,7 @@ async  getCalendarEvents(userId: string, calendarId: string) {
   }
 }
 
-async getCalendarAuthForUserIfPrioriwiseCalendarExists(userId: string) {
+ async  getCalendarAuthForUserIfPrioriwiseCalendarExists(userId: string) {
   const prioriwiseCalendarExists = await GCalAuth.findOne({ userId: userId, prioriwiseCalendar: { $ne: null } });
   if (!prioriwiseCalendarExists || !prioriwiseCalendarExists.prioriwiseCalendar || !prioriwiseCalendarExists.prioriwiseCalendar.id) {
     throw new Error('either user or Prioriwise Calendar not connected');
