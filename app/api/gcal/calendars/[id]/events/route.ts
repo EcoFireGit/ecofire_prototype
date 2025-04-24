@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateAuth } from "@/lib/utils/auth-utils";
-import { getAllEventsForTwoWeeks } from "@/lib/services/google.calendar.provider";
 import { EventsService } from "@/lib/services/gcal.events.service";
 
 const eventService = new EventsService();

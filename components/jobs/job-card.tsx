@@ -27,7 +27,8 @@ interface JobCardProps {
   onSelect: (jobId: string, checked: boolean) => void;
   onOpenTasksSidebar: (job: Job) => void;
   isSelected: boolean;
-  taskOwnerMap?: Record<string, string>;
+  taskOwnerMap?: Record<string, string>; 
+  hideCheckbox?: boolean;
 }
 
 interface TaskCounts {
@@ -43,6 +44,7 @@ export function JobCard({
   onOpenTasksSidebar,
   isSelected,
   taskOwnerMap,
+  hideCheckbox = false
 }: JobCardProps) {
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const router = useRouter();
@@ -170,15 +172,22 @@ export function JobCard({
   }, [job.id]);
 
   // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "No due date";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "No due date";
+  
+  // Parse the date and preserve the UTC date
+  const date = new Date(dateString);
+  
+  // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
+  const utcDateString = date.toISOString().split('T')[0];
+  const displayDate = new Date(utcDateString + 'T00:00:00');
+
+  return displayDate.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
 
   // Get owner name
   const getOwnerName = () => {
@@ -217,16 +226,16 @@ export function JobCard({
         {/* Top section with checkbox, function name, and owner */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <div onClick={(e) => e.stopPropagation()}>
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
-                aria-label="Select job"
-              />
-            </div>
-            <span
-              className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}
-            >
+            {!hideCheckbox && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
+                  aria-label="Select job"
+                />
+              </div>
+            )}
+            <span className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}>
               {currentJob.businessFunctionName || "No function"}
             </span>
           </div>

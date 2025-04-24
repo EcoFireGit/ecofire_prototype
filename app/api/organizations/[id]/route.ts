@@ -1,98 +1,97 @@
 // app/api/organizations/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { validateAuth } from '@/lib/utils/auth-utils';
-import { OrganizationService } from '@/lib/services/organization.service';
+import { NextRequest, NextResponse } from "next/server";
+import { validateAuth } from "@/lib/utils/auth-utils";
+import { OrganizationService } from "@/lib/services/organization.service";
 
 const orgService = new OrganizationService();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const authResult = await validateAuth();
-  const { id } = await params
+
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
-  
+
+  const { id } = await params;
   const org = await orgService.getOrganizationById(id);
-  
+
   if (!org) {
     return NextResponse.json(
-      { success: false, error: 'Organization not found' },
-      { status: 404 }
+      { success: false, error: "Organization not found" },
+      { status: 404 },
     );
   }
-  
+
   return NextResponse.json({
     success: true,
-    data: org
+    data: org,
   });
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const authResult = await validateAuth();
-  const { id } = await params
+  const { id } = await params;
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
-  
+
   // Get the actual user ID, not the view ID
   const userId = authResult.actualUserId;
-  
+
   const data = await request.json();
-  const updatedOrg = await orgService.updateOrganization(
-    id, 
-    userId!, 
-    data
-  );
-  
+  const updatedOrg = await orgService.updateOrganization(id, userId!, data);
+
   if (!updatedOrg) {
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Organization not found or you do not have permission to edit it' 
+      {
+        success: false,
+        error:
+          "Organization not found or you do not have permission to edit it",
       },
-      { status: 404 }
+      { status: 404 },
     );
   }
-  
+
   return NextResponse.json({
     success: true,
-    data: updatedOrg
+    data: updatedOrg,
   });
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }:{ params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const authResult = await validateAuth();
-  const { id } = await params
+  const { id } = await params;
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
-  
+
   // Get the actual user ID, not the view ID
   const userId = authResult.actualUserId;
-  
+
   const deleted = await orgService.deleteOrganization(id, userId!);
-  
+
   if (!deleted) {
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Organization not found or you do not have permission to delete it' 
+      {
+        success: false,
+        error:
+          "Organization not found or you do not have permission to delete it",
       },
-      { status: 404 }
+      { status: 404 },
     );
   }
-  
+
   return NextResponse.json({
     success: true,
-    message: 'Organization deleted successfully'
+    message: "Organization deleted successfully",
   });
 }
