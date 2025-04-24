@@ -201,7 +201,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="w-full px-4 py-8 max-w-full">
+    <div className="w-full px-4 py-8 max-w-full container mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Button 
@@ -225,9 +225,9 @@ export default function Dashboard() {
         selectedJob={selectedJob}
       />
       
-      <div className="grid grid-cols-1 gap-8 w-full max-w-full">
+      <div className="w-full max-w-full space-y-8">
         {/* QBO Progress Chart */}
-        <div className="w-full">
+        <section className="w-full">
           {loading && qbos.length === 0 ? (
             <div className="flex justify-center items-center h-64">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -238,17 +238,18 @@ export default function Dashboard() {
               <p>{error}</p>
             </div>
           ) : (
-            <div>
+            <div className="w-full">
               <QBOProgressChart 
                 qbos={qbos} 
                 onRefresh={fetchQBOs}
+                width="100%"
               />
             </div>
           )}
-        </div>
+        </section>
         
         {/* Top 5 Recommended Jobs */}
-        <div className="w-full">
+        <section className="w-full">
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold">Top Impactful Jobs</h2>
             <Button 
@@ -276,7 +277,7 @@ export default function Dashboard() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 w-full">
               {topJobs.map(job => (
                 <JobCard
                   key={job.id}
@@ -292,7 +293,7 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   );
