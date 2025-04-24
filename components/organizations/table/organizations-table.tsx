@@ -29,6 +29,7 @@ interface Organization {
   _id: string;
   name: string;
   description?: string;
+  userRole?: 'admin' | 'member';
 }
 
 interface OrganizationsTableProps {
@@ -118,7 +119,7 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    {
+                    {org.userRole === 'admin' && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -126,7 +127,7 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                       >
                         <Trash className="h-4 w-4" />
                       </Button>
-                    }
+                    )}
                     <Button
                       variant="ghost"
                       size="default"
