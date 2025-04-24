@@ -15,10 +15,15 @@ export class OrganizationService {
     await dbConnect();
     const userOrgs = await UserOrganization.find({ userId });
     const orgIds = userOrgs.map((userOrg) => userOrg.organizationId);
+    
+    if (orgIds.length === 0) {
+      return [];
+    }
+    
     return await Organization.find({
       _id: { $in: orgIds },
       isDeleted: { $ne: true },
-    });
+    }).lean(); // Using lean() to get plain JavaScript objects
   }
 
   async createOrganization(data: Partial<OrganizationType>) {

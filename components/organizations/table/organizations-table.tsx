@@ -107,7 +107,7 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                   className="font-medium cursor-pointer hover:text-blue-600"
                   onClick={() => switchToOrg(org._id)}
                 >
-                  {org.name}
+                  {org.name || "Unnamed Organization"}
                 </TableCell>
                 <TableCell>{org.description || "No description"}</TableCell>
                 <TableCell>
