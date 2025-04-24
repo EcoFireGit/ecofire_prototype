@@ -501,8 +501,15 @@ export function TasksSidebar({
   // Format date helper function
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Not set";
+    
+    // Parse the date and preserve the UTC date
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    
+    // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
+    const utcDateString = date.toISOString().split('T')[0];
+    const displayDate = new Date(utcDateString + 'T00:00:00');
+  
+    return displayDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
