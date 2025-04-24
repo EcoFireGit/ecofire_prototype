@@ -3,8 +3,12 @@
 import { NextResponse } from 'next/server';
 import { JobService } from '@/lib/services/job.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
+import { JobPIMappingGenerator } from '@/lib/services/job-pi-mapping-generator';
+import { BusinessInfoService } from '@/lib/services/business-info.service';
 
 const jobService = new JobService();
+const mappingGenerator = new JobPIMappingGenerator();
+const businessInfoService = new BusinessInfoService();
 
 export async function GET() {
   try {
@@ -47,7 +51,32 @@ export async function POST(request: Request) {
     const jobData = await request.json();
     const job = await jobService.createJob(jobData, userId!);
 
-    
+    // Get business info to provide context for the mapping generation
+    let businessDescription = "";
+    try {
+      const businessInfo = await businessInfoService.getBusinessInfo(userId!);
+      businessDescription = businessInfo?.missionStatement || "";
+    } catch (error) {
+      console.error("Error fetching business info:", error);
+      // Continue even if we can't get the business description
+    }
+
+    // Generate mappings for the new job
+    try {
+      await mappingGenerator.generateMappingsForJob(userId!, job, businessDescription);
+      
+      // Calculate job impact values after creating mappings
+      try {
+        const { updateJobImpactValues } = await import('@/lib/services/job-impact.service');
+        await updateJobImpactValues(userId!);
+      } catch (error) {
+        console.error("Error updating job impact values:", error);
+      }
+    } catch (mappingError) {
+      console.error("Error generating PI mappings for job:", mappingError);
+      // Continue even if mapping generation fails
+    }
+
     return NextResponse.json({
       success: true,
       data: job

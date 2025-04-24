@@ -12,10 +12,10 @@ export class BusinessFunctionService {
     "Sales"
   ];
 
-  async checkNameExists(name: string): Promise<boolean> {
+  async checkNameExists(name: string, userId: string): Promise<boolean> {
     try {
       await dbConnect();  
-      const found = await BusinessFunction.findOne({ name }).collation({ locale: 'en', strength: 2 }).exec();
+      const found = await BusinessFunction.findOne({ name, userId }).collation({ locale: 'en', strength: 2 }).exec();
       return !!found;
     }catch (error) {  
       console.log(error);

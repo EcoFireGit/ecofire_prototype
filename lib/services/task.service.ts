@@ -58,6 +58,10 @@ export class TaskService {
   ): Promise<TaskInterface | null> {
     try {
       await dbConnect();
+    // If requiredHours is not set or is null, default it to 0
+    if (updateData.requiredHours === undefined || updateData.requiredHours === null) {
+      updateData.requiredHours = 0;
+    }      
       const updatedTask = await Task.findOneAndUpdate(
         { _id: id, userId },
         { $set: updateData },

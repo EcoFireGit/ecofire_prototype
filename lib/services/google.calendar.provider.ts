@@ -34,27 +34,27 @@ export async function getCalendar(auth: Credentials): Promise<calendar_v3.Calend
   }
 }
 
-export async function getAllEventsForTwoWeeks(auth: Credentials, calendarId: string): Promise<any> {
+export async function getAllEventsForTimeInEnvironmentSetting(auth: Credentials, calendarId: string): Promise<any> {
   try {
 
     const calendar = await getCalendar(auth);
 
-    console.log("Calendar object: ", calendar);
-    // Calculate the start and end of the current week (Sunday to Saturday)
-    const now = moment().startOf('week');  // Get the start of the current week (Sunday)
-    const startOfWeek = now.toISOString(); // Start of the week (e.g., Sunday at 00:00)
-    const endOfWeekInTwoWeeks = now.add(2, 'weeks').endOf('week').toISOString();
-
+  
+    const timeToGetEvents = process.env.REPRIORITIZE_EVENT_TIME_IN_HOURS;
+    console.log("timeToGetEvents: ", timeToGetEvents);
+    const startTime = moment().toISOString(); //
+    const endOfTimeInHours = moment().add(timeToGetEvents, 'hours').toISOString();
+    console.log("startTime: ", startTime);
+    console.log("endOfTimeInHours: ", endOfTimeInHours);
     // Fetch events from the calendar
     const res = await calendar.events.list({
       calendarId: calendarId, 
-      timeMin: startOfWeek, // Events starting after this time
-      timeMax: endOfWeekInTwoWeeks,   // Events ending before this time
+      timeMin: startTime, // Events starting after this time
+      timeMax: endOfTimeInHours,   // Events ending before this time
       singleEvents: true,   // Ensure events that repeat are expanded
       orderBy: 'startTime', // Order by start time
     });
-    console.log("events list: ", res);
-
+    
     const events = res.data.items;
     
     return events;
