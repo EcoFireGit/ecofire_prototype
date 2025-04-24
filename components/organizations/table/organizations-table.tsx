@@ -168,11 +168,8 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete the organization
-                {orgToDelete?.name && (
-                  <strong> "{orgToDelete.name}"</strong>
-                )}{" "}
-                and all of its data. This action cannot be undone.
+                This will delete the organization
+                {orgToDelete?.name && <strong> "{orgToDelete.name}"</strong>} .
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
