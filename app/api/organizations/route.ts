@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
 
   // Get the actual user ID, not the view ID
   const userId = authResult.actualUserId;
-
+  const orgService = new OrganizationService();
+  const userOrgService = new UserOrganizationService();
   const data = await request.json();
 
   // Create the organization
