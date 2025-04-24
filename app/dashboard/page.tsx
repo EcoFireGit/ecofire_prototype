@@ -201,7 +201,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="w-full px-4 py-8 max-w-full">
+    <div className="w-full px-4 py-8 max-w-full" style={{ maxWidth: "100vw" }}>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Button 
@@ -225,9 +225,9 @@ export default function Dashboard() {
         selectedJob={selectedJob}
       />
       
-      <div className="w-full max-w-none space-y-8">
+      <div className="w-full max-w-none space-y-8" style={{ overflowX: "visible" }}>
         {/* QBO Progress Chart */}
-        <section className="w-full max-w-none">
+        <section className="w-full max-w-none" style={{ minWidth: "100%" }}>
           {loading && qbos.length === 0 ? (
             <div className="flex justify-center items-center h-64">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -249,7 +249,7 @@ export default function Dashboard() {
         </section>
         
         {/* Top 5 Recommended Jobs */}
-        <section className="w-full max-w-none">
+        <section className="w-full max-w-none" style={{ minWidth: "100%" }}>
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold">Top Impactful Jobs</h2>
             <Button 
