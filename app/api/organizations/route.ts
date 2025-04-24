@@ -25,7 +25,7 @@ export async function GET() {
     organizations.map(async (org) => {
       const userRole = await userOrgService.getUserRole(userId!, org._id);
       return {
-        ...org.toObject(), // Convert mongoose document to plain object
+        ...org, // Organization is already a plain object thanks to lean()
         userRole,
       };
     }),
