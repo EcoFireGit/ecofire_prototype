@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useCallback, useState } from "react"
 import { Calendar, Home, Inbox, Search, Settings, Download, Dog, Target, Clipboard, BarChart2, ChevronDown, Users, ClipboardCheck, ChartNoAxesCombinedIcon, BriefcaseBusinessIcon, Heart } from "lucide-react"
 import {
   Sidebar,
@@ -16,7 +17,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import Link from "next/link"
 import { OrganizationSwitcher } from "./organization-switcher"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { useCallback } from "react"
 
 // Menu items.
 const items = [
@@ -98,6 +98,35 @@ const backstageItems = [
 ]
 
 export function AppSidebar() {
+  const [userPreferences, setUserPreferences] = useState({
+    enableBackstage: false,
+    enableTableView: false
+  });
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
+
+  // Fetch user preferences on component mount
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      try {
+        const response = await fetch("/api/user/preferences");
+        const result = await response.json();
+
+        if (result.success) {
+          setUserPreferences({
+            enableBackstage: result.data.enableBackstage,
+            enableTableView: result.data.enableTableView
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch user preferences:", error);
+      } finally {
+        setIsLoadingPreferences(false);
+      }
+    };
+
+    fetchPreferences();
+  }, []);
+  
   // Function to handle emoji selection and apply filters
   const handleWellnessSelection = useCallback((mood: any) => {
     // Construct the filters object based on the mood
@@ -163,30 +192,32 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               
-              {/* Backstage Collapsible Group */}
-              <Collapsible className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent hover:text-sidebar-accent-foreground">
-                    <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
-                    <span>Backstage</span>
-                    <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                  </CollapsibleTrigger>
-                </SidebarMenuItem>
-                <CollapsibleContent>
-                  <SidebarMenu className="pl-6">
-                    {backstageItems.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton size={"lg"} asChild>
-                          <Link href={item.url}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </CollapsibleContent>
-              </Collapsible>
+              {/* Backstage Collapsible Group - Only shown if enabled in preferences */}
+              {userPreferences.enableBackstage && (
+                <Collapsible className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent hover:text-sidebar-accent-foreground">
+                      <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
+                      <span>Backstage</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </CollapsibleTrigger>
+                  </SidebarMenuItem>
+                  <CollapsibleContent>
+                    <SidebarMenu className="pl-6">
+                      {backstageItems.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton size={"lg"} asChild>
+                            <Link href={item.url}>
+                              <item.icon />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -243,24 +274,15 @@ export function AppSidebar() {
           <SidebarMenuItem>
                 <OrganizationSwitcher />
           </SidebarMenuItem>
-          {/* hiding settings and download business plan as they are empty pages
           
           <SidebarMenuItem>
             <SidebarMenuButton size={"lg"} asChild>
-              <a href="#">
+              <Link href="/dashboard/settings">
                 <Settings />
                 <span>Settings</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton size={"lg"} asChild>
-              <a href="#">
-                <Download />
-                <span>Business Success Plan</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem> */}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
