@@ -122,10 +122,18 @@ export function JobCard({
 
   // Get task count
   const getTaskCount = () => {
+    // Get the completed tasks from taskCounts
+    const completed = taskCounts && taskCounts[job.id] ? taskCounts[job.id].completed : 0;
+    
+    // Get the total tasks from either taskCounts or job.tasks array
+    let total = 0;
     if (taskCounts && taskCounts[job.id]) {
-      return `${taskCounts[job.id].completed} tasks done`;
+      total = taskCounts[job.id].total;
+    } else if (currentJob.tasks && Array.isArray(currentJob.tasks)) {
+      total = currentJob.tasks.length;
     }
-    return "0 tasks done";
+    
+    return `${completed} of ${total} tasks done`;
   };
 
   // Get function color
