@@ -50,8 +50,8 @@ export function MappingDialog({
         jobName: initialData.jobName || '',
         piId: initialData.piId || '',
         piName: initialData.piName || '',
-        piImpactValue: initialData.piImpactValue || 0,
-        piTarget: initialData.piTarget || 0,
+        piImpactValue: initialData.piImpactValue,
+        piTarget: initialData.piTarget,
         notes: initialData.notes || ''
       };
     }
@@ -60,8 +60,8 @@ export function MappingDialog({
       jobName: '',
       piId: '',
       piName: '',
-      piImpactValue: 0,
-      piTarget: 0,
+      piImpactValue: undefined,
+      piTarget: undefined,
       notes: ''
     };
   });
@@ -75,8 +75,8 @@ export function MappingDialog({
         jobName: initialData.jobName || '',
         piId: initialData.piId || '',
         piName: initialData.piName || '',
-        piImpactValue: initialData.piImpactValue || 0,
-        piTarget: initialData.piTarget || 0,
+        piImpactValue: initialData.piImpactValue,
+        piTarget: initialData.piTarget,
         notes: initialData.notes || ''
       });
     } else {
@@ -85,8 +85,8 @@ export function MappingDialog({
         jobName: '',
         piId: '',
         piName: '',
-        piImpactValue: 0,
-        piTarget: 0,
+        piImpactValue: undefined,
+        piTarget: undefined,
         notes: ''
       });
     }
@@ -116,7 +116,7 @@ export function MappingDialog({
       ...formData,
       piId,
       piName: selectedPI ? selectedPI.name : '',
-      piTarget: selectedPI ? selectedPI.targetValue : 0
+      piTarget: selectedPI ? selectedPI.targetValue : undefined
     });
   };
 
@@ -131,7 +131,7 @@ export function MappingDialog({
   };
 
   const handleNumberChange = (field: keyof MappingJP, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
+    const numValue = value === '' ? undefined : Number(value);
     setFormData({...formData, [field]: numValue});
   };
 
@@ -175,7 +175,7 @@ export function MappingDialog({
               <Input
                 id="piTarget"
                 type="number"
-                value={formData.piTarget || 0}
+                value={formData.piTarget === undefined ? '' : formData.piTarget}
                 onChange={(e) => handleNumberChange('piTarget', e.target.value)}
                 placeholder="0"
                 readOnly
@@ -213,7 +213,7 @@ export function MappingDialog({
               <Input
                 id="piImpactValue"
                 type="number"
-                value={formData.piImpactValue}
+                value={formData.piImpactValue === undefined ? '' : formData.piImpactValue}
                 onChange={(e) => handleNumberChange('piImpactValue', e.target.value)}
                 placeholder="0"
                 required

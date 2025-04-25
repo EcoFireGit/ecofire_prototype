@@ -26,9 +26,9 @@ export type MappingFormData = {
   id?: string;
   piId: string;
   qboId: string;
-  piTarget: number;
-  qboTarget: number;
-  qboImpact: number;
+  piTarget: number | undefined;
+  qboTarget: number | undefined;
+  qboImpact: number | undefined;
   notes?: string;
 };
 
@@ -66,9 +66,9 @@ export function PIQBOMappingDialog({
     return {
       piId: '',
       qboId: '',
-      piTarget: 0,
-      qboTarget: 0,
-      qboImpact: 0,
+      piTarget: undefined,
+      qboTarget: undefined,
+      qboImpact: undefined,
       notes: ''
     };
   });
@@ -89,9 +89,9 @@ export function PIQBOMappingDialog({
       setFormData({
         piId: '',
         qboId: '',
-        piTarget: 0,
-        qboTarget: 0,
-        qboImpact: 0,
+        piTarget: undefined,
+        qboTarget: undefined,
+        qboImpact: undefined,
         notes: ''
       });
     }
@@ -109,7 +109,7 @@ export function PIQBOMappingDialog({
     setFormData({
       ...formData,
       piId,
-      piTarget: selectedPI ? selectedPI.targetValue : 0
+      piTarget: selectedPI ? selectedPI.targetValue : undefined
     });
   };
 
@@ -119,12 +119,12 @@ export function PIQBOMappingDialog({
     setFormData({
       ...formData,
       qboId,
-      qboTarget: selectedQBO ? selectedQBO.targetValue : 0
+      qboTarget: selectedQBO ? selectedQBO.targetValue : undefined
     });
   };
 
   const handleNumberChange = (field: keyof MappingFormData, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
+    const numValue = value === '' ? undefined : Number(value);
     setFormData({...formData, [field]: numValue});
   };
 
@@ -167,7 +167,7 @@ export function PIQBOMappingDialog({
               <Input
                 id="piTarget"
                 type="number"
-                value={formData.piTarget}
+                value={formData.piTarget === undefined ? '' : formData.piTarget}
                 onChange={(e) => handleNumberChange('piTarget', e.target.value)}
                 placeholder="0"
                 readOnly
@@ -205,7 +205,7 @@ export function PIQBOMappingDialog({
               <Input
                 id="qboTarget"
                 type="number"
-                value={formData.qboTarget}
+                value={formData.qboTarget === undefined ? '' : formData.qboTarget}
                 onChange={(e) => handleNumberChange('qboTarget', e.target.value)}
                 placeholder="0"
                 readOnly
@@ -221,7 +221,7 @@ export function PIQBOMappingDialog({
               <Input
                 id="qboImpact"
                 type="number"
-                value={formData.qboImpact}
+                value={formData.qboImpact === undefined ? '' : formData.qboImpact}
                 onChange={(e) => handleNumberChange('qboImpact', e.target.value)}
                 placeholder="0"
                 required
