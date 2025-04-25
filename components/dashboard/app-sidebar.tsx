@@ -51,11 +51,6 @@ const items = [
     icon: BarChart2,
   },
   {
-    title: "Team",
-    url: "/owners",
-    icon: Users,
-  },
-  {
     title: "Jija",
     url: "/jija",
     icon: Dog,

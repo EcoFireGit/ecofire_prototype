@@ -138,7 +138,7 @@ const Navbar = () => {
   // Handle create job button click
   const handleCreateJobClick = (e: { preventDefault: () => void }) => {
     // If already on jobs page, prevent default navigation and use custom event
-    if (pathname === "/dashboard/jobs") {
+    if (pathname === "/jobs") {
       e.preventDefault();
 
       // Create and dispatch a custom event that the JobsPage can listen for
@@ -146,7 +146,7 @@ const Navbar = () => {
       window.dispatchEvent(event);
     } else {
       // Normal navigation to jobs page with query param
-      router.push("/dashboard/jobs?open=true");
+      router.push("/jobs?open=true");
     }
   };
 
@@ -183,7 +183,7 @@ const Navbar = () => {
     setAppointmentVisible(false);
 
     // Navigate to jobs page with filters if not already there
-    if (pathname === "/dashboard/jobs") {
+    if (pathname === "/jobs") {
       // If on jobs page, apply filter directly
       if (minutesRemaining) {
         window.dispatchEvent(
@@ -197,18 +197,18 @@ const Navbar = () => {
       if (minutesRemaining) {
         sessionStorage.setItem("appointmentTime", minutesRemaining.toString());
       }
-      router.push("/dashboard/jobs");
+      router.push("/jobs");
     }
   };
 
   // Handle start tour button click
   const handleStartTourClick = () => {
-    if (pathname === "/dashboard/jobs") {
+    if (pathname === "/jobs") {
       // If already on jobs page, use a direct event for immediate response
       
       // 1. Add tour parameter to URL for consistency/bookmarking
       const timestamp = Date.now();
-      const newUrl = `/dashboard/jobs?tour=true&t=${timestamp}`;
+      const newUrl = `/jobs?tour=true&t=${timestamp}`;
       window.history.pushState({}, "", newUrl);
 
       // 2. Dispatch a direct custom event for immediate handling
@@ -216,7 +216,7 @@ const Navbar = () => {
       window.dispatchEvent(directEvent);
     } else {
       // Navigate to jobs page with tour query param
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     }
   };
 
@@ -257,7 +257,7 @@ const Navbar = () => {
           </PopoverContent>
         </Popover>
 
-        <Link href="/dashboard/search">
+        <Link href="/search">
           <Button variant="ghost" size="icon" className="mr-2">
             <Search className="h-6 w-6" />
           </Button>
@@ -275,7 +275,7 @@ const Navbar = () => {
           )}
         </Button>
 
-        <Link href="/dashboard/jobs?open=true" onClick={handleCreateJobClick}>
+        <Link href="/jobs?open=true" onClick={handleCreateJobClick}>
           <Button className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
             Create a Job
           </Button>

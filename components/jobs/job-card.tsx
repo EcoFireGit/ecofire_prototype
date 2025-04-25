@@ -295,7 +295,7 @@ const formatDate = (dateString?: string) => {
           title="Ask Jija about this job"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
+            router.push(`/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
           }}
         >
           <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />
