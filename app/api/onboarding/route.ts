@@ -86,13 +86,17 @@ export async function POST(req: NextRequest) {
 
     // Different prompts for each step
     const outcomePrompt =
-      'Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50 } }. The deadline will be automatically set to 3 months from today, so you can use any valid date format. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
+      'Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50 } }. The deadline for each outcome should be ' +
+      getDateThreeMonthsFromNow().toDateString().split("T")[0] +
+      ". Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.";
 
     const jobsPrompt =
       'Please generate the 10 most important jobs to be done in my business for achieving my mission statement. For each job, also generate up to 3 specific tasks that need to be completed to accomplish that job. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "notes": "Description of what needs to be done", "tasks": [{"title": "Task 1 Title", "notes": "Description of the task"}, {"title": "Task 2 Title", "notes": "Description of the task"}, {"title": "Task 3 Title", "notes": "Description of the task"}] } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     const pisPrompt =
-      'Considering all of my jobs to be done, what are all the 5 most important quantifiable metrics I can use to track my progress on each of them? It is not necessary for every job to be done to be associated with a unique metric. Avoid outcome metrics. Output your result in the form of a JSON in the following format: { "pi1": { "name": "PI 1", "targetValue": 100, "deadline": "2025-12-31"} }. The deadline will be automatically set to 3 months from today, so you can use any valid date format. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
+      'Considering all of my jobs to be done, what are all the 5 most important quantifiable metrics I can use to track my progress on each of them? It is not necessary for every job to be done to be associated with a unique metric. Avoid outcome metrics. Output your result in the form of a JSON in the following format: { "pi1": { "name": "PI 1", "targetValue": 100, "deadline": "2025-12-31"} }. The deadline for each outcome should be ' +
+      getDateThreeMonthsFromNow().toDateString().split("T")[0] +
+      ".  Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.";
 
     // Set a timeout for the OpenAI API call
     const timeoutPromise = new Promise((_, reject) => {
@@ -508,8 +512,9 @@ export async function POST(req: NextRequest) {
                   const mappingService = new MappingService();
 
                   // Get existing mappings to check for duplicates
-                  const existingMappings =
-                    await mappingService.getAllMappingJP(userId!);
+                  const existingMappings = await mappingService.getAllMappingJP(
+                    userId!,
+                  );
 
                   // Save each mapping
                   for (const key in mappingsData) {
