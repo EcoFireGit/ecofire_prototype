@@ -17,6 +17,7 @@ import Link from "next/link"
 import { OrganizationSwitcher } from "./organization-switcher"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useCallback } from "react"
+import { usePathname } from "next/navigation"
 
 // Menu items.
 const items = [
@@ -98,8 +99,20 @@ const backstageItems = [
 ]
 
 export function AppSidebar() {
+  // Get current pathname for highlighting the active item
+  const pathname = usePathname();
+
+  // Function to check if a menu item is active
+  const isActive = (url: string) => {
+    // Handle exact match for dashboard or startsWith for other routes
+    if (url === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    return pathname.startsWith(url);
+  };
+
   // Function to handle emoji selection and apply filters
-  const handleWellnessSelection = useCallback((mood: any) => {
+  const handleWellnessSelection = useCallback((mood: string) => {
     // Construct the filters object based on the mood
     let filters = {};
     
@@ -152,16 +165,28 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title} id={item.id}>
-                  <SidebarMenuButton size={"lg"} asChild>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const active = isActive(item.url);
+                const IconComponent = item.icon;
+                
+                return (
+                  <SidebarMenuItem key={item.title} id={item.id}>
+                    <SidebarMenuButton 
+                      size={"lg"} 
+                      asChild
+                    >
+                      <Link href={item.url}>
+                        <IconComponent 
+                          className={active ? "text-[#F05523]" : ""} 
+                        />
+                        <span className={active ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white" : ""}>
+                          {item.title}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
               
               {/* Backstage Collapsible Group */}
               <Collapsible className="group/collapsible">
@@ -174,16 +199,28 @@ export function AppSidebar() {
                 </SidebarMenuItem>
                 <CollapsibleContent>
                   <SidebarMenu className="pl-6">
-                    {backstageItems.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton size={"lg"} asChild>
-                          <Link href={item.url}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                    {backstageItems.map((item) => {
+                      const active = isActive(item.url);
+                      const IconComponent = item.icon;
+                      
+                      return (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton 
+                            size={"lg"} 
+                            asChild
+                          >
+                            <Link href={item.url}>
+                              <IconComponent 
+                                className={active ? "text-[#F05523]" : ""} 
+                              />
+                              <span className={active ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white" : ""}>
+                                {item.title}
+                              </span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
                   </SidebarMenu>
                 </CollapsibleContent>
               </Collapsible>
