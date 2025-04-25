@@ -75,6 +75,15 @@ export default function SettingsPage() {
           title: "Settings Updated",
           description: `${setting === "enableBackstage" ? "Backstage access" : "Table view"} has been ${newValue ? "enabled" : "disabled"}.`,
         });
+        
+        // If the backstage setting was changed, refresh the page
+        // This allows the sidebar to reflect the new setting immediately
+        if (setting === "enableBackstage") {
+          // Give the user a moment to see the toast before refreshing
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
       }
     } catch (error) {
       // If request fails, revert UI
@@ -130,7 +139,7 @@ export default function SettingsPage() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Backstage is currently disabled</AlertTitle>
                 <AlertDescription>
-                  Backstage contains advanced features that should only be used if you understand what you're doing.
+                  Backstage contains advanced features.
                   Enabling this will show the Backstage section in the sidebar.
                 </AlertDescription>
               </Alert>
@@ -141,7 +150,7 @@ export default function SettingsPage() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Backstage is enabled</AlertTitle>
                 <AlertDescription>
-                  You now have access to advanced features. Please use them with caution as they can affect system functionality.
+                  You now have access to advanced features. 
                 </AlertDescription>
               </Alert>
             )}
