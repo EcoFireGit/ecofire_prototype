@@ -11,6 +11,7 @@
 8. [Database Schema](#database-schema)
 9. [Authentication](#authentication)
 10. [State Management](#state-management)
+11. [Settings feature](#settings-feature-documentation)
 
 ## Project Overview
 EcoFire Prototype is a job management system built with Next.js, featuring active and completed jobs tracking. The application uses MongoDB for data storage and Clerk for authentication.
@@ -190,3 +191,99 @@ Here are the steps to accomplish the same.
   i. Alternatively, you can create a single dialog box to combine create and edit functionality, e.g., `coponents/owners/owner-dialog.tsx`
 1. Create a page to display the table in the app, e.g., `app/dashboard/owners/page.tsx`
 1. Update the link in `components/dashboard/app-sidebar.tsx` to point to the appropriate page when clicked.
+
+## Settings Feature Documentation
+
+### Overview
+The Settings page provides control over advanced features and UI options. Currently manages:
+
+1. **Backstage Access**: Controls visibility of advanced administrative features
+2. **Jobs Table View**: Toggles the display of a view switcher in the Jobs Feed
+
+### Technical Implementation
+
+#### User Preferences Model
+```typescript
+// models/user-preferences.js
+interface UserPreferences extends mongoose.Document {
+  _id: string;
+  userId: string;
+  enableBackstage: boolean;
+  enableTableView: boolean;
+}
+```
+
+#### Service Layer
+```typescript
+// lib/services/user-preferences.service.js
+export class UserPreferencesService {
+  async getUserPreferences(userId: string) {...}
+  async updateUserPreferences(userId: string, updates: Partial<{ 
+    enableBackstage: boolean, 
+    enableTableView: boolean 
+  }>) {...}
+}
+```
+
+#### API Routes
+- **GET /api/user/preferences**: Retrieves user preferences
+- **PATCH /api/user/preferences**: Updates user preferences
+
+#### Implementation Details
+
+##### Settings Page
+- Located at `/dashboard/settings`
+- Uses Toggle UI components with visual feedback
+- Auto-refreshes when Backstage access is toggled
+
+##### AppSidebar Component
+```typescript
+// components/dashboard/app-sidebar.tsx
+const [userPreferences, setUserPreferences] = useState({
+  enableBackstage: false,
+  enableTableView: false
+});
+
+// Render backstage conditionally
+{userPreferences.enableBackstage && (
+  <Collapsible className="group/collapsible">
+    {/* Backstage menu items */}
+  </Collapsible>
+)}
+```
+
+##### Jobs Page View Switcher
+```typescript
+// Modified JobsPage component
+const [isTableViewEnabled, setIsTableViewEnabled] = useState(false);
+
+// In the useEffect
+const fetchUserPreferences = async () => {
+  try {
+    const response = await fetch("/api/user/preferences");
+    const result = await response.json();
+    setIsTableViewEnabled(result.data.enableTableView);
+    
+    // Force grid view if table view is disabled
+    if (!result.data.enableTableView) {
+      setViewMode("grid");
+    }
+  } catch (error) {
+    console.error("Failed to fetch user preferences:", error);
+  }
+};
+
+// In the render function
+{isTableViewEnabled && (
+  <div className="flex items-center border rounded-md overflow-hidden mr-2">
+    {/* Grid/Table view switcher buttons */}
+  </div>
+)}
+```
+
+### Adding New User Preferences
+
+1. Update the `UserPreferences` model with the new preference
+2. Add the preference to the `updateUserPreferences` method validation
+3. Add UI components to the Settings page
+4. Implement the feature logic in relevant components
