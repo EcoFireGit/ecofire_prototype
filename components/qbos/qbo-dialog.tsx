@@ -222,7 +222,7 @@ export function QBODialog({
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Add QBO' : 'Save Changes'}
+              {mode === 'create' ? 'Add Outcome' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

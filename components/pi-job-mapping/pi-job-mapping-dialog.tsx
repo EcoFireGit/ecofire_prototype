@@ -156,7 +156,7 @@ export function MappingDialog({
                 required
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a PI" />
+                  <SelectValue placeholder="Select a Output" />
                 </SelectTrigger>
                 <SelectContent>
                   {pisList.map(pi => (
