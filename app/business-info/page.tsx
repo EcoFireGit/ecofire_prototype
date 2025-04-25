@@ -244,5 +244,6 @@ export default function BusinessInfoPage() {
         </Button>
       </form>
     </div>
+    
   );
 }

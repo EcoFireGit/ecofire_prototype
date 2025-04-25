@@ -241,7 +241,7 @@ export function NextTasks({
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(
-                            `/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`,
+                            `/jija?jobTitle=${encodeURIComponent(task.title)}`,
                           );
                         }}
                         title="Ask Jija about this task"

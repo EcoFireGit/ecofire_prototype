@@ -111,13 +111,13 @@ export function QBODialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Add QBO' : 'Edit QBO'}
+              {mode === 'create' ? 'Add Outcome' : 'Edit Outcome'}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid items-center gap-2">
               <Label htmlFor="name" className="text-left">
-                QBO name <span className="text-red-500">*</span>
+                Outcome name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
@@ -130,7 +130,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="unit" className="text-left">
-                QBO unit
+              Outcome unit
               </Label>
               <Input
                 id="unit"
@@ -168,7 +168,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="targetValue" className="text-left">
-                QBO target <span className="text-red-500">*</span>
+              Outcome target <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="targetValue"
@@ -182,7 +182,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="deadline" className="text-left">
-                QBO Deadline <span className="text-red-500">*</span>
+              Outcome Deadline <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="deadline"
@@ -195,7 +195,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="points" className="text-left">
-                QBO points <span className="text-red-500">*</span>
+              Outcome points <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="points"
@@ -209,7 +209,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="notes" className="text-left">
-                QBO notes
+              Outcome notes
               </Label>
               <Textarea
                 id="notes"

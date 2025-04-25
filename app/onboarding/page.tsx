@@ -161,7 +161,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     },
   });
 

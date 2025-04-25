@@ -134,13 +134,13 @@ export function PIQBOMappingDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Map PI to QBO' : 'Edit PI-QBO Mapping'}
+              {mode === 'create' ? 'Map Output to Outcome' : 'Edit Output-Outcome Mapping'}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid items-center gap-2">
               <Label htmlFor="piId" className="text-left">
-                PI name <span className="text-red-500">*</span>
+                Output name <span className="text-red-500">*</span>
               </Label>
               <Select 
                 value={formData.piId} 
@@ -162,7 +162,7 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="piTarget" className="text-left">
-                PI Target
+                Output Target
               </Label>
               <Input
                 id="piTarget"
@@ -178,7 +178,7 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="qboId" className="text-left">
-                QBO name <span className="text-red-500">*</span>
+                Outcome name <span className="text-red-500">*</span>
               </Label>
               <Select 
                 value={formData.qboId} 
@@ -200,7 +200,7 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="qboTarget" className="text-left">
-                QBO Target
+                Outcome Target
               </Label>
               <Input
                 id="qboTarget"
@@ -216,7 +216,7 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="qboImpact" className="text-left">
-                QBO Impact <span className="text-red-500">*</span>
+                Outcome Impact <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="qboImpact"
@@ -243,7 +243,7 @@ export function PIQBOMappingDialog({
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Map PI to QBO' : 'Save Changes'}
+              {mode === 'create' ? 'Map Output to Outcome' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

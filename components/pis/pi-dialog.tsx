@@ -94,13 +94,13 @@ export function PIDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Add PI' : 'Edit PI'}
+              {mode === 'create' ? 'Add Output' : 'Edit Output'}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid items-center gap-2">
               <Label htmlFor="name" className="text-left">
-                PI name <span className="text-red-500">*</span>
+                Output name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
@@ -113,7 +113,7 @@ export function PIDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="unit" className="text-left">
-                PI unit
+                Output unit
               </Label>
               <Input
                 id="unit"
@@ -138,7 +138,7 @@ export function PIDialog({
 
             <div className="grid items-center gap-2">
               <Label htmlFor="targetValue" className="text-left">
-                PI target <span className="text-red-500">*</span>
+                Output target <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="targetValue"
@@ -152,7 +152,7 @@ export function PIDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="deadline" className="text-left">
-                PI Deadline <span className="text-red-500">*</span>
+                Output Deadline <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="deadline"
@@ -165,7 +165,7 @@ export function PIDialog({
            
             <div className="grid items-center gap-2">
               <Label htmlFor="notes" className="text-left">
-                PI notes
+                Output notes
               </Label>
               <Textarea
                 id="notes"
@@ -178,7 +178,7 @@ export function PIDialog({
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Add PI' : 'Save Changes'}
+              {mode === 'create' ? 'Add Output' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>
