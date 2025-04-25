@@ -11,7 +11,7 @@
 8. [Database Schema](#database-schema)
 9. [Authentication](#authentication)
 10. [State Management](#state-management)
-11. [Settings feature](#settings-feature-documentation)
+11. [Settings Feature](#settings-feature)
 
 ## Project Overview
 EcoFire Prototype is a job management system built with Next.js, featuring active and completed jobs tracking. The application uses MongoDB for data storage and Clerk for authentication.
@@ -178,21 +178,18 @@ interface Jobs extends mongoose.Document {
 4. Implement UI components using shadcn/ui
 5. Add proper types and error handling
 
-
-### Implementing a new table
-Suppose you want to create a new table named "Owners" in the app.
-Here are the steps to accomplish the same.
+### Implementing a New Table
 1. Create the DB model for the table, e.g., `lib/models/owner.model.ts`
-1. Create a service for the table, e.g., `lib/services/owner.service.ts`
-1. Create API routes for reading and adding entries in the table, e.g., `api/owners/route.ts`
-1. Create API routes for updating and deleting existing entries in the table, e.g., `api/owners[id]/route.ts`
-1. Create table components and columns for displaying the table in the app, e.g., `components/owners/table/columns.tsx` and `components/owners/table/owners-table.tsx`.
-1. Create dialog components to add and edit existing entries in the table, e.g., `components/owners/create-dialog.tsx` and `components/owners/edit-dialog.tsx`.
-  i. Alternatively, you can create a single dialog box to combine create and edit functionality, e.g., `coponents/owners/owner-dialog.tsx`
-1. Create a page to display the table in the app, e.g., `app/dashboard/owners/page.tsx`
-1. Update the link in `components/dashboard/app-sidebar.tsx` to point to the appropriate page when clicked.
+2. Create a service for the table, e.g., `lib/services/owner.service.ts`
+3. Create API routes for reading and adding entries in the table, e.g., `api/owners/route.ts`
+4. Create API routes for updating and deleting existing entries in the table, e.g., `api/owners[id]/route.ts`
+5. Create table components and columns for displaying the table in the app, e.g., `components/owners/table/columns.tsx` and `components/owners/table/owners-table.tsx`
+6. Create dialog components to add and edit existing entries in the table, e.g., `components/owners/create-dialog.tsx` and `components/owners/edit-dialog.tsx`
+   - Alternatively, you can create a single dialog box to combine create and edit functionality, e.g., `components/owners/owner-dialog.tsx`
+7. Create a page to display the table in the app, e.g., `app/dashboard/owners/page.tsx`
+8. Update the link in `components/dashboard/app-sidebar.tsx` to point to the appropriate page when clicked
 
-## Settings Feature Documentation
+## Settings Feature
 
 ### Overview
 The Settings page provides control over advanced features and UI options. Currently manages:
