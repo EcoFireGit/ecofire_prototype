@@ -2,7 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskService } from '@/lib/services/task.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
+import { JobService } from '@/lib/services/job.service';
 const taskService = new TaskService();
+const jobService = new JobService();
 
 export async function GET(
   request: NextRequest,
@@ -105,6 +107,9 @@ export async function DELETE(
     const { id } = await params;
     const deleted = await taskService.deleteTask(id, userId!);
    
+
+    const deletedJob = await jobService.cleanupDeletedTaskFromJob(deleted.jobId, deleted._id);
+
     if (!deleted) {
       return NextResponse.json(
         {

@@ -55,7 +55,6 @@ export async function POST(request: Request) {
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    console.log('authResult', authResult);
     const userId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const { name } = await request.json();
     await validateData(name, userId!);

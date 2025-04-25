@@ -132,7 +132,7 @@ export function QBOCircles({ onSelectJob }: QBOCircleProps) {
                 const pointsValue = qbo.points || 1;
                 const sizeFactor = Math.max(
                   1,
-                  Math.min(2, 1 + pointsValue / 10),
+                  Math.min(2, 1 + pointsValue / 100),
                 );
 
                 // Calculate actual dimensions

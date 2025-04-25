@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -11,22 +11,98 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
+import { Plus, PawPrint, Calendar, Briefcase, FileText, GripVertical } from "lucide-react";
 import { TaskDialog } from "./tasks-dialog";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
 import { useToast } from "@/hooks/use-toast";
 import { NextTaskSelector } from "./next-task-selector";
-import { TaskProvider } from "@/hooks/task-context"; // Import the TaskProvider
-import { TaskCard } from "./tasks-card"; // Make sure to import the updated TaskCard
+import { TaskProvider } from "@/hooks/task-context";
+import { TaskCard } from "./tasks-card";
 import { useTaskContext } from "@/hooks/task-context";
 import { useRouter } from "next/navigation";
+
+// DnD Kit imports
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // Owner interface
 interface Owner {
   _id: string;
   name: string;
   userId: string;
+}
+
+// Define proper types for the SortableTaskItem props
+interface SortableTaskItemProps {
+  task: Task;
+  onEdit: (task: Task) => void;
+  onDelete: (id: string) => void;
+  onComplete: (id: string, jobid: string, completed: boolean) => void;
+  ownerMap: Record<string, string>;
+}
+
+// Sortable Task Item component with proper typing
+function SortableTaskItem({ task, onEdit, onDelete, onComplete, ownerMap }: SortableTaskItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    disabled: task.isNextTask,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="mb-3">
+      <div className="flex items-start">
+        {/* Drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className={`flex items-center justify-center h-full min-h-[80px] px-2 ${
+            task.isNextTask ? "opacity-20 cursor-not-allowed" : "cursor-grab"
+          }`}
+        >
+          <GripVertical className="h-5 w-5 text-gray-400" />
+        </div>
+        <div className="flex-1">
+          <TaskCard
+            task={task}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onComplete={onComplete}
+            ownerMap={ownerMap}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface TasksSidebarProps {
@@ -43,17 +119,37 @@ export function TasksSidebar({
   onRefreshJobs,
 }: TasksSidebarProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState<boolean>(false);
   const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [owners, setOwners] = useState<Owner[]>([]);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
   const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
+  const [showSaveOrder, setShowSaveOrder] = useState<boolean>(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // This flag will track if we've already done the initial sort
+  const initialSortDoneRef = useRef(false);
 
   const { toast } = useToast();
-  const { refreshJobOwner } = useTaskContext();
+  const { refreshJobOwner, refreshJobProgress } = useTaskContext();
   const router = useRouter();
+
+  // Reset the initialSortDone flag when the sidebar is closed
+  useEffect(() => {
+    if (!open) {
+      initialSortDoneRef.current = false;
+    }
+  }, [open]);
+
+  // Set up sensors for drag operations
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Fetch owners from API
   useEffect(() => {
@@ -90,6 +186,8 @@ export function TasksSidebar({
   // Fetch tasks when job changes
   useEffect(() => {
     if (selectedJob) {
+      // Reset the initialSortDone flag when the job changes
+      initialSortDoneRef.current = false;
       fetchTasks();
       // Set the next task ID from the job
       setNextTaskId(selectedJob.nextTaskId);
@@ -109,7 +207,7 @@ export function TasksSidebar({
 
       if (result.success) {
         // Map from MongoDB _id to id for frontend consistency
-        const formattedTasks = result.data.map((task: any) => ({
+        let formattedTasks = result.data.map((task: any) => ({
           id: task._id,
           title: task.title,
           owner: task.owner,
@@ -123,6 +221,38 @@ export function TasksSidebar({
           completed: task.completed,
           isNextTask: task._id === selectedJob.nextTaskId,
         }));
+
+        // On initial load, sort tasks based on job.tasks array
+        if (!initialSortDoneRef.current && selectedJob.tasks && Array.isArray(selectedJob.tasks)) {
+          console.log("Performing initial sort based on job.tasks order");
+          console.log("Job tasks array:", selectedJob.tasks);
+          
+          // Sort tasks according to job.tasks array order
+          formattedTasks.sort((a: any, b: any) => {
+            // Next task always comes first
+            if (a.isNextTask) return -1;
+            if (b.isNextTask) return 1;
+            
+            // Then use the job.tasks array order
+            const aIndex = selectedJob.tasks ? selectedJob.tasks.indexOf(a.id) : -1;
+            const bIndex = selectedJob.tasks ? selectedJob.tasks.indexOf(b.id) : -1;
+            
+            // If both tasks are in the tasks array, sort by their index
+            if (aIndex !== -1 && bIndex !== -1) {
+              return aIndex - bIndex;
+            }
+            
+            // If only a is in the tasks array, prioritize it
+            if (aIndex !== -1) return -1;
+            
+            // If only b is in the tasks array, prioritize it
+            if (bIndex !== -1) return 1;
+            
+            return 0;
+          });
+          
+          initialSortDoneRef.current = true;
+        }
 
         setTasks(formattedTasks);
       } else {
@@ -192,7 +322,7 @@ export function TasksSidebar({
     }
   };
 
-  const handleCompleteTask = async (id: string, jobid:string, completed: boolean) => {
+  const handleCompleteTask = async (id: string, jobid: string, completed: boolean) => {
     try {
       const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
@@ -203,12 +333,6 @@ export function TasksSidebar({
       });
       const result = await response.json();
       if (result.success) {
-        // If the completed task was the next task, we need to update the job--NEW --> This is now taken care of previous call
-        // if (completed && id === nextTaskId) {
-        //   // Clear the next task since it's now completed
-        //   await updateJobNextTask("none");
-        // }
-
         // Use the function form of setState to ensure you're working with the latest state
         setTasks(prevTasks => {
           return prevTasks.map(task => {
@@ -225,6 +349,8 @@ export function TasksSidebar({
           });
         });
 
+        // Then trigger a refresh of the job progress
+        refreshJobProgress(jobid);
       } else {
         toast({
           title: "Error",
@@ -291,7 +417,6 @@ export function TasksSidebar({
       });
     }
   };
-
 
   const updateJobNextTask = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
@@ -484,17 +609,112 @@ export function TasksSidebar({
     }
   };
 
+  // Handle drag end with proper typing
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active && over && active.id !== over.id) {
+      // Find the task that was being dragged
+      const draggedTask = tasks.find((task) => task.id === active.id);
+      
+      // Don't allow the next task to be reordered
+      if (draggedTask && draggedTask.isNextTask) {
+        toast({
+          title: "Cannot reorder next task",
+          description: "The next task must remain at the top",
+          variant: "destructive",
+        });
+        setActiveId(null);
+        return;
+      }
+
+      setTasks((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        
+        const newTasks = arrayMove(items, oldIndex, newIndex);
+        setShowSaveOrder(true);
+        return newTasks;
+      });
+    }
+    
+    setActiveId(null);
+  };
+
+  // Save the new order of tasks
+  const saveTasksOrder = async () => {
+    if (!selectedJob) return;
+    
+    try {
+      // Get all task IDs in their current order
+      const taskIds = tasks.map(task => task.id);
+      
+      // Log the order we're about to save
+      console.log("Saving task order:", taskIds);
+      
+      // Call the API endpoint
+      const response = await fetch("/api/tasks/order", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jobId: selectedJob.id,
+          taskIds: taskIds
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setShowSaveOrder(false);
+        
+        toast({
+          title: "Success",
+          description: "Task order updated successfully",
+        });
+        
+        // Update the local selectedJob object with the new task order
+        if (selectedJob) {
+          // Create a copy of the job with updated tasks array
+          const updatedJob = { 
+            ...selectedJob,
+            tasks: taskIds 
+          };
+          
+          // Replace the selectedJob reference (this won't update the parent component,
+          // but it will ensure the correct order if we need to use it locally)
+          Object.assign(selectedJob, updatedJob);
+        }
+        
+        // Refresh jobs if needed
+        if (typeof onRefreshJobs === "function") {
+          onRefreshJobs();
+        }
+      } else {
+        throw new Error(result.error || "Failed to update task order");
+      }
+    } catch (error) {
+      console.error("Error saving task order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save task order",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!selectedJob) {
     return null;
   }
 
-  // Sort tasks to show the next task first
+  // Sort tasks - only prioritize the next task, allowing drag and drop to manage the rest
   const sortedTasks = [...tasks].sort((a, b) => {
-    // If a is the next task, it comes first
+    // Next task always comes first
     if (a.isNextTask) return -1;
-    // If b is the next task, it comes first
     if (b.isNextTask) return 1;
-    // Otherwise, keep the original order
+    
+    // For all other tasks, keep their current order
     return 0;
   });
 
@@ -600,7 +820,7 @@ export function TasksSidebar({
               </Button>
             </div>
 
-            {/* Tasks List */}
+            {/* Tasks List with DnD Kit */}
             {isLoading ? (
               <div className="flex justify-center p-8">
                 <p>Loading tasks...</p>
@@ -608,21 +828,56 @@ export function TasksSidebar({
             ) : (
               <div className="space-y-4">
                 {sortedTasks.length > 0 ? (
-                  sortedTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onEdit={handleEditTask}
-                      onDelete={handleDeleteTask}
-                      onComplete={handleCompleteTask}
-                      ownerMap={ownerMap}
-                    />
-                  ))
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={(event) => setActiveId(event.active.id.toString())}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={sortedTasks.map((task) => task.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {sortedTasks.map((task) => (
+                        <SortableTaskItem
+                          key={task.id}
+                          task={task}
+                          onEdit={handleEditTask}
+                          onDelete={handleDeleteTask}
+                          onComplete={handleCompleteTask}
+                          ownerMap={ownerMap}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 ) : (
                   <div className="p-8 text-center text-gray-500 border rounded-md">
                     No tasks for this job yet.
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Save Order Notification */}
+            {showSaveOrder && (
+              <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 z-50 border border-gray-200">
+                <p className="text-sm mb-2">Save the new task order?</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Revert the changes
+                      fetchTasks();
+                      setShowSaveOrder(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={saveTasksOrder}>
+                    Save Order
+                  </Button>
+                </div>
               </div>
             )}
           </TaskProvider>

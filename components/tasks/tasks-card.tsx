@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Task, FocusLevel, JoyLevel } from "./types";
 import { Badge } from "@/components/ui/badge";
-import { useTaskContext } from "@/hooks/task-context"; // Import the task context
+import { useTaskContext } from "@/hooks/task-context";
 
 interface TaskCardProps {
     task: Task;
@@ -37,7 +37,7 @@ export function TaskCard({
 }: TaskCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
-    const { refreshJobProgress } = useTaskContext(); // Use the task context
+    const { refreshJobProgress } = useTaskContext();
 
     // Format the date
     const formatDate = (dateString?: string) => {
@@ -71,27 +71,22 @@ export function TaskCard({
     };
 
     const handleTaskComplete = async (value: boolean) => {
-        // Update the visual state immediately for better UX
-        // This doesn't affect the actual task object passed as prop
-        
         try {
             // Call the original onComplete handler
             await onComplete(task.id, task.jobId, value);
             
-            // Then trigger a refresh of the job progress - this should happen after
-            // the task is successfully marked as complete
+            // Then trigger a refresh of the job progress
             refreshJobProgress(task.jobId);
             
-            // Consider adding a console.log to verify this function is being called
             console.log(`Task ${task.id} marked as ${value ? 'completed' : 'incomplete'}`);
         } catch (error) {
             console.error("Error updating task completion status:", error);
-            // You might want to add error handling / user feedback here
         }
     };
+
     return (
         <div
-            className={`rounded-md mb-3 ${getBorderClasses()} bg-[#F4F4F4]`}
+            className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
