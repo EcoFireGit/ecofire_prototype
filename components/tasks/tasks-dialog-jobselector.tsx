@@ -1,4 +1,3 @@
-// TaskDialog.jsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +35,7 @@ interface TaskDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (task: Partial<Task>) => void;
   initialData?: Task;
-  jobs?: Record<string, any>; // Add jobs prop
+  jobs?: any; // Add jobs prop
 }
 
 export function TaskDialog({
@@ -45,7 +44,7 @@ export function TaskDialog({
   onOpenChange,
   onSubmit,
   initialData,
-  jobs = {},
+  jobs,
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
@@ -150,8 +149,12 @@ export function TaskDialog({
     setIsSubmitting(true);
 
     try {
+      // Always include title in the task
       const task: Partial<Task> = { title };
+      
+      // Always include jobId if it exists
       if (jobId) task.jobId = jobId;
+      
       if (owner) task.owner = owner;
       if (date) task.date = `${date}T00:00:00.000Z`;
       if (requiredHours !== undefined) task.requiredHours = requiredHours;
@@ -209,36 +212,38 @@ export function TaskDialog({
               </div>
 
               {/* Job Selection */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="job" className="text-right">
-                  Job
-                </Label>
-                <div className="col-span-3 space-y-2">
-                  <Select
-                    value={jobId || "none"}
-                    onValueChange={(value) => {
-                      if (value === "create") {
-                        setIsJobDialogOpen(true);
-                      } else {
-                        setJobId(value === "none" ? undefined : value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a job" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {Object.entries(jobs).map(([id, job]) => (
-                        <SelectItem key={id} value={id}>
-                          {job.title}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="create">+ Create New Job</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {jobs && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="job" className="text-right">
+                    Job
+                  </Label>
+                  <div className="col-span-3 space-y-2">
+                    <Select
+                      value={jobId || "none"}
+                      onValueChange={(value) => {
+                        if (value === "create") {
+                          setIsJobDialogOpen(true);
+                        } else {
+                          setJobId(value === "none" ? undefined : value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a job" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {jobs && Object.entries(jobs).map(([id, job]: [string, any]) => (
+                          <SelectItem key={id} value={id}>
+                            {job.title}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="create">+ Create New Job</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Owner */}
               <div className="grid grid-cols-4 items-center gap-4">
