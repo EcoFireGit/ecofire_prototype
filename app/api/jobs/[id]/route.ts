@@ -67,24 +67,30 @@ export async function PUT(
     const { id } = await params;
     const updateData = await request.json();
 
-    const updatedJob = await jobService.updateJob(id, userId!, updateData);
-    
-    if (!updatedJob) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Job not found'
-        },
-        { status: 404 }
-      );
-    } 
-    
-    
+    let updatedJob = await jobService.updateJob(id, userId!, updateData);
+
+  
+    if(updateData && !( 'nextTaskId' in updateData)) { //set first task in the array as next task if the next task is not beig set as NONE/specific value
+      updatedJob = await jobService.setFirstTaskAsNextTaskId(id);
+      if (!updatedJob) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Job not found'
+          },
+          { status: 404 }
+        );
+      } 
+    }
+
     const forceUpdateTasks = request.nextUrl.searchParams.get('updateTasks') === 'true';
 
-    if(forceUpdateTasks) {
-      await updateTasksStatus(updateData, updatedJob, userId!);
+    if(forceUpdateTasks && updatedJob) {
+        await updateTasksStatus(updateData, updatedJob, userId!);
     }
+  
+    
+
 
     return NextResponse.json({
       success: true,
@@ -104,12 +110,9 @@ export async function PUT(
 
 async function updateTasksStatus(updateData: any,updatedJob: Jobs, userId: string) {
 
-  console.log('Job completed:', updatedJob);
   const taskService = new TaskService();
   if (updatedJob.tasks && updatedJob.tasks.length > 0) {
     updatedJob.tasks.forEach(async (taskId:string) => {
-      console.log('Updating tasks', taskId, updatedJob.isDone);
-
       await taskService.markCompleted(taskId, userId!, updatedJob.isDone);
     });
   }
@@ -132,7 +135,6 @@ export async function DELETE(
     const { id } = await params;
     const deleted = await jobService.deleteJob(id, userId!);
     
-    console.log('deleted job:', deleted);
     if(forceDelete) {
       const taskService = new TaskService();
       await taskService.deleteTasksByJobId(id, userId!);

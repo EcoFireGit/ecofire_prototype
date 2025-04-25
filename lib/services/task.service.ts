@@ -74,15 +74,15 @@ export class TaskService {
     }
   }
 
-  async deleteTask(id: string, userId: string): Promise<boolean> {
+  async deleteTask(id: string, userId: string): Promise<TaskInterface> {
     try {
       await dbConnect();
       const result = await Task.findOneAndUpdate(
         { _id: id, userId },
         { $set: { isDeleted: true } },
         { new: true, runValidators: true }
-      ).lean();
-      return JSON.parse(JSON.stringify(result)) ? true : false;
+      );
+      return JSON.parse(JSON.stringify(result)) ;
     } catch (error) {
       throw new Error("Error deleting task from database");
     }
@@ -127,7 +127,6 @@ export class TaskService {
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
-      // console.log(tasks);
       return JSON.parse(JSON.stringify(tasks));
     } catch (error) {
       throw new Error("Error fetching next tasks from database");
