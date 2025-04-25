@@ -133,6 +133,11 @@ export function JobCard({
       total = currentJob.tasks.length;
     }
     
+    // If there are no tasks, show "No tasks added"
+    if (total === 0) {
+      return "No tasks added";
+    }
+    
     return `${completed} of ${total} tasks done`;
   };
 
