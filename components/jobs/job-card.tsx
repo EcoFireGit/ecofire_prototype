@@ -195,13 +195,20 @@ const formatDate = (dateString?: string) => {
     return `${taskCounts.completed} tasks done`;
   };
 
-  // Get function color
+  // Generate a consistent color for a business function
   const getFunctionColor = () => {
-    const functionName = currentJob.businessFunctionName?.toLowerCase() || "";
-    if (functionName.includes("product")) return "bg-orange-100 text-orange-800";
-    if (functionName.includes("design")) return "bg-green-100 text-green-800";
-    if (functionName.includes("engineering")) return "bg-blue-100 text-blue-800";
-    return "bg-gray-100 text-gray-800"; // Default color
+    const functionName = currentJob.businessFunctionName || "None";
+    // Generate a hash code from the function name
+    const hashCode = functionName.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    // Map to HSL color space for better distribution of colors
+    const h = Math.abs(hashCode % 360);
+    const s = 85; // Keep saturation fixed for better readability
+    const l = 88; // Higher lightness for background with dark text
+    
+    return `bg-[hsl(${h},${s}%,${l}%)] text-[hsl(${h},${s}%,30%)]`;
   };
 
   return (
