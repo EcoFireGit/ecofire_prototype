@@ -64,7 +64,7 @@ export function QBOCircles({ onSelectJob }: QBOCircleProps) {
         console.error("Error fetching QBOs and job mappings:", error);
         toast({
           title: "Error",
-          description: "Failed to load QBO and job data",
+          description: "Failed to load Outcomes and job data",
           variant: "destructive",
         });
       } finally {
@@ -77,7 +77,7 @@ export function QBOCircles({ onSelectJob }: QBOCircleProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center p-4">Loading QBO mappings...</div>
+      <div className="flex justify-center p-4">Loading Outcome mappings...</div>
     );
   }
 

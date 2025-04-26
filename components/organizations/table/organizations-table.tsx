@@ -132,7 +132,7 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                       variant="ghost"
                       size="default"
                       onClick={() =>
-                        (window.location.href = `/dashboard/organizations/${org._id}/members`)
+                        (window.location.href = `/organizations/${org._id}/members`)
                       }
                     >
                       <Users className="h-4 w-4" /> Add members

@@ -87,7 +87,7 @@ export function PIQBOMappingTable<TData, TValue>({
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No PI-QBO mappings found.
+                No Output-Outcome mappings found.
               </TableCell>
             </TableRow>
           )}
