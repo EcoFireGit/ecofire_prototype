@@ -21,6 +21,7 @@ import { Task, FocusLevel, JoyLevel } from "./types";
 import { TagInput } from "@/components/tasks/tag-input";
 import { saveTags } from "@/lib/services/task-tags.service";
 import { JobDialog } from "@/components/jobs/job-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 // Define Owner interface to match MongoDB document
 interface Owner {
@@ -29,13 +30,24 @@ interface Owner {
   userId: string;
 }
 
+// Define task response interface
+interface TaskResponse {
+  success: boolean;
+  data?: {
+    _id: string;
+    [key: string]: any;
+  };
+  error?: string;
+}
+
 interface TaskDialogProps {
   mode: "create" | "edit";
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (task: Partial<Task>) => void;
+  onSubmit: (task: Partial<Task>) => Promise<void>;
   initialData?: Task;
   jobs?: any; // Add jobs prop
+  jobId?: string; // Allow direct jobId prop
 }
 
 export function TaskDialog({
@@ -45,6 +57,7 @@ export function TaskDialog({
   onSubmit,
   initialData,
   jobs,
+  jobId: propJobId,
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
@@ -71,6 +84,15 @@ export function TaskDialog({
   // Job State Management
   const [jobId, setJobId] = useState<string | undefined>(undefined);
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
+
+  const { toast } = useToast();
+
+  // Initialize jobId from props
+  useEffect(() => {
+    if (propJobId) {
+      setJobId(propJobId);
+    }
+  }, [propJobId]);
 
   useEffect(() => {
     const fetchOwners = async () => {
@@ -105,7 +127,9 @@ export function TaskDialog({
       setJoyLevel(undefined);
       setNotes(undefined);
       setTags([]);
-      setJobId(undefined);
+      if (!propJobId) { // If no jobId prop, reset to undefined
+        setJobId(undefined);
+      }
     } else if (initialData) {
       setTitle(initialData.title);
       setOwner(initialData.owner);
@@ -121,7 +145,7 @@ export function TaskDialog({
       setTags(initialData.tags || []);
       setJobId(initialData.jobId);
     }
-  }, [mode, initialData, open]);
+  }, [mode, initialData, open, propJobId]);
 
   const handleNewJobSubmit = async (jobData: any) => {
     try {
@@ -135,12 +159,56 @@ export function TaskDialog({
       const createdJob = await response.json();
       
       // Update the jobId with the newly created job
-      setJobId(createdJob._id || createdJob.id);
+      setJobId(createdJob.data?._id || createdJob._id || createdJob.id);
       
       // Close the job dialog
       setIsJobDialogOpen(false);
     } catch (error) {
       console.error("Error creating job:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create job",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to update job tasks
+  const updateJobTasks = async (jobId: string, taskId: string): Promise<void> => {
+    try {
+      // First fetch the current job to get its tasks
+      const jobResponse = await fetch(`/api/jobs/${jobId}`);
+      if (!jobResponse.ok) {
+        throw new Error(`Failed to fetch job: ${jobResponse.status}`);
+      }
+      
+      const jobData = await jobResponse.json();
+      const currentTasks = jobData.data?.tasks || [];
+      
+      // Add the new task ID to the tasks array
+      const updatedTasks = [...currentTasks, taskId];
+      
+      // Update the job with the new tasks array
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tasks: updatedTasks }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update job tasks: ${response.status}`);
+      }
+      
+      // Trigger a job progress update event
+      const event = new CustomEvent('job-progress-update', { 
+        detail: { jobId: jobId } 
+      });
+      window.dispatchEvent(event);
+    } catch (error) {
+      console.error("Error updating job tasks:", error);
+      throw error;
     }
   };
 
@@ -163,10 +231,50 @@ export function TaskDialog({
       if (notes) task.notes = notes;
       if (tags.length > 0) task.tags = tags;
 
+      // Submit the task data to parent component
       await onSubmit(task);
+      
+      // For task creation mode with associated job, directly create and update job
+      if (mode === "create" && jobId) {
+        try {
+          // Direct API call to create task
+          const response = await fetch("/api/tasks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(task),
+          });
+          
+          if (!response.ok) {
+            throw new Error("Failed to create task");
+          }
+          
+          const result: TaskResponse = await response.json();
+          
+          if (result.success && result.data?._id) {
+            // Update the job's tasks array with the new task ID
+            await updateJobTasks(jobId, result.data._id);
+          }
+        } catch (error) {
+          console.error("Error in direct task creation:", error);
+          // The onSubmit already ran, so we continue despite this error
+        }
+      }
+      
+      // Save tags if any
       if (tags.length > 0) await saveTags(tags);
+      
+      // Close the dialog
       onOpenChange(false);
+      
+      // Show success toast
+      toast({
+        title: "Success",
+        description: mode === "create" ? "Task created successfully" : "Task updated successfully",
+      });
 
+      // Reset form if creating new task
       if (mode === "create") {
         setTitle("");
         setOwner(undefined);
@@ -176,10 +284,17 @@ export function TaskDialog({
         setJoyLevel(undefined);
         setNotes(undefined);
         setTags([]);
-        setJobId(undefined);
+        if (!propJobId) {
+          setJobId(undefined);
+        }
       }
     } catch (error) {
       console.error("Error submitting task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit task",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -211,8 +326,8 @@ export function TaskDialog({
                 />
               </div>
 
-              {/* Job Selection */}
-              {jobs && (
+              {/* Job Selection - only show if no jobId was provided via props */}
+              {!propJobId && jobs && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="job" className="text-right">
                     Job
@@ -241,6 +356,18 @@ export function TaskDialog({
                         <SelectItem value="create">+ Create New Job</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+              )}
+              
+              {/* Display selected job name if jobId is provided via props */}
+              {propJobId && jobs && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Job</Label>
+                  <div className="col-span-3">
+                    <p className="text-sm font-medium">
+                      {jobs[propJobId]?.title || "Selected Job"}
+                    </p>
                   </div>
                 </div>
               )}
