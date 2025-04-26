@@ -48,13 +48,14 @@ export async function POST(request: NextRequest) {
       return authResult.response;
     }
    
-    const userId = authResult.userId;
+
+    const userId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const body = await request.json();
     const { name } = body;
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-    await validateData(name);
+    await validateData(name, userId!);
     const owner = await ownerService.createOwner(name, userId!);
     return NextResponse.json(owner);
   } catch (error) {
@@ -75,13 +76,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function validateData(name: string) {
+async function validateData(name: string, userId: string) {
   await validateString(name);
-  const authResult = await validateAuth();
-  if (!authResult.isAuthorized) {
-    throw new ValidationError("Unauthorized", 401);
-  }
-  const userId = authResult.userId;
   const exists = await ownerService.checkNameExists(name, userId!);
   if (exists) {
     throw new ValidationError("Owner name already exists", 400);

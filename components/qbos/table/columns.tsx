@@ -56,11 +56,11 @@ export const columns = (
 ): ColumnDef<QBO>[] => [
   {
     accessorKey: "name",
-    header: "QBO name",
+    header: "Outcome name",
   },
   {
     accessorKey: "unit",
-    header: "QBO unit",
+    header: "Outcome unit",
   },
   {
     accessorKey: "beginningValue",
@@ -106,7 +106,7 @@ export const columns = (
   },
   {
     accessorKey: "points",
-    header: "QBO points",
+    header: "Outcome points",
     cell: ({ row }) => {
       const points = row.getValue("points") as number;
       return points.toString();

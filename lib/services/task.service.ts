@@ -1,6 +1,7 @@
 import Task from "../models/task.model";
 import { Task as TaskInterface } from "../models/task.model";
 import dbConnect from "../mongodb";
+import Job from "../models/job.model"; // Import the Job model
 
 export class TaskService {
   async getTasksByJobId(
@@ -58,6 +59,10 @@ export class TaskService {
   ): Promise<TaskInterface | null> {
     try {
       await dbConnect();
+    // If requiredHours is not set or is null, default it to 0
+    if (updateData.requiredHours === undefined || updateData.requiredHours === null) {
+      updateData.requiredHours = 0;
+    }      
       const updatedTask = await Task.findOneAndUpdate(
         { _id: id, userId },
         { $set: updateData },
@@ -70,15 +75,15 @@ export class TaskService {
     }
   }
 
-  async deleteTask(id: string, userId: string): Promise<boolean> {
+  async deleteTask(id: string, userId: string): Promise<TaskInterface> {
     try {
       await dbConnect();
       const result = await Task.findOneAndUpdate(
         { _id: id, userId },
         { $set: { isDeleted: true } },
         { new: true, runValidators: true }
-      ).lean();
-      return JSON.parse(JSON.stringify(result)) ? true : false;
+      );
+      return JSON.parse(JSON.stringify(result)) ;
     } catch (error) {
       throw new Error("Error deleting task from database");
     }
@@ -123,7 +128,6 @@ export class TaskService {
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
-      // console.log(tasks);
       return JSON.parse(JSON.stringify(tasks));
     } catch (error) {
       throw new Error("Error fetching next tasks from database");
@@ -137,7 +141,37 @@ export class TaskService {
       return users;
     } catch (error) {
       throw new Error('Error fetching users from database');
-      throw new Error("Error fetching next tasks from database");
     }
-  }  
+  }
+
+  //method to update the tasks order in a job
+  async updateTasksOrder(
+    jobId: string,
+    userId: string,
+    taskIds: string[]
+  ): Promise<boolean> {
+    try {
+      await dbConnect();
+      
+      // Find the job
+      const job = await Job.findOne({
+        _id: jobId,
+        userId,
+        $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
+      });
+      
+      if (!job) {
+        throw new Error("Job not found");
+      }
+      
+      // Update the job with the new tasks order
+      job.tasks = taskIds;
+      await job.save();
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating tasks order:", error);
+      throw new Error("Error updating tasks order in database");
+    }
+  }
 }

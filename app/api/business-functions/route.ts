@@ -16,6 +16,7 @@ export async function GET() {
       return authResult.response;
     }
     
+    
     const userId = authResult.userId;
     
     // Get all business functions
@@ -54,10 +55,9 @@ export async function POST(request: Request) {
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    
-    const userId = authResult.userId;
+    const userId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const { name } = await request.json();
-    await validateData(name);
+    await validateData(name, userId!);
     const businessFunction = await businessFunctionService.createBusinessFunction(
       name,
       userId!
@@ -87,9 +87,9 @@ export async function POST(request: Request) {
   }
 }
 
-async function validateData(name: string) {
+async function validateData(name: string, userId: string) {
   await validateString(name);
-  const exists = await businessFunctionService.checkNameExists(name);
+  const exists = await businessFunctionService.checkNameExists(name, userId);
   if(exists) {
     throw new ValidationError('Business function name already exists', 400);
   }

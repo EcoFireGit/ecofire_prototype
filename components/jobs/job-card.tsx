@@ -26,11 +26,8 @@ interface JobCardProps {
   onOpenTasksSidebar: (job: Job) => void;
   isSelected: boolean;
   taskOwnerMap?: Record<string, string>; 
-}
-
-interface TaskCounts {
-  total: number;
-  completed: number;
+  hideCheckbox?: boolean;
+  taskCounts?: Record<string, { total: number; completed: number }>;
 }
 
 export function JobCard({
@@ -40,50 +37,17 @@ export function JobCard({
   onSelect,
   onOpenTasksSidebar,
   isSelected,
-  taskOwnerMap
+  taskOwnerMap,
+  hideCheckbox = false,
+  taskCounts = {}
 }: JobCardProps) {
   const router = useRouter();
-  const [progress, setProgress] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [taskCounts, setTaskCounts] = useState<TaskCounts>({ total: 0, completed: 0 });
   const [currentJob, setCurrentJob] = useState<Job>(job);
   
   // Update currentJob when props change
   useEffect(() => {
     setCurrentJob(job);
   }, [job]);
-
-  // Function to fetch job progress
-  const fetchJobProgress = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/jobs/progress?ids=${job.id}`);
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setProgress(result.data[job.id] || 0);
-      }
-      
-      // Also fetch task counts
-      const countsResponse = await fetch('/api/jobs/progress', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobId: job.id }),
-      });
-      
-      const countsResult = await countsResponse.json();
-      
-      if (countsResult.success && countsResult.data) {
-        setTaskCounts(countsResult.data);
-      }
-    } catch (error) {
-      console.error("Error fetching job progress:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Function to fetch job data (for owner updates)
   const fetchJobData = async () => {
@@ -103,38 +67,6 @@ export function JobCard({
       console.error("Error fetching job data:", error);
     }
   };
-
-  // Initial data fetch
-  useEffect(() => {
-    if (job.id) {
-      fetchJobProgress();
-    }
-  }, [job.id]);
-
-  // Listen for job progress update events
-  useEffect(() => {
-    const handleProgressUpdate = (e: CustomEvent<{ jobId: string }>) => {
-      // Check if this is the job that needs to be updated
-      if (e.detail.jobId === job.id) {
-        console.log(`Updating progress for job ${job.id}`);
-        fetchJobProgress();
-      }
-    };
-
-    // Add event listener
-    window.addEventListener(
-      'job-progress-update', 
-      handleProgressUpdate as EventListener
-    );
-    
-    // Clean up on unmount
-    return () => {
-      window.removeEventListener(
-        'job-progress-update', 
-        handleProgressUpdate as EventListener
-      );
-    };
-  }, [job.id]);
 
   // Listen for job owner update events
   useEffect(() => {
@@ -164,8 +96,15 @@ export function JobCard({
   // Format date
   const formatDate = (dateString?: string) => {
     if (!dateString) return "No due date";
+    
+    // Parse the date and preserve the UTC date
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    
+    // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
+    const utcDateString = date.toISOString().split('T')[0];
+    const displayDate = new Date(utcDateString + 'T00:00:00');
+
+    return displayDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -183,7 +122,23 @@ export function JobCard({
 
   // Get task count
   const getTaskCount = () => {
-    return `${taskCounts.completed} tasks done`;
+    // Get the completed tasks from taskCounts
+    const completed = taskCounts && taskCounts[job.id] ? taskCounts[job.id].completed : 0;
+    
+    // Get the total tasks from either taskCounts or job.tasks array
+    let total = 0;
+    if (taskCounts && taskCounts[job.id]) {
+      total = taskCounts[job.id].total;
+    } else if (currentJob.tasks && Array.isArray(currentJob.tasks)) {
+      total = currentJob.tasks.length;
+    }
+    
+    // If there are no tasks, show "No tasks added"
+    if (total === 0) {
+      return "No tasks added";
+    }
+    
+    return `${completed} of ${total} tasks done`;
   };
 
   // Get function color
@@ -207,13 +162,15 @@ export function JobCard({
         {/* Top section with checkbox, function name, and owner */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <div onClick={(e) => e.stopPropagation()}>
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
-                aria-label="Select job"
-              />
-            </div>
+            {!hideCheckbox && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
+                  aria-label="Select job"
+                />
+              </div>
+            )}
             <span className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}>
               {currentJob.businessFunctionName || "No function"}
             </span>
@@ -228,37 +185,11 @@ export function JobCard({
           <h3 className="text-base font-semibold">{currentJob.title}</h3>
         </div>
         
-        {/* Bottom section with task count, due date, and progress */}
+        {/* Bottom section with task count and due date */}
         <div className="flex items-center justify-between pl-6">
           <div className="space-y-1">
             <p className="text-sm text-gray-500">{getTaskCount()}</p>
             <p className="text-sm text-gray-500">Due date: {formatDate(currentJob.dueDate)}</p>
-          </div>
-          
-          <div className="relative w-14 h-14">
-            {loading ? (
-              <div className="h-full w-full flex items-center justify-center">
-                <div className="h-7 w-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-              </div>
-            ) : (
-              <svg className="w-full h-full" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="16" fill="none" stroke="#f0f0f0" strokeWidth="3"></circle>
-                <circle 
-                  cx="18" 
-                  cy="18" 
-                  r="16" 
-                  fill="none" 
-                  stroke={progress > 50 ? "#4CAF50" : progress > 0 ? "#FFC107" : "#f0f0f0"} 
-                  strokeWidth="3" 
-                  strokeDasharray={`${progress} 100`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 18 18)"
-                ></circle>
-                <text x="18" y="21" textAnchor="middle" fontSize="9" fill="#000" fontWeight="bold">
-                  {progress}%
-                </text>
-              </svg>
-            )}
           </div>
         </div>
       </div>
@@ -284,7 +215,7 @@ export function JobCard({
           title="Ask Jija about this job"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
+            router.push(`/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
           }}
         >
           <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />

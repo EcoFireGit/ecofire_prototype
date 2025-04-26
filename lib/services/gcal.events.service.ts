@@ -1,6 +1,6 @@
 import { google, calendar_v3 } from "googleapis";
 import GCalAuth from "../models/gcal-auth.model";
-import { getAllEventsForTwoWeeks } from "./google.calendar.provider";
+import { getAllEventsForTimeInEnvironmentSetting } from "./google.calendar.provider";
 
 import dbConnect from "../mongodb";
 import getCalendar from "./google.calendar.provider";
@@ -94,7 +94,7 @@ export class EventsService {
       const prioriwiseCalendarExists =
         await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
-      const events = await getAllEventsForTwoWeeks(
+      const events = await getAllEventsForTimeInEnvironmentSetting(
         prioriwiseCalendarExists.auth,
         prioriwiseCalendarExists.prioriwiseCalendar.id,
       );
@@ -112,7 +112,7 @@ export class EventsService {
       const prioriwiseCalendarExists =
         await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
-      const events = await getAllEventsForTwoWeeks(
+      const events = await getAllEventsForTimeInEnvironmentSetting(
         prioriwiseCalendarExists.auth,
         calendarId,
       );
@@ -135,7 +135,10 @@ export class EventsService {
         throw new Error("either user does not exist or calendar not connected");
       }
 
-      const events = await this.getAllEventsFor(calendarAuth.auth, calendarId);
+      const events = await getAllEventsForTimeInEnvironmentSetting(
+        calendarAuth.auth,
+        calendarId,
+      );
       return events;
     } catch (error) {
       console.error(

@@ -27,7 +27,7 @@ interface QBOProgressChartProps {
 const QBOProgressChart: React.FC<QBOProgressChartProps> = ({ 
   qbos = [], 
   className = '',
-  width = '50%',
+  width = '100%',
   onRefresh
 }) => {
   const [progressData, setProgressData] = useState<QBOProgressData[]>([]);
@@ -129,7 +129,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
 
   if (loading) {
     return (
-      <div style={{ width }} className={`bg-gray-50 p-6 rounded-lg shadow-sm ${className}`}>
+      <div className={`bg-gray-50 p-6 rounded-lg shadow-sm w-full ${className}`}>
         <div className="flex justify-center items-center h-40">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
           <p className="ml-2 text-gray-500">Calculating progress...</p>
@@ -140,7 +140,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
 
   if (error) {
     return (
-      <div style={{ width }} className={`bg-gray-50 p-6 rounded-lg shadow-sm ${className}`}>
+      <div className={`bg-gray-50 p-6 rounded-lg shadow-sm w-full ${className}`}>
         <div className="flex justify-center items-center h-40 text-red-500">
           <p>{error}</p>
         </div>
@@ -150,7 +150,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
 
   if (qbos.length === 0 || progressData.length === 0) {
     return (
-      <div style={{ width }} className={`bg-gray-50 p-6 rounded-lg shadow-sm ${className}`}>
+      <div className={`bg-gray-50 p-6 rounded-lg shadow-sm w-full ${className}`}>
         <div className="flex justify-center items-center h-40">
           <p className="text-gray-500">No QBO data available</p>
         </div>
@@ -159,7 +159,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
   }
 
   return (
-    <div style={{ width }} className={`bg-gray-50 p-6 rounded-lg shadow-sm ${className}`}>
+    <div className={`bg-gray-50 p-6 rounded-lg shadow-sm w-full max-w-none ${className}`} style={{ width: "100%" }}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">Progress towards mission</h3>
         <div className="flex items-center space-x-6">
