@@ -1,11 +1,12 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { Clipboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import TextareaAutosize from 'react-textarea-autosize';
 
 interface ChatSession {
   _id: string;
@@ -45,6 +46,7 @@ export default function Chat() {
   const { userId } = useAuth();
   const searchParams = useSearchParams();
   const jobTitle = searchParams.get("jobTitle");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
     error,
@@ -74,6 +76,13 @@ export default function Chat() {
       setInput(`Can you help me with doing "${jobTitle}?"`);
     }
   }, [jobTitle, setInput]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [input]);
 
   useEffect(() => {
     const processMessages = async () => {
@@ -331,6 +340,7 @@ export default function Chat() {
             </Button>
           </div>
         )}
+
         {processedMessages.map((m) => (
           <div
             key={m.id}
@@ -399,14 +409,31 @@ export default function Chat() {
         )}
 
         <div className="fixed bottom-0 w-full max-w-4xl mb-8">
-          <form onSubmit={handleSubmit}>
-            <input
-              className="w-full p-2 border border-gray-300 rounded shadow-xl"
+          <form onSubmit={handleSubmit} className="relative flex items-center">
+            <TextareaAutosize
+              className="w-full p-2 border border-gray-300 rounded shadow-xl resize-none pr-10"
               value={input}
               placeholder="Ask Jija something..."
               onChange={handleInputChange}
               disabled={status !== "ready"}
+              ref={textareaRef}
+              style={{ overflow: 'hidden', lineHeight: '28px' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim() && status === "ready") {
+                    handleSubmit(e);
+                  }
+                }
+              }}
             />
+            <Button
+              type="submit"
+              disabled={status !== "ready"}
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+            >
+              Send
+            </Button>
           </form>
         </div>
       </div>

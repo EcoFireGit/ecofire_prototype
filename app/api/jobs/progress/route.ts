@@ -1,5 +1,4 @@
 // app/api/jobs/progress/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskProgressService } from '@/lib/services/task-progress.service';
 import { validateAuth } from '@/lib/utils/auth-utils';
@@ -9,17 +8,17 @@ const taskProgressService = new TaskProgressService();
 export async function GET(request: NextRequest) {
   try {
     const authResult = await validateAuth();
-    
+   
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    
+   
     const userId = authResult.userId;
-    
+   
     // Get job IDs from query parameters
     const url = new URL(request.url);
     const jobIds = url.searchParams.getAll('ids');
-    
+   
     if (!jobIds || jobIds.length === 0) {
       return NextResponse.json(
         {
@@ -29,13 +28,13 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    
-    // Calculate progress for all jobs
-    const progressData = await taskProgressService.calculateMultipleJobsProgress(jobIds, userId!);
-    
+   
+    // Get task counts for all jobs in a single call
+    const taskCountsData = await taskProgressService.getMultipleJobsTaskCounts(jobIds, userId!);
+   
     return NextResponse.json({
       success: true,
-      data: progressData
+      data: taskCountsData
     });
   } catch (error) {
     console.error('Error in GET /api/jobs/progress:', error);
@@ -49,20 +48,20 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// API endpoint to get task counts for a specific job
+// API endpoint to get task counts for a specific job (kept for backwards compatibility)
 export async function POST(request: NextRequest) {
   try {
     const authResult = await validateAuth();
-    
+   
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    
+   
     const userId = authResult.userId;
-    
+   
     // Get job ID from request body
     const { jobId } = await request.json();
-    
+   
     if (!jobId) {
       return NextResponse.json(
         {
@@ -72,10 +71,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+   
     // Get task counts for the job
     const taskCounts = await taskProgressService.getTaskCounts(jobId, userId!);
-    
+   
     return NextResponse.json({
       success: true,
       data: taskCounts

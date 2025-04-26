@@ -40,11 +40,11 @@ export function QBODialog({
     return {
       name: '',
       unit: '',
-      beginningValue: 0,
-      currentValue: 0,
-      targetValue: 0,
+      beginningValue: undefined,
+      currentValue: undefined,
+      targetValue: undefined,
       deadline: '',
-      points: 0,
+      points: undefined,
       notes: ''
     };
   });
@@ -71,11 +71,11 @@ export function QBODialog({
       setFormData({
         name: '',
         unit: '',
-        beginningValue: 0,
-        currentValue: 0,
-        targetValue: 0,
+        beginningValue: undefined,
+        currentValue: undefined,
+        targetValue: undefined,
         deadline: '',
-        points: 0,
+        points: undefined,
         notes: ''
       });
     }
@@ -101,7 +101,7 @@ export function QBODialog({
   };
 
   const handleNumberChange = (field: keyof QBO, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
+    const numValue = value === '' ? undefined : Number(value);
     setFormData({...formData, [field]: numValue});
   };
 
@@ -147,7 +147,7 @@ export function QBODialog({
               <Input
                 id="beginningValue"
                 type="number"
-                value={formData.beginningValue}
+                value={formData.beginningValue === undefined ? '' : formData.beginningValue}
                 onChange={(e) => handleNumberChange('beginningValue', e.target.value)}
                 placeholder="0"
               />
@@ -160,7 +160,7 @@ export function QBODialog({
               <Input
                 id="currentValue"
                 type="number"
-                value={formData.currentValue}
+                value={formData.currentValue === undefined ? '' : formData.currentValue}
                 onChange={(e) => handleNumberChange('currentValue', e.target.value)}
                 placeholder="0"
               />
@@ -173,7 +173,7 @@ export function QBODialog({
               <Input
                 id="targetValue"
                 type="number"
-                value={formData.targetValue}
+                value={formData.targetValue === undefined ? '' : formData.targetValue}
                 onChange={(e) => handleNumberChange('targetValue', e.target.value)}
                 placeholder="0"
                 required
@@ -200,7 +200,7 @@ export function QBODialog({
               <Input
                 id="points"
                 type="number"
-                value={formData.points}
+                value={formData.points === undefined ? '' : formData.points}
                 onChange={(e) => handleNumberChange('points', e.target.value)}
                 placeholder="0"
                 required
