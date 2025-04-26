@@ -33,8 +33,8 @@ export function PIDialog({
     return {
       name: '',
       unit: '',
-      beginningValue: 0,
-      targetValue: 0,
+      beginningValue: undefined,
+      targetValue: undefined,
       deadline: '',
       notes: ''
     };
@@ -46,8 +46,8 @@ export function PIDialog({
       setFormData({
         name: '',
         unit: '',   
-        beginningValue: 0,     
-        targetValue: 0,  
+        beginningValue: undefined,     
+        targetValue: undefined,  
         deadline: '',      
         notes: ''
       });
@@ -55,8 +55,8 @@ export function PIDialog({
       setFormData({
         name: initialData.name || '',
         unit: initialData.unit || '',
-        beginningValue: initialData.beginningValue || 0,
-        targetValue: initialData.targetValue || 0,
+        beginningValue: initialData.beginningValue,
+        targetValue: initialData.targetValue,
         deadline: initialData.deadline
           ? new Date(initialData.deadline).toISOString().split('T')[0]
           : '',
@@ -84,7 +84,7 @@ export function PIDialog({
   };
 
   const handleNumberChange = (field: keyof PI, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
+    const numValue = value === '' ? undefined : Number(value);
     setFormData({...formData, [field]: numValue});
   };
 
@@ -130,7 +130,7 @@ export function PIDialog({
               <Input
                 id="beginningValue"
                 type="number"
-                value={formData.beginningValue}
+                value={formData.beginningValue === undefined ? '' : formData.beginningValue}
                 onChange={(e) => handleNumberChange('beginningValue', e.target.value)}
                 placeholder="0"
               />
@@ -143,7 +143,7 @@ export function PIDialog({
               <Input
                 id="targetValue"
                 type="number"
-                value={formData.targetValue}
+                value={formData.targetValue === undefined ? '' : formData.targetValue}
                 onChange={(e) => handleNumberChange('targetValue', e.target.value)}
                 placeholder="0"
                 required
