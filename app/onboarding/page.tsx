@@ -161,7 +161,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     },
   });
 
@@ -200,7 +200,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     },
   });
 
@@ -230,7 +230,7 @@ export default function OnboardingPage() {
       console.log("PI-QBO mappings generation completed");
       // After PI-QBO mappings are completed, redirect to jobs page
       // We'll handle job impact calculation in the handleReturnToDashboard function
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     },
     onError(error) {
       console.error("PI-QBO Mappings completion error:", error);
@@ -241,7 +241,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     },
   });
 
@@ -353,7 +353,7 @@ export default function OnboardingPage() {
       }
 
       // After all mappings are generated, redirect to jobs page
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     } catch (err) {
       console.error("Error during PI or mapping generation:", err);
       toast({
@@ -363,7 +363,7 @@ export default function OnboardingPage() {
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard with the onboarding tour 
-      router.push("/dashboard/jobs?tour=true");
+      router.push("/jobs?tour=true");
     }
   };
 

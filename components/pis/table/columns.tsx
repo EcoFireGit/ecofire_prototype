@@ -53,11 +53,11 @@ export const columns = (
 ): ColumnDef<PI>[] => [
   {
     accessorKey: "name",
-    header: "PI name",
+    header: "Output name",
   },
   {
     accessorKey: "unit",
-    header: "PI Unit",
+    header: "Output Unit",
   },
   {
     accessorKey: "beginningValue",

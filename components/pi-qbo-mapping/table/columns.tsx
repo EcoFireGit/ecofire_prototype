@@ -62,11 +62,11 @@ export const columns = (
 ): ColumnDef<MappingTableData>[] => [
   {
     accessorKey: "piName",
-    header: "PI Name",
+    header: "Output Name",
   },
   {
     accessorKey: "piTarget",
-    header: "PI Target",
+    header: "Output Target",
     cell: ({ row }) => {
       const value = row.getValue("piTarget") as number;
       return value.toString();
@@ -74,11 +74,11 @@ export const columns = (
   },
   {
     accessorKey: "qboName",
-    header: "QBO Name",
+    header: "Outcome Name",
   },
   {
     accessorKey: "qboTarget",
-    header: "QBO Target",
+    header: "Outcome Target",
     cell: ({ row }) => {
       const value = row.getValue("qboTarget") as number;
       return value.toString();
@@ -86,7 +86,7 @@ export const columns = (
   },
   {
     accessorKey: "qboImpact",
-    header: "QBO Impact",
+    header: "Outcome Impact",
     cell: ({ row }) => {
       const value = row.getValue("qboImpact") as number;
       return value.toString();

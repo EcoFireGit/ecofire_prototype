@@ -17,9 +17,11 @@ const clientId = process.env.GOOGLE_CLIENT_ID;
 
 const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+const baseUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : `${process.env.SERVER_URL}`;
 
-const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret,  `${baseUrl}/api/gcal/callback`);
 
 // async function loadSavedCredentials(): Promise<OAuth2Client | null> {
 //   try {

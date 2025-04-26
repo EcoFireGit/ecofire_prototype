@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     const userId = authResult.userId;
 
     const jobData = await request.json();
+ 
     const job = await jobService.createJob(jobData, userId!);
 
     // Get business info to provide context for the mapping generation
