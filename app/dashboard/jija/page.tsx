@@ -418,6 +418,14 @@ export default function Chat() {
               disabled={status !== "ready"}
               ref={textareaRef}
               style={{ overflow: 'hidden', lineHeight: '28px' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim() && status === "ready") {
+                    handleSubmit(e);
+                  }
+                }
+              }}
             />
             <Button
               type="submit"
