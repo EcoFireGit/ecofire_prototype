@@ -5,14 +5,12 @@ import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
 import crypto from "crypto";
 import dJSON from "dirty-json"; // Import dirty-json library
+import moment from "moment-timezone";
 
 // Function to generate a date 3 months from today
 function getDateThreeMonthsFromNow(): Date {
-  const today = new Date();
-  // Set to 3 months from now
-  const threeMonthsFromNow = new Date(today);
-  threeMonthsFromNow.setMonth(today.getMonth() + 3);
-  return threeMonthsFromNow;
+  const threeMonthsFromToday = moment().add(3, "months");
+  return threeMonthsFromToday.toDate();
 }
 
 export async function POST(req: NextRequest) {
