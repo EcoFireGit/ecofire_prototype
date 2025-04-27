@@ -29,7 +29,7 @@ interface Organization {
   _id: string;
   name: string;
   description?: string;
-  userRole?: 'admin' | 'member';
+  userRole?: "admin" | "member";
 }
 
 interface OrganizationsTableProps {
@@ -119,15 +119,19 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    {org.userRole === 'admin' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(org)}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(org)}
+                      disabled={org.userRole !== "admin"}
+                      className={
+                        org.userRole !== "admin"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="default"
@@ -185,4 +189,3 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
     </div>
   );
 }
-
