@@ -208,7 +208,10 @@ const formatDate = (dateString?: string) => {
     const s = 85; // Keep saturation fixed for better readability
     const l = 88; // Higher lightness for background with dark text
     
-    return `bg-[hsl(${h},${s}%,${l}%)] text-[hsl(${h},${s}%,30%)]`;
+    return {
+      backgroundColor: `hsl(${h},${s}%,${l}%)`,
+      color: `hsl(${h},${s}%,30%)`
+    };
   };
 
   return (
@@ -232,7 +235,10 @@ const formatDate = (dateString?: string) => {
                 />
               </div>
             )}
-            <span className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}>
+            <span 
+              className="px-2 py-1 text-xs font-medium rounded"
+              style={getFunctionColor()}
+            >
               {currentJob.businessFunctionName || "No function"}
             </span>
           </div>
