@@ -1,3 +1,4 @@
+
 // components/pi-qbo-mapping/pi-qbo-mapping-dialog.tsx
 import { Button } from "@/components/ui/button";
 import {
@@ -7,17 +8,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PIQBOMapping } from "@/lib/models/pi-qbo-mapping.model";
 import { QBOs } from "@/lib/models/qbo.model";
 import { PIs } from "@/lib/models/pi.model";
@@ -51,6 +45,16 @@ export function PIQBOMappingDialog({
   pisList,
   qbosList,
 }: PIQBOMappingDialogProps) {
+  const [piSearchTerm, setPISearchTerm] = useState("");
+  const [qboSearchTerm, setQBOSearchTerm] = useState("");
+  const [piDropdownOpen, setPIDropdownOpen] = useState(false);
+  const [qboDropdownOpen, setQBODropdownOpen] = useState(false);
+  const [filteredPIs, setFilteredPIs] = useState(pisList);
+  const [filteredQBOs, setFilteredQBOs] = useState(qbosList);
+  const [formValid, setFormValid] = useState(false);
+  const piWrapperRef = useRef<HTMLDivElement>(null);
+  const qboWrapperRef = useRef<HTMLDivElement>(null);
+  
   const [formData, setFormData] = useState<MappingFormData>(() => {
     if (initialData) {
       return {
@@ -73,6 +77,64 @@ export function PIQBOMappingDialog({
     };
   });
 
+  // Check if form is valid
+  useEffect(() => {
+    // Check if required fields are filled
+    const isValid =
+      Boolean(formData.piId) && // PI is selected
+      Boolean(formData.qboId) && // QBO is selected
+      formData.qboImpact !== undefined; // QBO Impact is entered
+
+    setFormValid(isValid);
+  }, [formData]);
+
+  // Filter PIs based on search term
+  useEffect(() => {
+    if (piSearchTerm.trim() === "") {
+      setFilteredPIs(pisList);
+    } else {
+      const filtered = pisList.filter((pi) =>
+        pi.name.toLowerCase().includes(piSearchTerm.toLowerCase()),
+      );
+      setFilteredPIs(filtered);
+    }
+  }, [piSearchTerm, pisList]);
+
+  // Filter QBOs based on search term
+  useEffect(() => {
+    if (qboSearchTerm.trim() === "") {
+      setFilteredQBOs(qbosList);
+    } else {
+      const filtered = qbosList.filter((qbo) =>
+        qbo.name.toLowerCase().includes(qboSearchTerm.toLowerCase()),
+      );
+      setFilteredQBOs(filtered);
+    }
+  }, [qboSearchTerm, qbosList]);
+
+  // Handle clicks outside the dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        piWrapperRef.current &&
+        !piWrapperRef.current.contains(event.target as Node)
+      ) {
+        setPIDropdownOpen(false);
+      }
+      if (
+        qboWrapperRef.current &&
+        !qboWrapperRef.current.contains(event.target as Node)
+      ) {
+        setQBODropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Reset the form when the dialog opens or the initialData changes
   useEffect(() => {
     if (initialData) {
@@ -85,6 +147,13 @@ export function PIQBOMappingDialog({
         qboImpact: initialData.qboImpact,
         notes: initialData.notes,
       });
+      
+      // Set search terms based on selected items
+      const selectedPI = pisList.find(pi => pi._id === initialData.piId);
+      const selectedQBO = qbosList.find(qbo => qbo._id === initialData.qboId);
+      
+      setPISearchTerm(selectedPI ? selectedPI.name : "");
+      setQBOSearchTerm(selectedQBO ? selectedQBO.name : "");
     } else {
       setFormData({
         piId: "",
@@ -94,8 +163,12 @@ export function PIQBOMappingDialog({
         qboImpact: undefined,
         notes: "",
       });
+      
+      // Clear search terms
+      setPISearchTerm("");
+      setQBOSearchTerm("");
     }
-  }, [initialData, open]);
+  }, [initialData, open, pisList, qbosList]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +184,11 @@ export function PIQBOMappingDialog({
       piId,
       piTarget: selectedPI ? selectedPI.targetValue : undefined,
     });
+    
+    // Update the search input with the selected PI name
+    if (selectedPI) {
+      setPISearchTerm(selectedPI.name);
+    }
   };
 
   const handleQBOChange = (qboId: string) => {
@@ -121,6 +199,11 @@ export function PIQBOMappingDialog({
       qboId,
       qboTarget: selectedQBO ? selectedQBO.targetValue : undefined,
     });
+    
+    // Update the search input with the selected QBO name
+    if (selectedQBO) {
+      setQBOSearchTerm(selectedQBO.name);
+    }
   };
 
   const handleNumberChange = (field: keyof MappingFormData, value: string) => {
@@ -144,22 +227,44 @@ export function PIQBOMappingDialog({
               <Label htmlFor="piId" className="text-left">
                 Output name <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={formData.piId}
-                onValueChange={handlePIChange}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an option" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pisList.map((pi) => (
-                    <SelectItem key={pi._id} value={pi._id}>
-                      {pi.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative" ref={piWrapperRef}>
+                <Input
+                  placeholder="Search for an Output..."
+                  value={piSearchTerm}
+                  onChange={(e) => setPISearchTerm(e.target.value)}
+                  onClick={() => setPIDropdownOpen(true)}
+                  onFocus={() => setPIDropdownOpen(true)}
+                />
+                {piDropdownOpen && (
+                  <div className="absolute top-full left-0 w-full bg-popover z-50 mt-1 rounded-md border shadow-md">
+                    <div className="py-2">
+                      {filteredPIs.length === 0 ? (
+                        <div className="px-2 py-2 text-sm text-center text-muted-foreground">
+                          No outputs found
+                        </div>
+                      ) : (
+                        <div
+                          style={{ maxHeight: "200px", overflowY: "auto" }}
+                          className="p-1"
+                        >
+                          {filteredPIs.map((pi) => (
+                            <div
+                              key={pi._id}
+                              className="flex items-center px-2 py-1.5 text-sm rounded hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                              onClick={() => {
+                                handlePIChange(pi._id);
+                                setPIDropdownOpen(false);
+                              }}
+                            >
+                              {pi.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid items-center gap-2">
@@ -184,22 +289,44 @@ export function PIQBOMappingDialog({
               <Label htmlFor="qboId" className="text-left">
                 Outcome name <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={formData.qboId}
-                onValueChange={handleQBOChange}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an option" />
-                </SelectTrigger>
-                <SelectContent>
-                  {qbosList.map((qbo) => (
-                    <SelectItem key={qbo._id} value={qbo._id}>
-                      {qbo.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative" ref={qboWrapperRef}>
+                <Input
+                  placeholder="Search for an Outcome..."
+                  value={qboSearchTerm}
+                  onChange={(e) => setQBOSearchTerm(e.target.value)}
+                  onClick={() => setQBODropdownOpen(true)}
+                  onFocus={() => setQBODropdownOpen(true)}
+                />
+                {qboDropdownOpen && (
+                  <div className="absolute top-full left-0 w-full bg-popover z-50 mt-1 rounded-md border shadow-md">
+                    <div className="py-2">
+                      {filteredQBOs.length === 0 ? (
+                        <div className="px-2 py-2 text-sm text-center text-muted-foreground">
+                          No outcomes found
+                        </div>
+                      ) : (
+                        <div
+                          style={{ maxHeight: "200px", overflowY: "auto" }}
+                          className="p-1"
+                        >
+                          {filteredQBOs.map((qbo) => (
+                            <div
+                              key={qbo._id}
+                              className="flex items-center px-2 py-1.5 text-sm rounded hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                              onClick={() => {
+                                handleQBOChange(qbo._id);
+                                setQBODropdownOpen(false);
+                              }}
+                            >
+                              {qbo.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid items-center gap-2">
@@ -258,7 +385,11 @@ export function PIQBOMappingDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
+            <Button 
+              type="submit" 
+              className="bg-blue-500 hover:bg-blue-600"
+              disabled={!formValid}
+            >
               {mode === "create" ? "Map Output to Outcome" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -267,4 +398,3 @@ export function PIQBOMappingDialog({
     </Dialog>
   );
 }
-
