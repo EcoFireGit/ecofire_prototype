@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { clearSavedFilters } from '../utils/filter-cookies-utils';
 
 type Organization = {
   _id: string;
@@ -83,6 +84,8 @@ export function ViewProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       
       if (data.success) {
+        // Clear saved filters when switching organizations
+        clearSavedFilters();
         if (orgId) {
           setCurrentViewId(orgId);
           setIsOrganization(true);

@@ -6,20 +6,22 @@ import GCalAuth from '../models/gcal-auth.model';
 import { calendar_v3} from 'googleapis';
 import getCalendar from './google.calendar.provider';
 import dbConnect from '../mongodb';
-
+import 'dotenv/config';
 
 const scopes = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar'
 ];
 
-const clientId = process.env.GOOGLE_CLIENT_ID!;
+const clientId = process.env.GOOGLE_CLIENT_ID;
 
-const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-const redirectUri = process.env.GOOGLE_REDIRECT_URI!;
+const baseUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : `${process.env.SERVER_URL}`;
 
-const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret,  `${baseUrl}/api/gcal/callback`);
 
 // async function loadSavedCredentials(): Promise<OAuth2Client | null> {
 //   try {
@@ -209,6 +211,24 @@ export async function createPrioriCalendar(userId: string): Promise<{ calendar: 
   } catch (error) {
     console.log("Error in createPrioriCalendar" , error);
     throw new Error('Error creating calendar');
+  }
+}
+
+export async function getPrioriCalendarId(userId: string): Promise<string> {
+  try {
+    await dbConnect();
+
+    const gcalAuth = await getCalendarAuthForUser(userId);
+
+    // Only return the calendar ID if it exists in the DB
+    if (gcalAuth.prioriwiseCalendar?.id) {
+      return gcalAuth.prioriwiseCalendar.id;
+    }
+
+    throw new Error('Prioriwise calendar ID not found in database');
+  } catch (error) {
+    console.error('Error in getPrioriCalendarId:', error);
+    throw new Error('Could not retrieve calendar ID from database');
   }
 }
 

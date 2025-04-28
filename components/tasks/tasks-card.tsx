@@ -18,13 +18,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Task, FocusLevel, JoyLevel } from "./types";
 import { Badge } from "@/components/ui/badge";
-import { useTaskContext } from "@/hooks/task-context"; // Import the task context
+import { useTaskContext } from "@/hooks/task-context";
 
 interface TaskCardProps {
     task: Task;
     onEdit: (task: Task) => void;
     onDelete: (id: string) => void;
-    onComplete: (id: string, completed: boolean) => void;
+    onComplete: (id: string, jobid: string, completed: boolean) => void;
     ownerMap: Record<string, string>;
 }
 
@@ -37,18 +37,25 @@ export function TaskCard({
 }: TaskCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
-    const { refreshJobProgress } = useTaskContext(); // Use the task context
+    const { refreshJobProgress } = useTaskContext();
 
     // Format the date
-    const formatDate = (dateString?: string | Date) => {
+    const formatDate = (dateString?: string) => {
         if (!dateString) return null;
+        
+        // Parse the date and preserve the UTC date
         const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
+        
+        // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
+        const utcDateString = date.toISOString().split('T')[0];
+        const displayDate = new Date(utcDateString + 'T00:00:00');
+      
+        return displayDate.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         });
-    };
+      };
 
     // Get owner name from owner ID
     const getOwnerName = () => {
@@ -64,27 +71,22 @@ export function TaskCard({
     };
 
     const handleTaskComplete = async (value: boolean) => {
-        // Update the visual state immediately for better UX
-        // This doesn't affect the actual task object passed as prop
-        
         try {
             // Call the original onComplete handler
-            await onComplete(task.id, value);
+            await onComplete(task.id, task.jobId, value);
             
-            // Then trigger a refresh of the job progress - this should happen after
-            // the task is successfully marked as complete
+            // Then trigger a refresh of the job progress
             refreshJobProgress(task.jobId);
             
-            // Consider adding a console.log to verify this function is being called
             console.log(`Task ${task.id} marked as ${value ? 'completed' : 'incomplete'}`);
         } catch (error) {
             console.error("Error updating task completion status:", error);
-            // You might want to add error handling / user feedback here
         }
     };
+
     return (
         <div
-            className={`rounded-md mb-3 ${getBorderClasses()} bg-[#F4F4F4]`}
+            className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
@@ -188,10 +190,10 @@ export function TaskCard({
                             title="Ask Jija about this task"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`);
+                                router.push(`/jija?jobTitle=${encodeURIComponent(task.title)}`);
                             }}
                         >
-                            <PawPrint className="h-4 w-4" />
+                            <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
                         </Button>
 
                         <AlertDialog>

@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
+import { getPrioriCalendarId } from "@/lib/services/gcal.service";
 // Type imports only
 //import type { Task } from "@/lib/models/task.model";
 import { Job } from "@/components/jobs/table/columns";
@@ -52,6 +52,7 @@ export default function TaskFeedView() {
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [taskToComplete, setTaskToComplete] = useState<{
     id: string;
+    jobId: string;
     title: string;
   } | null>(null);
 
@@ -126,18 +127,17 @@ export default function TaskFeedView() {
       // Try to fetch tasks using the next-steps endpoint first (which we know works)
       let allTasks = [];
       try {
-          // next tasks function fetches next tasks, followed by all tasks.
-          console.log("Falling back to next-steps endpoint");
-          const nextTasksResponse = await fetch("/api/tasks/next-steps");
-          const nextTasksResult = await nextTasksResponse.json();
+        // next tasks function fetches next tasks, followed by all tasks.
+        console.log("Falling back to next-steps endpoint");
+        const nextTasksResponse = await fetch("/api/tasks/next-steps");
+        const nextTasksResult = await nextTasksResponse.json();
 
-          if (nextTasksResult.success && Array.isArray(nextTasksResult.data)) {
-            allTasks = nextTasksResult.data;
-          } else {
-            throw new Error("Failed to fetch tasks from either endpoint");
-          }
+        if (nextTasksResult.success && Array.isArray(nextTasksResult.data)) {
+          allTasks = nextTasksResult.data;
+        } else {
+          throw new Error("Failed to fetch tasks from either endpoint");
         }
-      catch (taskError) {
+      } catch (taskError) {
         console.error("Error fetching tasks:", taskError);
         // Try another approach - fetch tasks by job IDs
 
@@ -157,7 +157,7 @@ export default function TaskFeedView() {
           } catch (jobTaskError) {
             console.error(
               `Error fetching tasks for job ${jobId}:`,
-              jobTaskError
+              jobTaskError,
             );
           }
         }
@@ -193,7 +193,7 @@ export default function TaskFeedView() {
 
       // Remove any duplicate tasks and filter out completed tasks
       const uniqueTasks = Array.from(
-        new Map(allTasks.map((task: any) => [task._id, task])).values()
+        new Map(allTasks.map((task: any) => [task._id, task])).values(),
       ).filter((task: any) => task.completed !== true);
 
       const sortedTasks = sortTasks(uniqueTasks, jobsMap);
@@ -403,9 +403,9 @@ export default function TaskFeedView() {
   }, []);
 
   // Function to complete a task
-  const completeTask = async (id: string) => {
+  const completeTask = async (jobid: string, id: string) => {
     try {
-      const response = await fetch(`/api/tasks/${id}`, {
+      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -426,8 +426,8 @@ export default function TaskFeedView() {
                   ...task,
                   completed: true,
                 }
-              : task
-          )
+              : task,
+          ),
         );
 
         // Also update filtered tasks
@@ -438,36 +438,38 @@ export default function TaskFeedView() {
                   ...task,
                   completed: true,
                 }
-              : task
-          )
+              : task,
+          ),
         );
+
+        //No need to update job because task udpate will handle it in the backend
 
         // If this task is a next task for a job, update the job
-        const jobsWithThisNextTask = Object.values(jobs).filter(
-          (job: any) => job.nextTaskId === id
-        );
+        // const jobsWithThisNextTask = Object.values(jobs).filter(
+        //   (job: any) => job.nextTaskId === id
+        // );
 
-        // Update each job found
-        for (const job of jobsWithThisNextTask) {
-          await fetch(`/api/jobs/${job._id}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              nextTaskId: null,
-            }),
-          });
-        }
+        // // Update each job found
+        // for (const job of jobsWithThisNextTask) {
+        //   await fetch(`/api/jobs/${job._id}`, {
+        //     method: "PUT",
+        //     headers: {
+        //       "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify({
+        //       nextTaskId: null,
+        //     }),
+        //   });
+        // }
 
         // Filter out the task after a brief delay
         setTimeout(() => {
           setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
           setFilteredTasks((prevTasks) =>
-            prevTasks.filter((task) => task._id !== id)
+            prevTasks.filter((task) => task._id !== id),
           );
           setSortedTasks((prevTasks) =>
-            prevTasks.filter((task) => task._id !== id)
+            prevTasks.filter((task) => task._id !== id),
           );
         }, 500);
 
@@ -494,7 +496,7 @@ export default function TaskFeedView() {
       // Find the task title for the confirmation dialog
       const task = tasks.find((t) => t._id === id);
       if (task) {
-        setTaskToComplete({ id, title: task.title });
+        setTaskToComplete({ id, jobId: task.jobId, title: task.title });
         setCompleteDialogOpen(true);
       }
     } else {
@@ -527,8 +529,8 @@ export default function TaskFeedView() {
                   ...task,
                   completed: false,
                 }
-              : task
-          )
+              : task,
+          ),
         );
 
         // Also update filtered tasks
@@ -539,8 +541,8 @@ export default function TaskFeedView() {
                   ...task,
                   completed: false,
                 }
-              : task
-          )
+              : task,
+          ),
         );
 
         // Also update sorted tasks
@@ -551,8 +553,8 @@ export default function TaskFeedView() {
                   ...task,
                   completed: false,
                 }
-              : task
-          )
+              : task,
+          ),
         );
 
         toast({
@@ -584,11 +586,59 @@ export default function TaskFeedView() {
   };
 
   // Add task to calendar
-  const handleAddToCalendar = (task: any) => {
-    toast({
-      title: "Added to calendar",
-      description: `"${task.title}" has been added to your calendar`,
-    });
+  const handleAddToCalendar = async (task: any) => {
+    try {
+      if (!task.date) {
+        toast({
+          title: "Error",
+          description: "Task date is not defined.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use current local time as the start time
+      const startDate = new Date();
+      // Keep the date from the task but use current time
+      startDate.setFullYear(
+        new Date(task.date).getFullYear(),
+        new Date(task.date).getMonth(),
+        new Date(task.date).getDate(),
+      );
+      const endDate = new Date(
+        startDate.getTime() + task.requiredHours * 60 * 60 * 1000,
+      );
+
+      const startDateStr =
+        startDate.toISOString().replace(/[-:]/g, "").slice(0, -5) + "Z";
+      const endDateStr =
+        endDate.toISOString().replace(/[-:]/g, "").slice(0, -5) + "Z";
+
+      // Fetch the calendar ID from the server
+      const response = await fetch("/api/gcal/calendars/prioriwise"); // or your actual route
+      if (!response.ok) {
+        throw new Error("Failed to fetch calendar ID");
+      }
+
+      const { calendarId } = await response.json();
+
+      // Construct Google Calendar URL
+      const googleCalendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(task.title)}&dates=${startDateStr}/${endDateStr}&details=${encodeURIComponent(task.description)}&sf=true&output=xml&src=${calendarId}`;
+
+      window.open(googleCalendarUrl, "_blank");
+
+      toast({
+        title: "Redirecting to Google Calendar",
+        description: "You can now add this event to your calendar.",
+      });
+    } catch (error) {
+      console.error("Error adding task to calendar:", error);
+      toast({
+        title: "Error",
+        description: "Failed to redirect to calendar",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAddTask = () => {
@@ -651,7 +701,7 @@ export default function TaskFeedView() {
 
           // Add task to the state
           setTasks((prevTasks) => [...prevTasks, newTask]);
-          
+
           // Re-sort and update filtered tasks
           const updatedTasks = [...tasks, newTask];
           const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
@@ -683,7 +733,6 @@ export default function TaskFeedView() {
           // Map from MongoDB _id to id for frontend consistency
           const updatedTask: Task = {
             id: result.data._id,
-            _id: result.data._id, // Ensure we have both id and _id for compatibility
             title: result.data.title,
             owner: result.data.owner,
             date: result.data.date,
@@ -699,14 +748,14 @@ export default function TaskFeedView() {
 
           // If the task completion status changed, trigger a progress update
           if (currentTask.completed !== updatedTask.completed) {
-            const event = new CustomEvent('job-progress-update', { 
-              detail: { jobId: result.data.jobId } 
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: result.data.jobId },
             });
             window.dispatchEvent(event);
           }
 
           // Update task in all state arrays - ensure we properly update with the full task data
-          const updateTaskState = (tasksArray: any[]) => 
+          const updateTaskState = (tasksArray: any[]) =>
             tasksArray.map((task) => {
               if (task.id === updatedTask.id || task._id === updatedTask._id) {
                 // Create a complete merged object to ensure all properties are updated
@@ -717,7 +766,7 @@ export default function TaskFeedView() {
               }
               return task;
             });
-          
+
           // Apply updates to all task arrays
           setTasks(updateTaskState(tasks));
           setFilteredTasks(updateTaskState(filteredTasks));
@@ -754,15 +803,15 @@ export default function TaskFeedView() {
         // Remove task from both UI states
         setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
         setFilteredTasks((prevTasks) =>
-          prevTasks.filter((task) => task._id !== id)
+          prevTasks.filter((task) => task._id !== id),
         );
         setSortedTasks((prevTasks) =>
-          prevTasks.filter((task) => task._id !== id)
+          prevTasks.filter((task) => task._id !== id),
         );
 
         // Find any jobs that reference this task as nextTaskId and update them
         const jobsWithThisNextTask = Object.values(jobs).filter(
-          (job: any) => job.nextTaskId === id
+          (job: any) => job.nextTaskId === id,
         );
 
         for (const job of jobsWithThisNextTask) {
@@ -802,25 +851,21 @@ export default function TaskFeedView() {
 
   return (
     <div className="p-4 w-full">
- <div className="flex gap-2">
- <div className="w-full max-w-none">
- <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Tasks</h1>
-          
-      
+      <div className="flex gap-2">
+        <div className="w-full max-w-none">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Tasks</h1>
 
-      {/* Add the FilterComponent and TaskSortingComponent at the top */}
+            {/* Add the FilterComponent and TaskSortingComponent at the top */}
 
-      <div className="mb-4">
-
-           <Button onClick={handleAddTask}>
-              <Plus className="mr-2 h-4 w-4" /> Create Task
-            </Button>
+            <div className="mb-4">
+              <Button onClick={handleAddTask}>
+                <Plus className="mr-2 h-4 w-4" /> Create Task
+              </Button>
             </div>
-            </div>
-            </div>
-            </div>
-            
+          </div>
+        </div>
+      </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <FilterComponent
@@ -888,7 +933,7 @@ export default function TaskFeedView() {
             <Button
               onClick={() => {
                 if (taskToComplete) {
-                  completeTask(taskToComplete.id);
+                  completeTask(taskToComplete.jobId, taskToComplete.id);
                   setCompleteDialogOpen(false);
                 }
               }}
@@ -916,7 +961,7 @@ export default function TaskFeedView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
     </div>
   );
 }
+

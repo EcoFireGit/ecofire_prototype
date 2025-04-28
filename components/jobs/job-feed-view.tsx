@@ -75,14 +75,70 @@ export default function JobsPage() {
   const [tags, setTags] = useState<{ _id: string; name: string }[]>([]);
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+  const [isTableViewEnabled, setIsTableViewEnabled] = useState(false);
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
+  // Helper function to sort by recommended criteria
+  const sortByRecommended = (jobs: Job[]): Job[] => {
+    return [...jobs].sort((a, b) => {
+      // First compare due dates (null dates go to the end)
+      const dateA = a.dueDate
+        ? new Date(a.dueDate).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      const dateB = b.dueDate
+        ? new Date(b.dueDate).getTime()
+        : Number.MAX_SAFE_INTEGER;
+
+      if (dateA !== dateB) {
+        return dateA - dateB; // Ascending by date
+      }
+
+      // If dates are the same (or both null), sort by impact descending
+      const impactA = a.impact || 0;
+      const impactB = b.impact || 0;
+      return impactB - impactA; // Descending by impact
+    });
+  };
+
+  // Add this effect to fetch the user preferences
+  useEffect(() => {
+    const fetchUserPreferences = async () => {
+      try {
+        const response = await fetch("/api/user/preferences");
+        const result = await response.json();
+
+        if (result.success) {
+          setIsTableViewEnabled(result.data.enableTableView);
+
+          // If table view is not enabled, ensure we're using grid view
+          if (!result.data.enableTableView) {
+            setViewMode("grid");
+          } else {
+            // If it is enabled, we can use the stored preference
+            const savedViewMode = localStorage.getItem("jobViewMode") as
+              | "grid"
+              | "table";
+            if (
+              savedViewMode &&
+              (savedViewMode === "grid" || savedViewMode === "table")
+            ) {
+              setViewMode(savedViewMode);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user preferences:", error);
+      }
+    };
+
+    fetchUserPreferences();
+  }, []);
   // Effect to update sorted jobs when filtered jobs change
   useEffect(() => {
-    setSortedActiveJobs(filteredActiveJobs);
-    setSortedCompletedJobs(filteredCompletedJobs);
+    // We don't need this anymore as sorting is handled by the SortingComponent
+    // or directly by our filter handlers
   }, [filteredActiveJobs, filteredCompletedJobs]);
 
   // Fetch business functions
@@ -357,7 +413,7 @@ export default function JobsPage() {
       // First fetch business functions
       const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
-      
+
       let currentBusinessFunctions = [];
       if (bfResult.success) {
         currentBusinessFunctions = bfResult.data.map((bf: any) => ({
@@ -398,12 +454,16 @@ export default function JobsPage() {
         const activeJobs = allJobs.filter((job) => !job.isDone);
         const completedJobs = allJobs.filter((job) => job.isDone);
 
+        // Apply sorting to the initial jobs
+        const sortedActiveJobs = sortByRecommended(activeJobs);
+        const sortedCompletedJobs = sortByRecommended(completedJobs);
+
         setActiveJobs(activeJobs);
         setFilteredActiveJobs(activeJobs);
-        setSortedActiveJobs(activeJobs);
+        setSortedActiveJobs(sortedActiveJobs);
         setCompletedJobs(completedJobs);
         setFilteredCompletedJobs(completedJobs);
-        setSortedCompletedJobs(completedJobs);
+        setSortedCompletedJobs(sortedCompletedJobs);
       } else {
         setError(jobsResult.error);
       }
@@ -455,6 +515,10 @@ export default function JobsPage() {
       // If no filters are active, show all jobs
       setFilteredActiveJobs(activeJobs);
       setFilteredCompletedJobs(completedJobs);
+
+      // Apply recommended sort to unfiltered jobs
+      setSortedActiveJobs(sortByRecommended(activeJobs));
+      setSortedCompletedJobs(sortByRecommended(completedJobs));
       return;
     }
 
@@ -478,6 +542,10 @@ export default function JobsPage() {
 
     setFilteredActiveJobs(filteredActive);
     setFilteredCompletedJobs(filteredCompleted);
+
+    // Apply recommended sorting immediately
+    setSortedActiveJobs(sortByRecommended(filteredActive));
+    setSortedCompletedJobs(sortByRecommended(filteredCompleted));
   };
 
   // Helper function to check if a job matches filters
@@ -567,6 +635,46 @@ export default function JobsPage() {
 
     return matches;
   };
+
+  // Effect to reapply filters when jobs are loaded
+  useEffect(() => {
+    // Only run this when we have loaded jobs and are not in loading state
+    if (!loading && activeJobs.length > 0) {
+      // Check if we have activeFilters already set (from initialFilters or previous state)
+      if (Object.keys(activeFilters).length > 0) {
+        console.log(
+          "Reapplying filters on page navigation/load:",
+          activeFilters
+        );
+
+        // Filter active jobs
+        const filteredActive = activeJobs.filter((job) => {
+          return matchesFilters(job, activeFilters);
+        });
+
+        // Filter completed jobs - only apply non-status filters
+        const nonStatusFilters = { ...activeFilters };
+        delete nonStatusFilters.isDone;
+
+        const filteredCompleted = completedJobs.filter((job) => {
+          // If isDone filter is true, show completed jobs, otherwise hide them
+          if (activeFilters.isDone === true) {
+            return matchesFilters(job, nonStatusFilters);
+          } else {
+            return false; // Hide completed jobs if not explicitly showing them
+          }
+        });
+
+        // Update the filtered jobs lists
+        setFilteredActiveJobs(filteredActive);
+        setFilteredCompletedJobs(filteredCompleted);
+
+        // Apply the recommended sort immediately
+        setSortedActiveJobs(sortByRecommended(filteredActive));
+        setSortedCompletedJobs(sortByRecommended(filteredCompleted));
+      }
+    }
+  }, [loading, activeJobs, completedJobs, activeFilters]);
 
   // Handler for sort changes
   const handleActiveSortChange = (sortedJobs: Job[]) => {
@@ -725,24 +833,32 @@ export default function JobsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Jobs</h1>
           <div className="flex gap-2">
-            <div className="flex items-center border rounded-md overflow-hidden mr-2">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                className="rounded-none"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
-                size="sm"
-                className="rounded-none"
-                onClick={() => setViewMode("table")}
-              >
-                <LayoutList className="h-4 w-4" />
-              </Button>
-            </div>
+            {isTableViewEnabled && (
+              <div className="flex items-center border rounded-md overflow-hidden mr-2">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  className="rounded-none"
+                  onClick={() => {
+                    setViewMode("grid");
+                    localStorage.setItem("jobViewMode", "grid");
+                  }}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  size="sm"
+                  className="rounded-none"
+                  onClick={() => {
+                    setViewMode("table");
+                    localStorage.setItem("jobViewMode", "table");
+                  }}
+                >
+                  <LayoutList className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
             <Button
               variant="outline"
@@ -822,17 +938,19 @@ export default function JobsPage() {
               />
             )}
           </div>
-          
+
           {/* QBO Circles Component - takes appropriate space with padding */}
           <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:border-l border-gray-200">
-            <QBOCircles 
+            <QBOCircles
               onSelectJob={(jobId) => {
                 // Find the job and open its tasks sidebar
-                const job = [...activeJobs, ...completedJobs].find(j => j.id === jobId);
+                const job = [...activeJobs, ...completedJobs].find(
+                  (j) => j.id === jobId
+                );
                 if (job) {
                   handleOpenTasksSidebar(job);
                 }
-              }} 
+              }}
             />
           </div>
         </div>

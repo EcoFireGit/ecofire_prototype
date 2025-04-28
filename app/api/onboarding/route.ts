@@ -5,6 +5,13 @@ import { createDataStreamResponse, streamText } from "ai";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
 import crypto from "crypto";
 import dJSON from "dirty-json"; // Import dirty-json library
+import moment from "moment-timezone";
+
+// Function to generate a date 3 months from today
+function getDateThreeMonthsFromNow(): Date {
+  const threeMonthsFromToday = moment().add(3, "months");
+  return threeMonthsFromToday.toDate();
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -77,13 +84,17 @@ export async function POST(req: NextRequest) {
 
     // Different prompts for each step
     const outcomePrompt =
-      'Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50 } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
+      'Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50 } }. The deadline for each outcome should be ' +
+      getDateThreeMonthsFromNow().toDateString().split("T")[0] +
+      ". Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.";
 
     const jobsPrompt =
       'Please generate the 10 most important jobs to be done in my business for achieving my mission statement. For each job, also generate up to 3 specific tasks that need to be completed to accomplish that job. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "notes": "Description of what needs to be done", "tasks": [{"title": "Task 1 Title", "notes": "Description of the task"}, {"title": "Task 2 Title", "notes": "Description of the task"}, {"title": "Task 3 Title", "notes": "Description of the task"}] } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     const pisPrompt =
-      'Considering all of my jobs to be done, what are all the 5 most important quantifiable metrics I can use to track my progress on each of them? It is not necessary for every job to be done to be associated with a unique metric. Avoid outcome metrics. Output your result in the form of a JSON in the following format: { "pi1": { "name": "PI 1", "targetValue": 100, "deadline": "2025-12-31"} }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
+      'Considering all of my jobs to be done, what are all the 5 most important quantifiable metrics I can use to track my progress on each of them? It is not necessary for every job to be done to be associated with a unique metric. Avoid outcome metrics. Output your result in the form of a JSON in the following format: { "pi1": { "name": "PI 1", "targetValue": 100, "deadline": "2025-12-31"} }. The deadline for each outcome should be ' +
+      getDateThreeMonthsFromNow().toDateString().split("T")[0] +
+      ".  Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.";
 
     // Set a timeout for the OpenAI API call
     const timeoutPromise = new Promise((_, reject) => {
@@ -127,18 +138,18 @@ export async function POST(req: NextRequest) {
                   for (const key in outcomeData) {
                     const outcome = outcomeData[key];
 
-                    // Format the date as an actual Date object
-                    const deadlineDate = new Date(outcome.deadline);
+                    // Always set deadline to 3 months from today
+                    const deadlineDate = getDateThreeMonthsFromNow();
 
                     // Check if QBO with same name already exists
-                    const existingQBOs = await qboService.getAllQBOs(userId);
+                    const existingQBOs = await qboService.getAllQBOs(userId!);
                     const existingQBO = existingQBOs.find(
                       (qbo) => qbo.name === outcome.name,
                     );
 
                     if (existingQBO) {
                       // Update the existing QBO
-                      await qboService.updateQBO(existingQBO._id, userId, {
+                      await qboService.updateQBO(existingQBO._id, userId!, {
                         targetValue: outcome.targetValue,
                         deadline: deadlineDate,
                         points: outcome.points,
@@ -157,7 +168,7 @@ export async function POST(req: NextRequest) {
                           points: outcome.points,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(`QBO created for outcome: ${outcome.name}`);
                     }
@@ -226,7 +237,7 @@ export async function POST(req: NextRequest) {
                   const taskService = new TaskService();
 
                   // Get all existing jobs
-                  const existingJobs = await jobService.getAllJobs(userId);
+                  const existingJobs = await jobService.getAllJobs(userId!);
 
                   // Save each job to Job table and create associated tasks
                   for (const key in jobsData) {
@@ -244,7 +255,7 @@ export async function POST(req: NextRequest) {
                       console.log(`Job already exists: ${job.title}`);
 
                       // Update the job notes if needed
-                      await jobService.updateJob(jobId, userId, {
+                      await jobService.updateJob(jobId, userId!, {
                         notes: `Updated during onboarding for ${businessName}`,
                       });
 
@@ -371,14 +382,14 @@ export async function POST(req: NextRequest) {
                   const piService = new PIService();
 
                   // Get existing PIs to check for duplicates
-                  const existingPIs = await piService.getAllPIs(userId);
+                  const existingPIs = await piService.getAllPIs(userId!);
 
                   // Save each PI
                   for (const key in piData) {
                     const pi = piData[key];
 
-                    // Format the date as an actual Date object
-                    const deadlineDate = new Date(pi.deadline);
+                    // Always set deadline to 3 months from today
+                    const deadlineDate = getDateThreeMonthsFromNow();
 
                     // Check if PI with same name already exists
                     const existingPI = existingPIs.find(
@@ -387,7 +398,7 @@ export async function POST(req: NextRequest) {
 
                     if (existingPI) {
                       // Update the existing PI
-                      await piService.updatePI(existingPI._id, userId, {
+                      await piService.updatePI(existingPI._id, userId!, {
                         targetValue: pi.targetValue,
                         deadline: deadlineDate,
                         notes: `Updated during onboarding for ${businessName}`,
@@ -403,7 +414,7 @@ export async function POST(req: NextRequest) {
                           deadline: deadlineDate,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(`PI created: ${pi.name}`);
                     }
@@ -444,8 +455,8 @@ export async function POST(req: NextRequest) {
       const jobService = new JobService();
       const piService = new PIService();
 
-      let jobs = await jobService.getAllJobs(userId);
-      let pis = await piService.getAllPIs(userId);
+      let jobs = await jobService.getAllJobs(userId!);
+      let pis = await piService.getAllPIs(userId!);
 
       // Create a context string with jobs and PIs information for the AI
       const jobsContext = jobs
@@ -499,8 +510,9 @@ export async function POST(req: NextRequest) {
                   const mappingService = new MappingService();
 
                   // Get existing mappings to check for duplicates
-                  const existingMappings =
-                    await mappingService.getAllMappingJP(userId);
+                  const existingMappings = await mappingService.getAllMappingJP(
+                    userId!,
+                  );
 
                   // Save each mapping
                   for (const key in mappingsData) {
@@ -516,7 +528,7 @@ export async function POST(req: NextRequest) {
                       // Update the existing mapping
                       await mappingService.updateMappingJP(
                         existingMapping._id,
-                        userId,
+                        userId!,
                         {
                           piImpactValue: mapping.piImpactValue,
                           piTarget: mapping.piTarget,
@@ -538,7 +550,7 @@ export async function POST(req: NextRequest) {
                           piTarget: mapping.piTarget,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(
                         `Mapping created: ${mapping.jobName} -> ${mapping.piName}`,
@@ -584,8 +596,8 @@ export async function POST(req: NextRequest) {
       const piService = new PIService();
       const qboService = new QBOService();
 
-      let pis = await piService.getAllPIs(userId);
-      let qbos = await qboService.getAllQBOs(userId);
+      let pis = await piService.getAllPIs(userId!);
+      let qbos = await qboService.getAllQBOs(userId!);
 
       // Create a context string with PIs and QBOs information for the AI
       const pisContext = pis
@@ -642,7 +654,7 @@ export async function POST(req: NextRequest) {
 
                   // Get existing mappings to check for duplicates
                   const existingMappings =
-                    await piQboMappingService.getAllMappings(userId);
+                    await piQboMappingService.getAllMappings(userId!);
 
                   // Save each mapping
                   for (const key in mappingsData) {
@@ -658,7 +670,7 @@ export async function POST(req: NextRequest) {
                       // Update the existing mapping
                       await piQboMappingService.updateMapping(
                         existingMapping._id,
-                        userId,
+                        userId!,
                         {
                           piTarget: mapping.piTarget,
                           qboTarget: mapping.qboTarget,
@@ -682,7 +694,7 @@ export async function POST(req: NextRequest) {
                           qboImpact: mapping.qboImpact,
                           notes: `Auto-generated from onboarding for ${businessName}`,
                         },
-                        userId,
+                        userId!,
                       );
                       console.log(
                         `PI-QBO Mapping created: ${mapping.piName} -> ${mapping.qboName}`,

@@ -397,9 +397,9 @@ export function TasksSidebar({
     }
   };
 
-  const handleCompleteTask = async (id: string, completed: boolean) => {
+  const handleCompleteTask = async (id: string, jobid:string, completed: boolean) => {
     try {
-      const response = await fetch(`/api/tasks/${id}`, {
+      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

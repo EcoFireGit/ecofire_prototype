@@ -7,6 +7,7 @@ import { validateAuth } from '@/lib/utils/auth-utils';
 import { updateJobImpactValues } from '@/lib/services/job-impact.service';
 import { validateString } from "@/lib/utils/validation-utils";
 import ValidationError from '../../errors/validation-error';
+import { use } from 'react';
 
 
 const piService = new PIService();
@@ -47,9 +48,10 @@ export async function POST(request: Request) {
       return authResult.response;
     }
     
-    const userId = authResult.userId;
+    const userId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
+
     const piData = await request.json();
-    await validateData(piData.name);    
+    await validateData(piData.name, userId!);    
     const PI = await piService.createPI(piData, userId!);
     await updateJobImpactValues(userId!);
     return NextResponse.json({
@@ -77,9 +79,9 @@ export async function POST(request: Request) {
   }
 }
 
-async function validateData(name: string) {
+async function validateData(name: string, userId: string) {
   await validateString(name);
-  const exists = await piService.checkNameExists(name);
+  const exists = await piService.checkNameExists(name, userId);
   if(exists) {
     throw new ValidationError('PI name already exists', 400);
   }
