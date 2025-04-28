@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Job } from "./table/columns";
 import { CreateDialog } from "@/components/business-functions/create-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface BusinessFunction {
   id: string;
@@ -55,8 +56,11 @@ export function JobDialog({
   const [formData, setFormData] = useState<Partial<Job>>(emptyFormState);
   const [businessFunctions, setBusinessFunctions] = useState<BusinessFunction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const creationToastRef = useRef<{ id: string; dismiss: () => void } | null>(null);
 
   // Initialize form data
   useEffect(() => {
@@ -123,7 +127,18 @@ export function JobDialog({
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
 
+    // Show the creation in progress toast
+    setIsSubmitting(true);
+    creationToastRef.current = toast({
+      title: "Creating job...",
+      description: "Your job is being created. Please wait.",
+      duration: 100000, // Long duration to ensure it stays visible
+    });
+
+    // Pass the submission data to parent component
     onSubmit(submissionData);
+    
+    // Close the dialog
     onOpenChange(false);
   };
 
@@ -251,8 +266,10 @@ export function JobDialog({
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={loading}>
-                {mode === "create" ? "Create" : "Save Changes"}
+              <Button type="submit" disabled={loading || isSubmitting}>
+                {isSubmitting ? 
+                  (mode === "create" ? "Creating..." : "Saving...") : 
+                  (mode === "create" ? "Create" : "Save Changes")}
               </Button>
             </DialogFooter>
           </form>
