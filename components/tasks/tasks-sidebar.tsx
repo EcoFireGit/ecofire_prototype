@@ -296,9 +296,9 @@ export function TasksSidebar({
 
       if (result.success) {
         // If the deleted task was the next task, we need to update the job
-        if (id === nextTaskId) {
-          await updateJobNextTask("none");
-        }
+        // if (id === nextTaskId) {
+        //   await updateJobNextTask("none");
+        // }
 
         setTasks(tasks.filter((task) => task.id !== id));
         toast({

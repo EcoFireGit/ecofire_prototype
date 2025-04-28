@@ -40,11 +40,11 @@ export function QBODialog({
     return {
       name: '',
       unit: '',
-      beginningValue: 0,
-      currentValue: 0,
-      targetValue: 0,
+      beginningValue: undefined,
+      currentValue: undefined,
+      targetValue: undefined,
       deadline: '',
-      points: 0,
+      points: undefined,
       notes: ''
     };
   });
@@ -71,11 +71,11 @@ export function QBODialog({
       setFormData({
         name: '',
         unit: '',
-        beginningValue: 0,
-        currentValue: 0,
-        targetValue: 0,
+        beginningValue: undefined,
+        currentValue: undefined,
+        targetValue: undefined,
         deadline: '',
-        points: 0,
+        points: undefined,
         notes: ''
       });
     }
@@ -101,7 +101,7 @@ export function QBODialog({
   };
 
   const handleNumberChange = (field: keyof QBO, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
+    const numValue = value === '' ? undefined : Number(value);
     setFormData({...formData, [field]: numValue});
   };
 
@@ -111,13 +111,13 @@ export function QBODialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Add QBO' : 'Edit QBO'}
+              {mode === 'create' ? 'Add Outcome' : 'Edit Outcome'}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid items-center gap-2">
               <Label htmlFor="name" className="text-left">
-                QBO name <span className="text-red-500">*</span>
+                Outcome name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
@@ -130,7 +130,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="unit" className="text-left">
-                QBO unit
+              Outcome unit
               </Label>
               <Input
                 id="unit"
@@ -147,7 +147,7 @@ export function QBODialog({
               <Input
                 id="beginningValue"
                 type="number"
-                value={formData.beginningValue}
+                value={formData.beginningValue === undefined ? '' : formData.beginningValue}
                 onChange={(e) => handleNumberChange('beginningValue', e.target.value)}
                 placeholder="0"
               />
@@ -160,7 +160,7 @@ export function QBODialog({
               <Input
                 id="currentValue"
                 type="number"
-                value={formData.currentValue}
+                value={formData.currentValue === undefined ? '' : formData.currentValue}
                 onChange={(e) => handleNumberChange('currentValue', e.target.value)}
                 placeholder="0"
               />
@@ -168,12 +168,12 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="targetValue" className="text-left">
-                QBO target <span className="text-red-500">*</span>
+              Outcome target <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="targetValue"
                 type="number"
-                value={formData.targetValue}
+                value={formData.targetValue === undefined ? '' : formData.targetValue}
                 onChange={(e) => handleNumberChange('targetValue', e.target.value)}
                 placeholder="0"
                 required
@@ -182,7 +182,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="deadline" className="text-left">
-                QBO Deadline <span className="text-red-500">*</span>
+              Outcome Deadline <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="deadline"
@@ -195,12 +195,12 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="points" className="text-left">
-                QBO points <span className="text-red-500">*</span>
+              Outcome points <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="points"
                 type="number"
-                value={formData.points}
+                value={formData.points === undefined ? '' : formData.points}
                 onChange={(e) => handleNumberChange('points', e.target.value)}
                 placeholder="0"
                 required
@@ -209,7 +209,7 @@ export function QBODialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="notes" className="text-left">
-                QBO notes
+              Outcome notes
               </Label>
               <Textarea
                 id="notes"
@@ -222,7 +222,7 @@ export function QBODialog({
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Add QBO' : 'Save Changes'}
+              {mode === 'create' ? 'Add Outcome' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

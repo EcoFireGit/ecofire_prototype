@@ -53,11 +53,11 @@ export const columns = (
   },
   {
     accessorKey: "piName",
-    header: "PI Name",
+    header: "Output Name",
   },
   {
     accessorKey: "piTarget",
-    header: "PI Target",
+    header: "Output Target",
     cell: ({ row }) => {
       const value = row.getValue("piTarget") as number;
       return value.toString();
@@ -65,7 +65,7 @@ export const columns = (
   },
   {
     accessorKey: "piImpactValue",
-    header: "PI Impact Value",
+    header: "Output Impact Value",
     cell: ({ row }) => {
       const value = row.getValue("piImpactValue") as number;
       return value.toString();

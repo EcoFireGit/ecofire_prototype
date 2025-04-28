@@ -105,10 +105,10 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
         console.error("❌ Driver.js initialization error:", error, new Date().toISOString());
         // Log DOM state for debugging
         console.log("📄 DOM state check:", {
-          jobsElement: document.querySelector('a[href="/dashboard/jobs"], #jobs-tasks-section'),
+          jobsElement: document.querySelector('a[href="/jobs"], #jobs-tasks-section'),
           wellnessCheck: document.getElementById('wellness-check'),
-          gcalElement: document.querySelector('a[href="/dashboard/backstage/gcal"], #gcal-integration'),
-          orgElement: document.querySelector('a[href="/dashboard/organizations"], #org-view-toggle')
+          gcalElement: document.querySelector('a[href="/backstage/gcal"], #gcal-integration'),
+          orgElement: document.querySelector('a[href="/organizations"], #org-view-toggle')
         });
         // Fallback: end the tour if there's an error
         if (onTourEnd) {

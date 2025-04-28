@@ -23,7 +23,7 @@ export default function FeedPage() {
       
       // Check for tour parameter in URL
       const tourParam = searchParams.get('tour');
-      const fromOnboarding = pathname === '/dashboard/jobs' && tourParam === 'true';
+      const fromOnboarding = pathname === '/jobs' && tourParam === 'true';
       
       // Also check localStorage (for backward compatibility)
       const hasShowWelcomeFlag = localStorage.getItem("showWelcomeModal") === "true";

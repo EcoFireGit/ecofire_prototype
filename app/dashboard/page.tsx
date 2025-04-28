@@ -254,7 +254,7 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold">Top Impactful Jobs</h2>
             <Button 
               variant="ghost" 
-              onClick={() => router.push('/dashboard/jobs')}
+              onClick={() => router.push('/jobs')}
               className="text-sm flex items-center"
             >
               View all <ArrowRight className="ml-1 h-4 w-4" />
@@ -271,7 +271,7 @@ export default function Dashboard() {
               <p>No active jobs found. Create your first job to get started.</p>
               <Button 
                 className="mt-4" 
-                onClick={() => router.push('/dashboard/jobs?open=true')}
+                onClick={() => router.push('/jobs?open=true')}
               >
                 Create Job
               </Button>
@@ -282,7 +282,7 @@ export default function Dashboard() {
                 <JobCard
                   key={job.id}
                   job={job}
-                  onEdit={() => router.push(`/dashboard/jobs?edit=${job.id}`)}
+                  onEdit={() => router.push(`/jobs?edit=${job.id}`)}
                   onDelete={(id) => console.log("Delete not available in dashboard view")}
                   onSelect={handleSelectJob}
                   onOpenTasksSidebar={handleOpenTasksSidebar}

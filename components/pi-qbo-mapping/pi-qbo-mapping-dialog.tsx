@@ -26,9 +26,9 @@ export type MappingFormData = {
   id?: string;
   piId: string;
   qboId: string;
-  piTarget: number;
-  qboTarget: number;
-  qboImpact: number;
+  piTarget: number | undefined;
+  qboTarget: number | undefined;
+  qboImpact: number | undefined;
   notes?: string;
 };
 
@@ -66,9 +66,9 @@ export function PIQBOMappingDialog({
     return {
       piId: '',
       qboId: '',
-      piTarget: 0,
-      qboTarget: 0,
-      qboImpact: 0,
+      piTarget: undefined,
+      qboTarget: undefined,
+      qboImpact: undefined,
       notes: ''
     };
   });
@@ -89,9 +89,9 @@ export function PIQBOMappingDialog({
       setFormData({
         piId: '',
         qboId: '',
-        piTarget: 0,
-        qboTarget: 0,
-        qboImpact: 0,
+        piTarget: undefined,
+        qboTarget: undefined,
+        qboImpact: undefined,
         notes: ''
       });
     }
@@ -109,7 +109,7 @@ export function PIQBOMappingDialog({
     setFormData({
       ...formData,
       piId,
-      piTarget: selectedPI ? selectedPI.targetValue : 0
+      piTarget: selectedPI ? selectedPI.targetValue : undefined
     });
   };
 
@@ -119,12 +119,12 @@ export function PIQBOMappingDialog({
     setFormData({
       ...formData,
       qboId,
-      qboTarget: selectedQBO ? selectedQBO.targetValue : 0
+      qboTarget: selectedQBO ? selectedQBO.targetValue : undefined
     });
   };
 
   const handleNumberChange = (field: keyof MappingFormData, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
+    const numValue = value === '' ? undefined : Number(value);
     setFormData({...formData, [field]: numValue});
   };
 
@@ -134,13 +134,13 @@ export function PIQBOMappingDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Map PI to QBO' : 'Edit PI-QBO Mapping'}
+              {mode === 'create' ? 'Map Output to Outcome' : 'Edit Output-Outcome Mapping'}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid items-center gap-2">
               <Label htmlFor="piId" className="text-left">
-                PI name <span className="text-red-500">*</span>
+                Output name <span className="text-red-500">*</span>
               </Label>
               <Select 
                 value={formData.piId} 
@@ -162,12 +162,12 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="piTarget" className="text-left">
-                PI Target
+                Output Target
               </Label>
               <Input
                 id="piTarget"
                 type="number"
-                value={formData.piTarget}
+                value={formData.piTarget === undefined ? '' : formData.piTarget}
                 onChange={(e) => handleNumberChange('piTarget', e.target.value)}
                 placeholder="0"
                 readOnly
@@ -178,7 +178,7 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="qboId" className="text-left">
-                QBO name <span className="text-red-500">*</span>
+                Outcome name <span className="text-red-500">*</span>
               </Label>
               <Select 
                 value={formData.qboId} 
@@ -200,12 +200,12 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="qboTarget" className="text-left">
-                QBO Target
+                Outcome Target
               </Label>
               <Input
                 id="qboTarget"
                 type="number"
-                value={formData.qboTarget}
+                value={formData.qboTarget === undefined ? '' : formData.qboTarget}
                 onChange={(e) => handleNumberChange('qboTarget', e.target.value)}
                 placeholder="0"
                 readOnly
@@ -216,12 +216,12 @@ export function PIQBOMappingDialog({
             
             <div className="grid items-center gap-2">
               <Label htmlFor="qboImpact" className="text-left">
-                QBO Impact <span className="text-red-500">*</span>
+                Outcome Impact <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="qboImpact"
                 type="number"
-                value={formData.qboImpact}
+                value={formData.qboImpact === undefined ? '' : formData.qboImpact}
                 onChange={(e) => handleNumberChange('qboImpact', e.target.value)}
                 placeholder="0"
                 required
@@ -243,7 +243,7 @@ export function PIQBOMappingDialog({
           </div>
           <DialogFooter>
             <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-              {mode === 'create' ? 'Map PI to QBO' : 'Save Changes'}
+              {mode === 'create' ? 'Map Output to Outcome' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>

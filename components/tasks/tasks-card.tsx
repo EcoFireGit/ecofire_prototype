@@ -190,7 +190,7 @@ export function TaskCard({
                             title="Ask Jija about this task"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/dashboard/jija?jobTitle=${encodeURIComponent(task.title)}`);
+                                router.push(`/jija?jobTitle=${encodeURIComponent(task.title)}`);
                             }}
                         >
                             <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />

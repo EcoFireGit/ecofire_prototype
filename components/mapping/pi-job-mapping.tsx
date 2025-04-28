@@ -171,7 +171,7 @@ export default function PiJobMappingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading Mapping between Jobs and PI...</div>
+        <div className="text-lg">Loading Mapping between Jobs and Output...</div>
       </div>
     );
   }
@@ -187,7 +187,7 @@ export default function PiJobMappingPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Mapping Job and PI</h1>
+        <h1 className="text-2xl font-bold">Mapping Job and Output</h1>
         <Button onClick={handleOpenCreate} className="bg-blue-500 hover:bg-blue-600">
           <Plus className="h-4 w-4 mr-2" />
           Add Mapping

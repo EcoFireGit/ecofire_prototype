@@ -168,10 +168,10 @@ export default function PIQBOMappingsPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">PI-QBO Mappings</h1>
+        <h1 className="text-2xl font-bold">Output-Outcome Mappings</h1>
         <Button onClick={handleCreateMapping} className="bg-blue-500 hover:bg-blue-600">
           <Plus className="h-4 w-4 mr-2" />
-          Map PI to QBO
+          Map Output to Qutcome
         </Button>
       </div>
 

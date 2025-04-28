@@ -20,11 +20,11 @@ export function DebugTourElements() {
           "org-view (ID)": document.getElementById('org-view-toggle'),
           
           // Alternative selectors
-          "jobs link": document.querySelector('a[href="/dashboard/jobs"]'),
+          "jobs link": document.querySelector('a[href="/jobs"]'),
           "wellness (text)": Array.from(document.querySelectorAll('*')).find(el => 
             el.textContent?.includes('Wellness')),
-          "Calendar link": document.querySelector('a[href="/dashboard/backstage/gcal"]'),
-          "Organizations link": document.querySelector('a[href="/dashboard/organizations"]'),
+          "Calendar link": document.querySelector('a[href="/backstage/gcal"]'),
+          "Organizations link": document.querySelector('a[href="/organizations"]'),
           
           // Additional context
           "sidebar-menu": document.querySelector('.sidebar-menu'),
