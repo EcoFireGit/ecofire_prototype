@@ -601,8 +601,14 @@ export default function TaskFeedView() {
   // Edit task
   const handleEditTask = (task: any) => {
     setDialogMode("edit");
-    setCurrentTask(task);
-    setEditingTask(task);
+    // Make sure we have a consistent task object with both id and _id properties
+    const fullTask = {
+      ...task,
+      id: task.id || task._id,
+      _id: task._id || task.id,
+    };
+    setCurrentTask(fullTask);
+    setEditingTask(fullTask);
     setTaskDialogOpen(true);
   };
 
@@ -677,6 +683,7 @@ export default function TaskFeedView() {
           // Map from MongoDB _id to id for frontend consistency
           const updatedTask: Task = {
             id: result.data._id,
+            _id: result.data._id, // Ensure we have both id and _id for compatibility
             title: result.data.title,
             owner: result.data.owner,
             date: result.data.date,
@@ -698,12 +705,20 @@ export default function TaskFeedView() {
             window.dispatchEvent(event);
           }
 
-          // Update task in all state arrays
+          // Update task in all state arrays - ensure we properly update with the full task data
           const updateTaskState = (tasksArray: any[]) => 
-            tasksArray.map((task) => 
-              task.id === updatedTask.id || task._id === updatedTask.id ? updatedTask : task
-            );
+            tasksArray.map((task) => {
+              if (task.id === updatedTask.id || task._id === updatedTask._id) {
+                // Create a complete merged object to ensure all properties are updated
+                return {
+                  ...task,
+                  ...updatedTask,
+                };
+              }
+              return task;
+            });
           
+          // Apply updates to all task arrays
           setTasks(updateTaskState(tasks));
           setFilteredTasks(updateTaskState(filteredTasks));
           setSortedTasks(updateTaskState(sortedTasks));
