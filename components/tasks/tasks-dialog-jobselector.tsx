@@ -63,10 +63,10 @@ export function TaskDialog({
   const [owner, setOwner] = useState<string | undefined>(undefined);
   const [date, setDate] = useState<string | undefined>(undefined);
   const [requiredHours, setRequiredHours] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(
-    undefined
+    undefined,
   );
   const [joyLevel, setJoyLevel] = useState<JoyLevel | undefined>(undefined);
   const [notes, setNotes] = useState<string | undefined>(undefined);
@@ -127,7 +127,8 @@ export function TaskDialog({
       setJoyLevel(undefined);
       setNotes(undefined);
       setTags([]);
-      if (!propJobId) { // If no jobId prop, reset to undefined
+      if (!propJobId) {
+        // If no jobId prop, reset to undefined
         setJobId(undefined);
       }
     } else if (initialData) {
@@ -166,22 +167,22 @@ export function TaskDialog({
 
       if (!response.ok) throw new Error("Failed to create job");
       const createdJob = await response.json();
-      
+
       const newJobId = createdJob.data?._id || createdJob._id || createdJob.id;
-      
+
       // Update the jobId with the newly created job
       setJobId(newJobId);
-      
+
       // Add the new job to our local jobs list
-      setJobsList(prevJobs => ({
+      setJobsList((prevJobs) => ({
         ...prevJobs,
         [newJobId]: {
           _id: newJobId,
           title: jobData.title || createdJob.data?.title || "New Job",
-          ...createdJob.data
-        }
+          ...createdJob.data,
+        },
       }));
-      
+
       // Close the job dialog
       setIsJobDialogOpen(false);
 
@@ -200,20 +201,23 @@ export function TaskDialog({
   };
 
   // Helper function to update job tasks
-  const updateJobTasks = async (jobId: string, taskId: string): Promise<void> => {
+  const updateJobTasks = async (
+    jobId: string,
+    taskId: string,
+  ): Promise<void> => {
     try {
       // First fetch the current job to get its tasks
       const jobResponse = await fetch(`/api/jobs/${jobId}`);
       if (!jobResponse.ok) {
         throw new Error(`Failed to fetch job: ${jobResponse.status}`);
       }
-      
+
       const jobData = await jobResponse.json();
       const currentTasks = jobData.data?.tasks || [];
-      
+
       // Add the new task ID to the tasks array
       const updatedTasks = [...currentTasks, taskId];
-      
+
       // Update the job with the new tasks array
       const response = await fetch(`/api/jobs/${jobId}`, {
         method: "PUT",
@@ -226,10 +230,10 @@ export function TaskDialog({
       if (!response.ok) {
         throw new Error(`Failed to update job tasks: ${response.status}`);
       }
-      
+
       // Trigger a job progress update event
-      const event = new CustomEvent('job-progress-update', { 
-        detail: { jobId: jobId } 
+      const event = new CustomEvent("job-progress-update", {
+        detail: { jobId: jobId },
       });
       window.dispatchEvent(event);
     } catch (error) {
@@ -245,10 +249,10 @@ export function TaskDialog({
     try {
       // Always include title in the task
       const task: Partial<Task> = { title };
-      
+
       // Always include jobId if it exists
       if (jobId) task.jobId = jobId;
-      
+
       if (owner) task.owner = owner;
       if (date) task.date = `${date}T00:00:00.000Z`;
       if (requiredHours !== undefined) task.requiredHours = requiredHours;
@@ -269,20 +273,20 @@ export function TaskDialog({
             },
             body: JSON.stringify(task),
           });
-          
+
           if (!response.ok) {
             throw new Error("Failed to create task");
           }
-          
+
           const result: TaskResponse = await response.json();
-          
+
           if (result.success && result.data?._id) {
             // Update the job's tasks array with the new task ID
-            await updateJobTasks(jobId, result.data._id);
-            
+            await updateJobTasks(jobId!, result.data._id);
+
             // Here we call onSubmit with the created task for UI updates,
             // but we don't await it since we don't want it to create another task
-            onSubmit({...task, id: result.data._id});
+            onSubmit({ ...task, id: result.data._id });
           }
         } catch (error) {
           console.error("Error in task creation:", error);
@@ -293,17 +297,20 @@ export function TaskDialog({
         // let the parent handle it
         await onSubmit(task);
       }
-      
+
       // Save tags if any
       if (tags.length > 0) await saveTags(tags);
-      
+
       // Close the dialog
       onOpenChange(false);
-      
+
       // Show success toast
       toast({
         title: "Success",
-        description: mode === "create" ? "Task created successfully" : "Task updated successfully",
+        description:
+          mode === "create"
+            ? "Task created successfully"
+            : "Task updated successfully",
       });
 
       // Reset form if creating new task
@@ -380,18 +387,20 @@ export function TaskDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {Object.entries(jobsList).map(([id, job]: [string, any]) => (
-                          <SelectItem key={id} value={id}>
-                            {job.title}
-                          </SelectItem>
-                        ))}
+                        {Object.entries(jobsList).map(
+                          ([id, job]: [string, any]) => (
+                            <SelectItem key={id} value={id}>
+                              {job.title}
+                            </SelectItem>
+                          ),
+                        )}
                         <SelectItem value="create">+ Create New Job</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
               )}
-              
+
               {/* Display selected job name if jobId is provided via props */}
               {propJobId && (
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -426,22 +435,31 @@ export function TaskDialog({
                         <SelectTrigger className="w-full">
                           <SelectValue
                             placeholder={
-                              isLoadingOwners ? "Loading owners..." : "Select an owner"
+                              isLoadingOwners
+                                ? "Loading owners..."
+                                : "Select an owner"
                             }
                           />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
                           {owners.map((ownerItem) => (
-                            <SelectItem key={ownerItem._id} value={ownerItem._id}>
+                            <SelectItem
+                              key={ownerItem._id}
+                              value={ownerItem._id}
+                            >
                               {ownerItem.name}
                             </SelectItem>
                           ))}
-                          <SelectItem value="create">+ Add New Owner</SelectItem>
+                          <SelectItem value="create">
+                            + Add New Owner
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       {ownerError && (
-                        <p className="text-sm text-red-500 mt-1">{ownerError}</p>
+                        <p className="text-sm text-red-500 mt-1">
+                          {ownerError}
+                        </p>
                       )}
                     </>
                   ) : (
@@ -474,7 +492,9 @@ export function TaskDialog({
                               setIsCreatingOwner(false);
                             } catch (error) {
                               console.error("Error creating owner:", error);
-                              setOwnerError("Failed to create owner. Try again.");
+                              setOwnerError(
+                                "Failed to create owner. Try again.",
+                              );
                             }
                           }}
                         >
@@ -525,7 +545,9 @@ export function TaskDialog({
                   value={requiredHours === undefined ? "" : requiredHours}
                   onChange={(e) => {
                     const value = e.target.value;
-                    setRequiredHours(value === "" ? undefined : parseFloat(value));
+                    setRequiredHours(
+                      value === "" ? undefined : parseFloat(value),
+                    );
                   }}
                   className="col-span-3"
                 />
@@ -556,7 +578,9 @@ export function TaskDialog({
                       <SelectItem value={FocusLevel.Medium}>
                         {FocusLevel.Medium}
                       </SelectItem>
-                      <SelectItem value={FocusLevel.Low}>{FocusLevel.Low}</SelectItem>
+                      <SelectItem value={FocusLevel.Low}>
+                        {FocusLevel.Low}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -581,11 +605,15 @@ export function TaskDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
-                      <SelectItem value={JoyLevel.High}>{JoyLevel.High}</SelectItem>
+                      <SelectItem value={JoyLevel.High}>
+                        {JoyLevel.High}
+                      </SelectItem>
                       <SelectItem value={JoyLevel.Medium}>
                         {JoyLevel.Medium}
                       </SelectItem>
-                      <SelectItem value={JoyLevel.Low}>{JoyLevel.Low}</SelectItem>
+                      <SelectItem value={JoyLevel.Low}>
+                        {JoyLevel.Low}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -628,8 +656,8 @@ export function TaskDialog({
                 {isSubmitting
                   ? "Saving..."
                   : mode === "create"
-                  ? "Add Task"
-                  : "Save Changes"}
+                    ? "Add Task"
+                    : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>
@@ -646,3 +674,4 @@ export function TaskDialog({
     </>
   );
 }
+

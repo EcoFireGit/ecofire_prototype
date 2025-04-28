@@ -757,7 +757,7 @@ export default function TaskFeedView() {
           // Update task in all state arrays - ensure we properly update with the full task data
           const updateTaskState = (tasksArray: any[]) =>
             tasksArray.map((task) => {
-              if (task.id === updatedTask.id || task._id === updatedTask._id) {
+              if (task.id === updatedTask.id) {
                 // Create a complete merged object to ensure all properties are updated
                 return {
                   ...task,
