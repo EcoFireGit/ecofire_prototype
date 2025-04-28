@@ -615,7 +615,42 @@ export default function TaskFeedView() {
       };
 
       if (dialogMode === "create") {
-        // Create new task
+        // If the task already has an ID, it was created by the TaskDialog component directly
+        if (taskData.id || taskData._id) {
+          const taskId = taskData.id || taskData._id;
+          // Map from MongoDB _id to id for frontend consistency
+          const newTask: Task = {
+            id: taskId as string,
+            title: taskData.title || "",
+            owner: taskData.owner,
+            date: taskData.date,
+            requiredHours: taskData.requiredHours,
+            focusLevel: taskData.focusLevel as FocusLevel,
+            joyLevel: taskData.joyLevel as JoyLevel,
+            notes: taskData.notes,
+            tags: taskData.tags || [],
+            jobId: taskData.jobId,
+            completed: false,
+            isNextTask: false,
+          };
+
+          // Add task to the state
+          setTasks((prevTasks) => [...prevTasks, newTask]);
+          
+          // Re-sort and update filtered tasks
+          const updatedTasks = [...tasks, newTask];
+          const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
+          setTasks(sortedUpdatedTasks);
+          handleFilterChange(activeFilters);
+
+          toast({
+            title: "Success",
+            description: "Task created successfully",
+          });
+          return;
+        }
+
+        // Create new task only if it doesn't have an ID yet (not created by TaskDialog)
         const response = await fetch("/api/tasks", {
           method: "POST",
           headers: {

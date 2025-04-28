@@ -257,10 +257,7 @@ export function TaskDialog({
       if (notes) task.notes = notes;
       if (tags.length > 0) task.tags = tags;
 
-      // Submit the task data to parent component
-      await onSubmit(task);
-      
-      // For task creation mode with associated job, directly create and update job
+      // Only for task creation with jobId, handle the creation and job update directly
       if (mode === "create" && jobId) {
         try {
           // Direct API call to create task
@@ -281,11 +278,25 @@ export function TaskDialog({
           if (result.success && result.data?._id) {
             // Update the job's tasks array with the new task ID
             await updateJobTasks(jobId, result.data._id);
+            
+            // Return result to parent component without creating duplicate task
+            await onSubmit({
+              ...task,
+              id: result.data._id,
+              _id: result.data._id
+            });
           }
         } catch (error) {
           console.error("Error in direct task creation:", error);
-          // The onSubmit already ran, so we continue despite this error
+          toast({
+            title: "Error",
+            description: "Failed to create task",
+            variant: "destructive",
+          });
         }
+      } else {
+        // For edit mode or tasks without a job, use the parent component's handler
+        await onSubmit(task);
       }
       
       // Save tags if any
