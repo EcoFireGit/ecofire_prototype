@@ -147,6 +147,15 @@ export function TaskDialog({
     }
   }, [mode, initialData, open, propJobId]);
 
+  const [jobsList, setJobsList] = useState<Record<string, any>>(jobs || {});
+
+  // Refresh jobs list when jobs prop changes
+  useEffect(() => {
+    if (jobs) {
+      setJobsList(jobs);
+    }
+  }, [jobs]);
+
   const handleNewJobSubmit = async (jobData: any) => {
     try {
       const response = await fetch("/api/jobs", {
@@ -158,11 +167,28 @@ export function TaskDialog({
       if (!response.ok) throw new Error("Failed to create job");
       const createdJob = await response.json();
       
+      const newJobId = createdJob.data?._id || createdJob._id || createdJob.id;
+      
       // Update the jobId with the newly created job
-      setJobId(createdJob.data?._id || createdJob._id || createdJob.id);
+      setJobId(newJobId);
+      
+      // Add the new job to our local jobs list
+      setJobsList(prevJobs => ({
+        ...prevJobs,
+        [newJobId]: {
+          _id: newJobId,
+          title: jobData.title || createdJob.data?.title || "New Job",
+          ...createdJob.data
+        }
+      }));
       
       // Close the job dialog
       setIsJobDialogOpen(false);
+
+      toast({
+        title: "Success",
+        description: "Job created successfully",
+      });
     } catch (error) {
       console.error("Error creating job:", error);
       toast({
@@ -327,7 +353,7 @@ export function TaskDialog({
               </div>
 
               {/* Job Selection - only show if no jobId was provided via props */}
-              {!propJobId && jobs && (
+              {!propJobId && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="job" className="text-right">
                     Job
@@ -348,7 +374,7 @@ export function TaskDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {jobs && Object.entries(jobs).map(([id, job]: [string, any]) => (
+                        {Object.entries(jobsList).map(([id, job]: [string, any]) => (
                           <SelectItem key={id} value={id}>
                             {job.title}
                           </SelectItem>
@@ -361,12 +387,12 @@ export function TaskDialog({
               )}
               
               {/* Display selected job name if jobId is provided via props */}
-              {propJobId && jobs && (
+              {propJobId && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Job</Label>
                   <div className="col-span-3">
                     <p className="text-sm font-medium">
-                      {jobs[propJobId]?.title || "Selected Job"}
+                      {jobsList[propJobId]?.title || "Selected Job"}
                     </p>
                   </div>
                 </div>
