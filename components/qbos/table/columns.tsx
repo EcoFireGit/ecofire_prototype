@@ -34,25 +34,27 @@ export type QBO = {
 
 // Function to convert from database model to table data
 export function convertQBOsToTableData(qbos: QBOs[]): QBO[] {
-  return qbos.map(qbo => ({
+  return qbos.map((qbo) => ({
     id: qbo._id,
     name: qbo.name,
-    unit: qbo.unit || '',
+    unit: qbo.unit || "",
     beginningValue: qbo.beginningValue || 0,
     currentValue: qbo.currentValue || 0,
     targetValue: qbo.targetValue || 0,
-    deadline: qbo.deadline ? 
-      // Handle both string and Date objects
-      (typeof qbo.deadline === 'string' ? qbo.deadline : qbo.deadline.toISOString()) 
-      : '',
+    deadline: qbo.deadline
+      ? // Handle both string and Date objects
+        typeof qbo.deadline === "string"
+        ? qbo.deadline
+        : qbo.deadline.toISOString()
+      : "",
     points: qbo.points || 0,
-    notes: qbo.notes || ''
+    notes: qbo.notes || "",
   }));
 }
 
 export const columns = (
   onEdit: (qbo: QBO) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
 ): ColumnDef<QBO>[] => [
   {
     accessorKey: "name",
@@ -68,7 +70,7 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("beginningValue") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "currentValue",
@@ -76,7 +78,7 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("currentValue") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "targetValue",
@@ -84,7 +86,7 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("targetValue") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "deadline",
@@ -92,25 +94,25 @@ export const columns = (
     cell: ({ row }) => {
       const deadline = row.getValue("deadline") as string;
       if (!deadline) return "No deadline";
-      
+
       // Parse the date and format it in MM/DD/YYYY format
       // Using noon UTC time to avoid timezone shifting issues
       const date = new Date(deadline);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        timeZone: 'UTC' // Important: ensure date is interpreted in UTC
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC", // Important: ensure date is interpreted in UTC
       });
-    }
+    },
   },
   {
     accessorKey: "points",
-    header: "Outcome points",
+    header: "Outcome importance score",
     cell: ({ row }) => {
       const points = row.getValue("points") as number;
       return points.toString();
-    }
+    },
   },
   {
     accessorKey: "notes",
@@ -133,15 +135,17 @@ export const columns = (
       const currentValue = row.getValue("currentValue") as number;
       const beginningValue = row.getValue("beginningValue") as number;
       const targetValue = row.getValue("targetValue") as number;
-      
+
       // Calculate progress percentage
       let progress = 0;
       if (targetValue !== beginningValue) {
-        progress = ((currentValue - beginningValue) / (targetValue - beginningValue)) * 100;
+        progress =
+          ((currentValue - beginningValue) / (targetValue - beginningValue)) *
+          100;
       }
-      
+
       return `${progress.toFixed(0)}%`;
-    }
+    },
   },
   {
     accessorKey: "expectedProgress",
@@ -150,7 +154,7 @@ export const columns = (
       // Expected progress calculation would typically involve time elapsed
       // This is a placeholder - qbo progress logic here
       return "0%";
-    }
+    },
   },
   {
     id: "actions",
@@ -158,14 +162,10 @@ export const columns = (
       const qbo = row.original;
       return (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(qbo)}
-          >
+          <Button variant="ghost" size="icon" onClick={() => onEdit(qbo)}>
             <Edit className="h-4 w-4" />
           </Button>
-         
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -176,8 +176,8 @@ export const columns = (
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the QBO
-                  "{qbo.name}" and remove it from our servers.
+                  This action cannot be undone. This will permanently delete the
+                  QBO "{qbo.name}" and remove it from our servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -190,6 +190,7 @@ export const columns = (
           </AlertDialog>
         </div>
       );
-    }
-  }
+    },
+  },
 ];
+
