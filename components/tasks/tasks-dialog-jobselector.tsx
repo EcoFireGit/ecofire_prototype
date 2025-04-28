@@ -257,11 +257,9 @@ export function TaskDialog({
       if (notes) task.notes = notes;
       if (tags.length > 0) task.tags = tags;
 
-      // Submit the task data to parent component
-      await onSubmit(task);
-      
-      // For task creation mode with associated job, directly create and update job
-      if (mode === "create" && jobId) {
+      // For task creation with a job ID specified via props, handle it here
+      // to avoid double task creation
+      if (mode === "create" && propJobId) {
         try {
           // Direct API call to create task
           const response = await fetch("/api/tasks", {
@@ -281,11 +279,19 @@ export function TaskDialog({
           if (result.success && result.data?._id) {
             // Update the job's tasks array with the new task ID
             await updateJobTasks(jobId, result.data._id);
+            
+            // Here we call onSubmit with the created task for UI updates,
+            // but we don't await it since we don't want it to create another task
+            onSubmit({...task, id: result.data._id});
           }
         } catch (error) {
-          console.error("Error in direct task creation:", error);
-          // The onSubmit already ran, so we continue despite this error
+          console.error("Error in task creation:", error);
+          throw error;
         }
+      } else {
+        // For editing tasks or creating tasks without a job ID from props,
+        // let the parent handle it
+        await onSubmit(task);
       }
       
       // Save tags if any
