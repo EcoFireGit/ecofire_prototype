@@ -96,11 +96,6 @@ const items = [
 // Backstage sub-items
 const backstageItems = [
   {
-    title: "Mappings",
-    url: "/backstage/mappings",
-    icon: Target,
-  },
-  {
     title: "Outcomes",
     url: "/backstage/qos",
     icon: Clipboard,
@@ -109,6 +104,11 @@ const backstageItems = [
     title: "Outputs",
     url: "/backstage/pis",
     icon: BarChart2,
+  },
+  {
+    title: "Mappings",
+    url: "/backstage/mappings",
+    icon: Target,
   },
 ];
 
