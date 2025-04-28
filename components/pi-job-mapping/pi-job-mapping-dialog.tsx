@@ -341,7 +341,7 @@ export function MappingDialog({
 
             <div className="grid items-center gap-2">
               <Label htmlFor="piImpactValue" className="text-left">
-                Output Impact Value <span className="text-red-500">*</span>
+                Output Impact <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="piImpactValue"
@@ -388,4 +388,3 @@ export function MappingDialog({
     </Dialog>
   );
 }
-
