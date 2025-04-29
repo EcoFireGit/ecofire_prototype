@@ -11,7 +11,15 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, PawPrint, Calendar, Briefcase, FileText, GripVertical } from "lucide-react";
+import {
+  Plus,
+  PawPrint,
+  Calendar,
+  Briefcase,
+  FileText,
+  Edit,
+  GripVertical,
+} from "lucide-react";
 import { TaskDialog } from "./tasks-dialog";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
@@ -59,7 +67,13 @@ interface SortableTaskItemProps {
 }
 
 // Sortable Task Item component with proper typing
-function SortableTaskItem({ task, onEdit, onDelete, onComplete, ownerMap }: SortableTaskItemProps) {
+function SortableTaskItem({
+  task,
+  onEdit,
+  onDelete,
+  onComplete,
+  ownerMap,
+}: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -128,7 +142,7 @@ export function TasksSidebar({
   const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
   const [showSaveOrder, setShowSaveOrder] = useState<boolean>(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  
+
   // This flag will track if we've already done the initial sort
   const initialSortDoneRef = useRef(false);
 
@@ -148,7 +162,7 @@ export function TasksSidebar({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // Fetch owners from API
@@ -223,34 +237,42 @@ export function TasksSidebar({
         }));
 
         // On initial load, sort tasks based on job.tasks array
-        if (!initialSortDoneRef.current && selectedJob.tasks && Array.isArray(selectedJob.tasks)) {
+        if (
+          !initialSortDoneRef.current &&
+          selectedJob.tasks &&
+          Array.isArray(selectedJob.tasks)
+        ) {
           console.log("Performing initial sort based on job.tasks order");
           console.log("Job tasks array:", selectedJob.tasks);
-          
+
           // Sort tasks according to job.tasks array order
           formattedTasks.sort((a: any, b: any) => {
             // Next task always comes first
             if (a.isNextTask) return -1;
             if (b.isNextTask) return 1;
-            
+
             // Then use the job.tasks array order
-            const aIndex = selectedJob.tasks ? selectedJob.tasks.indexOf(a.id) : -1;
-            const bIndex = selectedJob.tasks ? selectedJob.tasks.indexOf(b.id) : -1;
-            
+            const aIndex = selectedJob.tasks
+              ? selectedJob.tasks.indexOf(a.id)
+              : -1;
+            const bIndex = selectedJob.tasks
+              ? selectedJob.tasks.indexOf(b.id)
+              : -1;
+
             // If both tasks are in the tasks array, sort by their index
             if (aIndex !== -1 && bIndex !== -1) {
               return aIndex - bIndex;
             }
-            
+
             // If only a is in the tasks array, prioritize it
             if (aIndex !== -1) return -1;
-            
+
             // If only b is in the tasks array, prioritize it
             if (bIndex !== -1) return 1;
-            
+
             return 0;
           });
-          
+
           initialSortDoneRef.current = true;
         }
 
@@ -322,7 +344,11 @@ export function TasksSidebar({
     }
   };
 
-  const handleCompleteTask = async (id: string, jobid: string, completed: boolean) => {
+  const handleCompleteTask = async (
+    id: string,
+    jobid: string,
+    completed: boolean,
+  ) => {
     try {
       const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
         method: "PUT",
@@ -334,15 +360,15 @@ export function TasksSidebar({
       const result = await response.json();
       if (result.success) {
         // Use the function form of setState to ensure you're working with the latest state
-        setTasks(prevTasks => {
-          return prevTasks.map(task => {
+        setTasks((prevTasks) => {
+          return prevTasks.map((task) => {
             if (task.id === id) {
               // Update completed status and remove isNextTask if it's being completed
-              return { 
-                ...task, 
+              return {
+                ...task,
                 completed,
                 // If the task is being completed and it was the next task, remove that status
-                isNextTask: completed ? false : task.isNextTask 
+                isNextTask: completed ? false : task.isNextTask,
               };
             }
             return task;
@@ -395,7 +421,7 @@ export function TasksSidebar({
         tasks.map((task) => ({
           ...task,
           isNextTask: task.id === taskIdToSave,
-        }))
+        })),
       );
 
       // Set the flag in the parent component to indicate a refresh is needed
@@ -443,7 +469,7 @@ export function TasksSidebar({
           tasks.map((task) => ({
             ...task,
             isNextTask: task.id === taskIdToSave,
-          }))
+          })),
         );
 
         // Set flag for refresh on close
@@ -501,8 +527,8 @@ export function TasksSidebar({
             await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
 
             // Trigger a refresh of the job progress since we added a new task
-            const event = new CustomEvent('job-progress-update', { 
-              detail: { jobId: selectedJob.id } 
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
             });
             window.dispatchEvent(event);
           }
@@ -552,16 +578,16 @@ export function TasksSidebar({
 
           // If the task completion status changed, trigger a progress update
           if (currentTask.completed !== updatedTask.completed && selectedJob) {
-            const event = new CustomEvent('job-progress-update', { 
-              detail: { jobId: selectedJob.id } 
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
             });
             window.dispatchEvent(event);
           }
 
           setTasks(
             tasks.map((task) =>
-              task.id === updatedTask.id ? updatedTask : task
-            )
+              task.id === updatedTask.id ? updatedTask : task,
+            ),
           );
 
           toast({
@@ -616,7 +642,7 @@ export function TasksSidebar({
     if (active && over && active.id !== over.id) {
       // Find the task that was being dragged
       const draggedTask = tasks.find((task) => task.id === active.id);
-      
+
       // Don't allow the next task to be reordered
       if (draggedTask && draggedTask.isNextTask) {
         toast({
@@ -631,27 +657,27 @@ export function TasksSidebar({
       setTasks((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
-        
+
         const newTasks = arrayMove(items, oldIndex, newIndex);
         setShowSaveOrder(true);
         return newTasks;
       });
     }
-    
+
     setActiveId(null);
   };
 
   // Save the new order of tasks
   const saveTasksOrder = async () => {
     if (!selectedJob) return;
-    
+
     try {
       // Get all task IDs in their current order
-      const taskIds = tasks.map(task => task.id);
-      
+      const taskIds = tasks.map((task) => task.id);
+
       // Log the order we're about to save
       console.log("Saving task order:", taskIds);
-      
+
       // Call the API endpoint
       const response = await fetch("/api/tasks/order", {
         method: "PUT",
@@ -660,7 +686,7 @@ export function TasksSidebar({
         },
         body: JSON.stringify({
           jobId: selectedJob.id,
-          taskIds: taskIds
+          taskIds: taskIds,
         }),
       });
 
@@ -668,25 +694,25 @@ export function TasksSidebar({
 
       if (result.success) {
         setShowSaveOrder(false);
-        
+
         toast({
           title: "Success",
           description: "Task order updated successfully",
         });
-        
+
         // Update the local selectedJob object with the new task order
         if (selectedJob) {
           // Create a copy of the job with updated tasks array
-          const updatedJob = { 
+          const updatedJob = {
             ...selectedJob,
-            tasks: taskIds 
+            tasks: taskIds,
           };
-          
+
           // Replace the selectedJob reference (this won't update the parent component,
           // but it will ensure the correct order if we need to use it locally)
           Object.assign(selectedJob, updatedJob);
         }
-        
+
         // Refresh jobs if needed
         if (typeof onRefreshJobs === "function") {
           onRefreshJobs();
@@ -713,7 +739,7 @@ export function TasksSidebar({
     // Next task always comes first
     if (a.isNextTask) return -1;
     if (b.isNextTask) return 1;
-    
+
     // For all other tasks, keep their current order
     return 0;
   });
@@ -721,14 +747,14 @@ export function TasksSidebar({
   // Format date helper function
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Not set";
-    
+
     // Parse the date and preserve the UTC date
     const date = new Date(dateString);
-    
+
     // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
-    const utcDateString = date.toISOString().split('T')[0];
-    const displayDate = new Date(utcDateString + 'T00:00:00');
-  
+    const utcDateString = date.toISOString().split("T")[0];
+    const displayDate = new Date(utcDateString + "T00:00:00");
+
     return displayDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -746,7 +772,28 @@ export function TasksSidebar({
           {/* Wrap the content with the TaskProvider */}
           <TaskProvider>
             <SheetHeader className="mb-4">
-              <SheetTitle>Job Tasks</SheetTitle>
+              <div className="flex justify-between items-center">
+                <SheetTitle>Job Tasks</SheetTitle>
+                {selectedJob && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Close the sidebar first
+                      onOpenChange(false);
+                      // Then set the editing job and open the dialog
+                      if (selectedJob) {
+                        const editEvent = new CustomEvent("open-job-edit", {
+                          detail: { job: selectedJob },
+                        });
+                        window.dispatchEvent(editEvent);
+                      }
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" /> Edit Job
+                  </Button>
+                )}
+              </div>
               <SheetDescription>Manage tasks for this job</SheetDescription>
             </SheetHeader>
 
@@ -766,7 +813,16 @@ export function TasksSidebar({
                       <h3 className="text-sm font-semibold">Notes</h3>
                     </div>
                     <div className="pl-6">
-                      <div className="text-sm text-muted-foreground" style={{ whiteSpace: 'pre-wrap', overflowY: 'auto', overflowX: 'hidden', maxHeight: '10rem', wordBreak: 'break-word' }}>
+                      <div
+                        className="text-sm text-muted-foreground"
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          overflowY: "auto",
+                          overflowX: "hidden",
+                          maxHeight: "10rem",
+                          wordBreak: "break-word",
+                        }}
+                      >
                         {selectedJob.notes}
                       </div>
                     </div>
@@ -780,7 +836,9 @@ export function TasksSidebar({
                     <div className="flex items-start">
                       <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
                       <div>
-                        <span className="text-xs text-gray-500">Business Function</span>
+                        <span className="text-xs text-gray-500">
+                          Business Function
+                        </span>
                         <p className="text-sm font-medium">
                           {selectedJob.businessFunctionName}
                         </p>
@@ -831,7 +889,9 @@ export function TasksSidebar({
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
-                    onDragStart={(event) => setActiveId(event.active.id.toString())}
+                    onDragStart={(event) =>
+                      setActiveId(event.active.id.toString())
+                    }
                     onDragEnd={handleDragEnd}
                   >
                     <SortableContext
@@ -896,3 +956,4 @@ export function TasksSidebar({
     </>
   );
 }
+

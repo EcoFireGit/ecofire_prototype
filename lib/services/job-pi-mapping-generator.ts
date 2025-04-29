@@ -28,12 +28,9 @@ export class JobPIMappingGenerator {
       }
 
       // Create a context string with job and PIs information for the AI
-      const jobContext = `Job ID: ${job._id}, Title: ${job.title}`;
+      const jobContext = `JobTitle: ${job.title}, Notes: ${job.notes}`;
       const pisContext = pis
-        .map(
-          (pi) =>
-            `PI ID: ${pi._id}, Name: ${pi.name}, Target Value: ${pi.targetValue}`,
-        )
+        .map((pi) => `PI Name: ${pi.name}, Notes: ${pi.notes}`)
         .join("\n");
 
       // Create a custom prompt for mapping generation
@@ -45,7 +42,7 @@ export class JobPIMappingGenerator {
         `The piImpactValue should not exceed the targetValue for that PI. ` +
         `Ensure that the job is mapped to at least one PI, and choose PIs that are most relevant to the job. ` +
         `Output your result in the form of a JSON in the following format: ` +
-        `{ "mapping1": { "jobId": "${job._id}", "jobName": "${job.title}", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here } }. ` +
+        `{ "mapping1": { "jobId": "${job._id}", "jobName": "${job.title}", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here, "notes": "Explanation of this mapping" } }. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
 
       // Create a system prompt (similar to onboarding)
@@ -93,7 +90,9 @@ export class JobPIMappingGenerator {
                 piName: mapping.piName,
                 piImpactValue: mapping.piImpactValue,
                 piTarget: mapping.piTarget,
-                notes: `Auto-generated mapping for new job`,
+                notes:
+                  `(Auto-generated mapping for job ${mapping.jobName}) ` +
+                  mapping.notes,
               },
               userId,
             );

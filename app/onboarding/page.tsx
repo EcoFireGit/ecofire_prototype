@@ -94,6 +94,7 @@ export default function OnboardingPage() {
     id: "jobs-completion",
     api: "/api/onboarding",
     onResponse(response) {
+      // console.log("DEBUG: Jobs response: ", response);
       console.log("Jobs response received:", response.status);
       if (!response.ok) {
         console.error("Jobs API response not OK:", response.status);
@@ -108,7 +109,7 @@ export default function OnboardingPage() {
     onFinish(result, completion) {
       // console.log("Jobs usage", usage);
       // console.log("Jobs finishReason", finishReason);
-      // console.log("Jobs result JSON:", result); // Added debugging output
+      // console.log("DEBUG: Jobs result JSON:", result); // Added debugging output
       // Add the completion to jobs messages for display
       setJobsMessages([
         ...jobsMessages,
@@ -279,6 +280,7 @@ export default function OnboardingPage() {
     // Show a toast to inform the user that PIs are being generated
     toast({
       title: "Generating Outputs",
+
       description: "Please wait while we create Outputs based on your jobs...",
     });
 
@@ -299,7 +301,7 @@ export default function OnboardingPage() {
 
       // After PIs are generated, generate Job-PI mappings
       toast({
-        title: "Generating Job-Output Mappings",
+        title: "Generating Jobs-Outputs Mappings",
         description:
           "Please wait while we create mappings between Jobs and Outputs...",
       });
@@ -320,7 +322,8 @@ export default function OnboardingPage() {
 
       // After Job-PI mappings are generated, generate PI-QBO mappings
       toast({
-        title: "Generating Output-Outcome Mappings",
+        title: "Generating Outputs-Outcomes Mappings",
+
         description:
           "Please wait while we create mappings between Outputs and Outcomes...",
       });
@@ -750,6 +753,9 @@ export default function OnboardingPage() {
                                         outcome.deadline,
                                       ).toLocaleDateString()}
                                     </p>
+                                    <div className="mb-3 text-sm text-gray-700">
+                                      <p>{outcome.notes}</p>
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -975,9 +981,9 @@ export default function OnboardingPage() {
                 : isPILoading
                   ? "Generating Outputs..."
                   : isMappingsLoading
-                    ? "Generating Job-Output Mappings..."
+                    ? "Generating Jobs-Outputs Mappings..."
                     : isPiQboMappingsLoading
-                      ? "Generating Output-Outcome Mappings..."
+                      ? "Generating Outputs-Outcomes Mappings..."
                       : "Go to Jobs feed"}
             </Button>
           </div>
