@@ -301,7 +301,7 @@ export default function OnboardingPage() {
       toast({
         title: "Generating Job-Output Mappings",
         description:
-          "Please wait while we create mappings between jobs and PIs...",
+          "Please wait while we create mappings between Jobs and Outputs...",
       });
 
       // Call the API with the step parameter set to "mappings"
@@ -322,7 +322,7 @@ export default function OnboardingPage() {
       toast({
         title: "Generating Output-Outcome Mappings",
         description:
-          "Please wait while we create mappings between PIs and QBOs...",
+          "Please wait while we create mappings between Outputs and Outcomes...",
       });
 
       // Call the API with the step parameter set to "pi-qbo-mappings"
@@ -362,7 +362,7 @@ export default function OnboardingPage() {
           "There was a problem generating Outputs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
-      // Redirect to jobs page instead of dashboard with the onboarding tour 
+      // Redirect to jobs page instead of dashboard with the onboarding tour
       router.push("/jobs?tour=true");
     }
   };
@@ -546,7 +546,7 @@ export default function OnboardingPage() {
               value={monthsInBusiness}
               onChange={(e) =>
                 setMonthsInBusiness(
-                  e.target.value === "" ? 0 : Number(e.target.value)
+                  e.target.value === "" ? 0 : Number(e.target.value),
                 )
               }
               placeholder="0"
@@ -563,7 +563,7 @@ export default function OnboardingPage() {
               value={annualRevenue}
               onChange={(e) =>
                 setAnnualRevenue(
-                  e.target.value === "" ? 0 : Number(e.target.value)
+                  e.target.value === "" ? 0 : Number(e.target.value),
                 )
               }
               placeholder="Enter your annual revenue"
@@ -747,7 +747,7 @@ export default function OnboardingPage() {
                                         Deadline:
                                       </span>{" "}
                                       {new Date(
-                                        outcome.deadline
+                                        outcome.deadline,
                                       ).toLocaleDateString()}
                                     </p>
                                   </div>
@@ -760,7 +760,7 @@ export default function OnboardingPage() {
                     } catch (e) {
                       console.error(
                         "Error parsing outcome data for display:",
-                        e
+                        e,
                       );
                     }
                     return (
@@ -895,7 +895,7 @@ export default function OnboardingPage() {
                                                   </p>
                                                 )}
                                               </div>
-                                            )
+                                            ),
                                           )}
                                         </div>
                                       </div>
@@ -973,12 +973,12 @@ export default function OnboardingPage() {
               {isJobsLoading
                 ? "Generating Jobs..."
                 : isPILoading
-                ? "Generating Outputs..."
-                : isMappingsLoading
-                ? "Generating Job-Output Mappings..."
-                : isPiQboMappingsLoading
-                ? "Generating Output-Outcome Mappings..."
-                : "Go to Jobs feed"}
+                  ? "Generating Outputs..."
+                  : isMappingsLoading
+                    ? "Generating Job-Output Mappings..."
+                    : isPiQboMappingsLoading
+                      ? "Generating Output-Outcome Mappings..."
+                      : "Go to Jobs feed"}
             </Button>
           </div>
         </div>
