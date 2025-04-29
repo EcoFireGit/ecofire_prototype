@@ -1,7 +1,7 @@
-'use client';
-import { Button } from '@/components/ui/button';
-import useCalendar from '@/hooks/use-calendar';
-import { useToast } from '@/hooks/use-toast';
+"use client";
+import { Button } from "@/components/ui/button";
+import useCalendar from "@/hooks/use-calendar";
+import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -23,33 +23,30 @@ export default function CalendarAuth() {
     handleCreatePrioriCalendar,
     handleCalendarSelect,
     handleGetEvents,
-    events
+    events,
   } = useCalendar(toast);
 
   return (
     <div className="space-y-4">
-      <Button 
-        onClick={handleAuth}
-        disabled={isAuthorizing}
-        id='authorize-gcal'
-      >
-        {isAuthorizing ? 'Authorizing...' : 'Authorize Google Calendar'}
+      <Button onClick={handleAuth} disabled={isAuthorizing} id="authorize-gcal">
+        {isAuthorizing ? "Authorizing..." : "Authorize Google Calendar"}
       </Button>
 
-      <Button 
+      <Button
         onClick={handleGetCalenders}
         disabled={isGetting}
-        id='get-calendars'
+        id="get-calendars"
       >
-        {isGetting ? 'Getting...' : 'Get Calendars'}
-      </Button>      
+        {isGetting ? "Getting..." : "Get Calendars"}
+      </Button>
 
-      <Button 
+      <Button
         onClick={handleCreatePrioriCalendar}
         disabled={isCreating}
+        id="create-prioriwise-calendar"
       >
-        {isCreating ? 'Creating...' : 'Create Prioriwise Calendar'}
-      </Button>  
+        {isCreating ? "Creating..." : "Create Prioriwise Calendar"}
+      </Button>
 
       {calendars.length > 0 && (
         <div className="space-y-2">

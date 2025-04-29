@@ -4,8 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { driver } from 'driver.js';
-import 'driver.js/dist/driver.css';
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 
 import CalendarAuth from "@/components/gcal/calendar-auth";
 import { Gcal, convertGcalsToTableData } from "@/components/gcal/table/columns";
@@ -136,42 +136,55 @@ export default function CalendarPage() {
   // Start Google Calendar tour
   const startGcalTour = (stepIndex = 0) => {
     console.log(`🚀 Starting Google Calendar tour at step ${stepIndex}`);
-    
+
     const tourSteps = [
       {
         // First step: Authorize Google Calendar button
-        element: '#authorize-gcal',
+        element: "#authorize-gcal",
         popover: {
-          title: 'Authorize Google Calendar',
-          description: 'Connect your Google account to enable calendar integration. Click authorize to proceed with the connection.'
-        }
+          title: "Authorize Google Calendar",
+          description:
+            "Connect your Google account to enable calendar integration. Click authorize to proceed with the connection.",
+        },
       },
       {
         // Second step: Get Calendars button
-        element: '#get-calendars',
+        element: "#get-calendars",
         popover: {
-          title: 'Get Your Calendars',
-          description: 'Fetch all your available calendars from Google to choose which ones to sync.'
-        }
+          title: "Get Your Calendars",
+          description:
+            "Fetch all your available calendars from Google to choose which ones to sync.",
+        },
       },
       {
         // Third step: Select Calendars button
-        element: '#select-calendars',
+        element: "#select-calendars",
         popover: {
-          title: 'Select Your Calendars',
-          description: 'Choose which calendars you want to add. You will receive notifications for upcoming events from these calendars.'
-        }
+          title: "Select Your Calendars",
+          description:
+            "Choose which calendars you want to add. You will receive notifications for upcoming events from these calendars.",
+        },
+      },
+      {
+        // Fourth step: Create prioriwise calendar
+        element: "#create-prioriwise-calendar",
+        popover: {
+          title: "Create Prioriwise calendar",
+          description:
+            "You can schedule your tasks to be done as events in your Prioriwise calendar.",
+        },
       },
       {
         // Final step
-        element: "#help-button", 
+        element: "#help-button",
         popover: {
           title: "You're All Set!",
-          description: "You've completed the tour. You can restart it anytime from the help button in your Navbar."
-        }
-      }
+          description:
+            "You've completed the tour. You can restart it anytime from the help button in your Navbar.",
+        },
+      },
     ];
-    
+
     try {
       const driverOptions = {
         showProgress: true,
@@ -180,17 +193,20 @@ export default function CalendarPage() {
         overlayClickNext: false,
         onDestroyed: () => {
           console.log("🏆 GCal tour completed or closed manually");
-          
+
           // Clear the tour parameter from URL without page reload
           const url = new URL(window.location.href);
-          url.searchParams.delete('tour');
-          url.searchParams.delete('step');
-          window.history.replaceState({}, '', url.toString());
+          url.searchParams.delete("tour");
+          url.searchParams.delete("step");
+          window.history.replaceState({}, "", url.toString());
         },
-        steps: tourSteps
+        steps: tourSteps,
       };
-      
-      console.log("🔍 Starting tour with steps:", tourSteps.map(step => step.element));
+
+      console.log(
+        "🔍 Starting tour with steps:",
+        tourSteps.map((step) => step.element),
+      );
       driverRef.current = driver(driverOptions);
       driverRef.current.drive(stepIndex);
     } catch (error) {
@@ -205,24 +221,24 @@ export default function CalendarPage() {
       fetchGcals(); // Fetch data only after CalendarAuth is initialized
     }
   }, [authInitialized]);
-  
+
   // Handle tour initialization - separate from data loading
   useEffect(() => {
     if (authInitialized && !loading && !tourStartedRef.current) {
       // Check if tour should be started
-      const tourType = searchParams?.get('tour');
-      const tourStep = parseInt(searchParams?.get('step') || '0', 10);
-      
-      if (tourType === 'gcal') {
+      const tourType = searchParams?.get("tour");
+      const tourStep = parseInt(searchParams?.get("step") || "0", 10);
+
+      if (tourType === "gcal") {
         console.log("📣 Tour parameter detected in URL, starting tour");
         tourStartedRef.current = true; // Mark as started
-        
+
         // Remove the tour parameters from URL to prevent loops
         const url = new URL(window.location.href);
-        url.searchParams.delete('tour');
-        url.searchParams.delete('step');
-        window.history.replaceState({}, '', url.toString());
-        
+        url.searchParams.delete("tour");
+        url.searchParams.delete("step");
+        window.history.replaceState({}, "", url.toString());
+
         // Use setTimeout to ensure DOM is fully loaded
         setTimeout(() => {
           startGcalTour(tourStep);
@@ -230,7 +246,7 @@ export default function CalendarPage() {
       }
     }
   }, [authInitialized, loading, searchParams]);
-  
+
   // Cleanup function to destroy driver on unmount
   useEffect(() => {
     return () => {
@@ -249,7 +265,7 @@ export default function CalendarPage() {
     setSelectedRows((prevSelectedRows) =>
       prevSelectedRows.some((selectedRow) => selectedRow.id === row.id)
         ? prevSelectedRows.filter((selectedRow) => selectedRow.id !== row.id)
-        : [...prevSelectedRows, row]
+        : [...prevSelectedRows, row],
     );
   };
 
@@ -265,7 +281,7 @@ export default function CalendarPage() {
             <Button
               onClick={handleCreate}
               className="bg-blue-500 hover:bg-blue-600"
-              id='select-calendars'
+              id="select-calendars"
             >
               <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar
             </Button>
@@ -292,7 +308,7 @@ export default function CalendarPage() {
                   key={row.id}
                   className={`border border-gray-300 ${
                     selectedRows.some(
-                      (selectedRow) => selectedRow.id === row.id
+                      (selectedRow) => selectedRow.id === row.id,
                     )
                       ? "bg-blue-100"
                       : ""
@@ -302,7 +318,7 @@ export default function CalendarPage() {
                     <input
                       type="checkbox"
                       checked={selectedRows.some(
-                        (selectedRow) => selectedRow.id === row.id
+                        (selectedRow) => selectedRow.id === row.id,
                       )}
                       onChange={() => toggleRowSelection(row)}
                     />
@@ -357,3 +373,4 @@ export default function CalendarPage() {
     </div>
   );
 }
+
