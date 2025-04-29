@@ -31,6 +31,7 @@ export default function CalendarAuth() {
       <Button 
         onClick={handleAuth}
         disabled={isAuthorizing}
+        id='authorize-gcal'
       >
         {isAuthorizing ? 'Authorizing...' : 'Authorize Google Calendar'}
       </Button>
@@ -38,6 +39,7 @@ export default function CalendarAuth() {
       <Button 
         onClick={handleGetCalenders}
         disabled={isGetting}
+        id='get-calendars'
       >
         {isGetting ? 'Getting...' : 'Get Calendars'}
       </Button>      
