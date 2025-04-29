@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard } from "lucide-react";
+import { Clipboard, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextareaAutosize from 'react-textarea-autosize';
 
@@ -42,6 +42,8 @@ export default function Chat() {
   const [processedMessages, setProcessedMessages] = useState<
     ProcessedMessage[]
   >([]);
+  const [showArchive, setShowArchive] = useState(false);
+  const archiveRef = useRef<HTMLDivElement>(null);
   const LIMIT = 3;
   const { userId } = useAuth();
   const searchParams = useSearchParams();
@@ -83,6 +85,23 @@ export default function Chat() {
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [input]);
+
+  // Close archive dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (archiveRef.current && !archiveRef.current.contains(event.target as Node)) {
+        setShowArchive(false);
+      }
+    }
+
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Clean up
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [archiveRef]);
 
   useEffect(() => {
     const processMessages = async () => {
@@ -226,107 +245,13 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 p-10 mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Jija Assistant</h1>
-
-      {/* Recent Chats Section */}
-      {recentChats.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Recent Conversations</h2>
-          <div className="grid grid-cols-1 gap-4">
-            {recentChats.map((chat) => {
-              const preview = getChatPreview(chat);
-              return (
-                <div
-                  key={chat._id}
-                  className={`border rounded-lg p-4 shadow-sm cursor-pointer transition-colors ${
-                    selectedChatId === chat.chatId
-                      ? "bg-blue-50 border-blue-500"
-                      : "hover:bg-gray-50"
-                  }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    loadChatSession(chat.chatId);
-                  }}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-sm text-gray-500">
-                      {formatDate(chat.updatedAt)}
-                    </span>
-                  </div>
-                  <div className="mb-2 flex justify-between">
-                    <div>
-                      <span className="font-medium">You: </span>
-                      <span>{preview.userMessage}</span>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const fullMessage =
-                          chat.messages.find((m) => m.role === "user")
-                            ?.content || "";
-                        navigator.clipboard.writeText(fullMessage);
-                        // Optional: Add visual feedback
-                        const button = e.currentTarget;
-                        button.classList.add("text-green-500");
-                        setTimeout(() => {
-                          button.classList.remove("text-green-500");
-                        }, 2000);
-                      }}
-                      className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1.5 rounded"
-                      title="Copy message"
-                    >
-                      <Clipboard size={16} />
-                    </button>
-                  </div>
-                  <div className="flex justify-between">
-                    <div>
-                      <span className="font-medium">Jija: </span>
-                      <span>{preview.aiResponse}</span>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const fullMessage =
-                          chat.messages.find((m) => m.role === "assistant")
-                            ?.content || "";
-                        navigator.clipboard.writeText(fullMessage);
-                        // Optional: Add visual feedback
-                        const button = e.currentTarget;
-                        button.classList.add("text-green-500");
-                        setTimeout(() => {
-                          button.classList.remove("text-green-500");
-                        }, 2000);
-                      }}
-                      className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1.5 rounded"
-                      title="Copy message"
-                    >
-                      <Clipboard size={16} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Load More Button */}
-          {hasMoreChats && (
-            <div className="mt-4 text-center">
-              <button
-                onClick={loadMoreChats}
-                disabled={isLoadingMore}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-blue-300"
-              >
-                {isLoadingMore ? "Loading..." : "Load More Conversations"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Current Chat Section */}
-      <div className="flex flex-col w-full stretch">
-        {selectedChatId && (
-          <div className="mb-4">
+      {/* Header - Fixed at the top */}
+      <div className="flex justify-between items-center mb-6 w-full">
+        <h1 className="text-2xl font-bold">Jija Assistant</h1>
+        
+        <div className="flex items-center gap-2">
+          {/* Close Conversation Button - Only visible when a chat is selected */}
+          {selectedChatId && (
             <Button
               onClick={() => {
                 setSelectedChatId(null);
@@ -338,10 +263,83 @@ export default function Chat() {
             >
               <span>Close Conversation</span>
             </Button>
-          </div>
-        )}
+          )}
+          
+          {/* Archive Button */}
+          {recentChats.length > 0 && (
+            <div className="relative" ref={archiveRef}>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => setShowArchive(!showArchive)}
+              >
+                <Archive size={18} />
+                <span>Recent Conversations</span>
+              </Button>
+              
+              {/* Archive Dropdown */}
+              {showArchive && (
+                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div className="p-2">
+                    {recentChats.map((chat) => {
+                      const preview = getChatPreview(chat);
+                      return (
+                        <div
+                          key={chat._id}
+                          className={`border-b border-gray-100 last:border-0 p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+                            selectedChatId === chat.chatId
+                              ? "bg-blue-50"
+                              : ""
+                          }`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            loadChatSession(chat.chatId);
+                            setShowArchive(false);
+                          }}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="text-xs text-gray-500">
+                              {formatDate(chat.updatedAt)}
+                            </span>
+                          </div>
+                          <div className="mb-1">
+                            <span className="font-medium text-sm">You: </span>
+                            <span className="text-sm">{preview.userMessage}</span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-sm">Jija: </span>
+                            <span className="text-sm">{preview.aiResponse}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Load More Button */}
+                    {hasMoreChats && (
+                      <div className="p-2 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            loadMoreChats();
+                          }}
+                          disabled={isLoadingMore}
+                          className="w-full py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-blue-300"
+                        >
+                          {isLoadingMore ? "Loading..." : "Load More"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* Updated Messages Display with Left/Right Alignment */}
+      {/* Current Chat Section */}
+      <div className="flex flex-col w-full stretch">
+        {/* Chat Messages */}
         <div className="flex flex-col space-y-4">
           {processedMessages.map((m) => (
             <div
