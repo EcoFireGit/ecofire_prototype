@@ -80,6 +80,7 @@ const items = [
     title: "Jija",
     url: "/jija",
     icon: PawPrint,
+    id: "jija",
   },
   {
     title: "Search",

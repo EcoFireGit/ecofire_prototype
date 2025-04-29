@@ -341,46 +341,59 @@ export default function Chat() {
           </div>
         )}
 
-        {processedMessages.map((m) => (
-          <div
-            key={m.id}
-            className="whitespace-pre-wrap mb-4 p-3 rounded-lg bg-gray-50 relative"
-          >
-            <div className="flex justify-between items-start">
-              <span className="font-medium">
-                {m.role === "user" ? "You: " : "Jija: "}
-              </span>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(m.content);
-                  // Optional: Add a visual indication that content was copied
-                  const button = document.getElementById(`copy-btn-${m.id}`);
-                  if (button) {
-                    button.classList.add("text-green-500");
-                    setTimeout(() => {
-                      button.classList.remove("text-green-500");
-                    }, 2000);
-                  }
-                }}
-                id={`copy-btn-${m.id}`}
-                className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1.5 rounded"
-                title="Copy message"
+        {/* Updated Messages Display with Left/Right Alignment */}
+        <div className="flex flex-col space-y-4">
+          {processedMessages.map((m) => (
+            <div
+              key={m.id}
+              className={`flex ${
+                m.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`whitespace-pre-wrap p-3 rounded-lg relative max-w-[80%] ${
+                  m.role === "user"
+                    ? "bg-blue-100 text-blue-900"
+                    : "bg-gray-100 text-gray-900"
+                }`}
               >
-                <Clipboard size={16} />
-              </button>
+                <div className="flex justify-between items-start gap-2">
+                  <span className="font-medium">
+                    {m.role === "user" ? "You: " : "Jija: "}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(m.content);
+                      // Optional: Add a visual indication that content was copied
+                      const button = document.getElementById(`copy-btn-${m.id}`);
+                      if (button) {
+                        button.classList.add("text-green-500");
+                        setTimeout(() => {
+                          button.classList.remove("text-green-500");
+                        }, 2000);
+                      }
+                    }}
+                    id={`copy-btn-${m.id}`}
+                    className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1 rounded"
+                    title="Copy message"
+                  >
+                    <Clipboard size={14} />
+                  </button>
+                </div>
+                <div className="mt-1">
+                  {m.role === "assistant" && m.html ? (
+                    <div
+                      className="prose dark:prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{ __html: m.html }}
+                    />
+                  ) : (
+                    m.content
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="mt-1">
-              {m.role === "assistant" && m.html ? (
-                <div
-                  className="prose dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: m.html }}
-                />
-              ) : (
-                m.content
-              )}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
         {(status === "submitted" || status === "streaming") && (
           <div className="mt-4 text-gray-500">

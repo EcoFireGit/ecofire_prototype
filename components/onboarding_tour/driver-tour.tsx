@@ -30,23 +30,7 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
             description: 'Welcome to your zone of genius! Here you can manage all your tasks and job assignments that have already been prioritized for you.'
           }
         },
-        // Step 2: Wellness Check
-        {
-          element: '#wellness-check',
-          popover: {
-            title: 'Wellness Check',
-            description: 'Reprioritize your jobs based on your mood.',
-          }
-        },
-        // Step 3: Google Calendar Integration
-        {
-          element: '#gcal-integration',
-          popover: {
-            title: 'Google Calendar',
-            description: 'Sync your events with Google Calendar to keep everything in one place.',
-          }
-        },
-        // Step 4: Organization View Toggle
+        // Step 2: Organization View Toggle
         {
           element: '#org-view-toggle',
           popover: {
@@ -54,6 +38,31 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
             description: 'Switch between different organizational views to see how your team is doing.',
           }
         },
+        // Step 3: jija
+        {
+          element: '#jija',
+          popover: {
+            title: 'Jija',
+            description: 'Jija is your AI assistant that helps you manage your tasks and jobs.',
+          }
+        },
+        // Step 4: Wellness Check
+        {
+          element: '#wellness-check',
+          popover: {
+            title: 'Wellness Check',
+            description: 'Reprioritize your jobs based on your mood.',
+          }
+        },
+        // Step 5: Google Calendar Integration -- redirect to gcal page
+        {
+          element: '#gcal-integration',
+          popover: {
+            title: 'Google Calendar',
+            description: 'Sync your events with Google Calendar to keep everything in one place.',
+          }
+        },
+        
         // Final step - no element, centered on screen
         {
           element: "#help-button",
