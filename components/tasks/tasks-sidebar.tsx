@@ -558,6 +558,11 @@ export function TasksSidebar({
             window.dispatchEvent(event);
           }
 
+           // Add this check: If the edited task is the next task, trigger a refresh
+          if (updatedTask.isNextTask && typeof onRefreshJobs === "function") {
+            onRefreshJobs();
+          }
+
           setTasks(
             tasks.map((task) =>
               task.id === updatedTask.id ? updatedTask : task
