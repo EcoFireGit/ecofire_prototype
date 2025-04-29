@@ -157,7 +157,7 @@ export default function OnboardingPage() {
       toast({
         title: "Error",
         description:
-          "An error occurred while generating PIs, but you can still return to dashboard.",
+          "An error occurred while generating Outputs, but you can still return to dashboard.",
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
@@ -196,7 +196,7 @@ export default function OnboardingPage() {
       toast({
         title: "Error",
         description:
-          "An error occurred while generating Job-PI mappings, but you can still return to dashboard.",
+          "An error occurred while generating Job-Output mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
@@ -237,7 +237,7 @@ export default function OnboardingPage() {
       toast({
         title: "Error",
         description:
-          "An error occurred while generating PI-QBO mappings, but you can still return to dashboard.",
+          "An error occurred while generating Output-Outcome mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard
@@ -278,8 +278,8 @@ export default function OnboardingPage() {
     // Add the 'tour=true' parameter directly to the URL instead of just using localStorage
     // Show a toast to inform the user that PIs are being generated
     toast({
-      title: "Generating Progress Indicators",
-      description: "Please wait while we create PIs based on your jobs...",
+      title: "Generating Outputs",
+      description: "Please wait while we create Outputs based on your jobs...",
     });
 
     try {
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
 
       // After PIs are generated, generate Job-PI mappings
       toast({
-        title: "Generating Job-PI Mappings",
+        title: "Generating Job-Output Mappings",
         description:
           "Please wait while we create mappings between jobs and PIs...",
       });
@@ -320,7 +320,7 @@ export default function OnboardingPage() {
 
       // After Job-PI mappings are generated, generate PI-QBO mappings
       toast({
-        title: "Generating PI-QBO Mappings",
+        title: "Generating Output-Outcome Mappings",
         description:
           "Please wait while we create mappings between PIs and QBOs...",
       });
@@ -359,7 +359,7 @@ export default function OnboardingPage() {
       toast({
         title: "Generation Error",
         description:
-          "There was a problem generating PIs or mappings, but you can still return to dashboard.",
+          "There was a problem generating Outputs or mappings, but you can still return to dashboard.",
         variant: "destructive",
       });
       // Redirect to jobs page instead of dashboard with the onboarding tour 
@@ -973,11 +973,11 @@ export default function OnboardingPage() {
               {isJobsLoading
                 ? "Generating Jobs..."
                 : isPILoading
-                ? "Generating PIs..."
+                ? "Generating Outputs..."
                 : isMappingsLoading
-                ? "Generating Job-PI Mappings..."
+                ? "Generating Job-Output Mappings..."
                 : isPiQboMappingsLoading
-                ? "Generating PI-QBO Mappings..."
+                ? "Generating Output-Outcome Mappings..."
                 : "Go to Jobs feed"}
             </Button>
           </div>
