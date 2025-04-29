@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         console.error("Error updating job impact values:", error);
       }
     } catch (mappingError) {
-      console.error("Error generating PI mappings for job:", mappingError);
+      console.error("Error generating Output mappings for job:", mappingError);
       // Continue even if mapping generation fails
     }
 
