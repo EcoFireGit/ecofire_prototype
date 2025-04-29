@@ -18,6 +18,7 @@ import { useSearchParams } from "next/navigation";
 import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
 import { QBOCircles } from "@/components/qbo/qbo-circles";
+import { JobSkeletonGroup } from "@/components/jobs/job-skeleton";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -813,9 +814,36 @@ export default function JobsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading jobs...</div>
+      <div className="p-4 w-full">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Jobs</h1>
+        <div className="flex gap-2">
+          <div className="w-32 h-10 bg-gray-200 rounded-md animate-pulse"></div>
+          <div className="w-32 h-10 bg-gray-200 rounded-md animate-pulse"></div>
+        </div>
       </div>
+      
+      {/* Filter controls skeletons */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="w-32 h-9 bg-gray-200 rounded-md animate-pulse"></div>
+        ))}
+      </div>
+      
+      {/* Job skeletons */}
+      <div className="flex flex-col xl:flex-row gap-8">
+        <div className="w-full xl:w-1/2 xl:pr-6">
+          <JobSkeletonGroup count={4} />
+        </div>
+        
+        {/* QBO Circles skeleton */}
+        <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:border-l border-gray-200">
+          <div className="h-64 rounded-md bg-gray-100 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full bg-gray-200 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     );
   }
 
