@@ -499,12 +499,22 @@ export default function JobsPage() {
       setDialogOpen(true);
     };
 
-    // Add the event listener
-    window.addEventListener("openJobDialog", handleOpenDialog);
+    // Event handler for editing a job from TasksSidebar
+    const handleEditJob = (event: any) => {
+      if (event.detail && event.detail.job) {
+        setEditingJob(event.detail.job);
+        setDialogOpen(true);
+      }
+    };
 
-    // Clean up the event listener when component unmounts
+    // Add the event listeners
+    window.addEventListener("openJobDialog", handleOpenDialog);
+    window.addEventListener("open-job-edit", handleEditJob);
+
+    // Clean up the event listeners when component unmounts
     return () => {
       window.removeEventListener("openJobDialog", handleOpenDialog);
+      window.removeEventListener("open-job-edit", handleEditJob);
     };
   }, []);
 
@@ -811,6 +821,41 @@ export default function JobsPage() {
     // Update the sidebar state
     setTasksSidebarOpen(open);
   };
+
+  const updateJobProgressById = async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        // Update the job in the state
+        const updatedJob = result.data;
+        setActiveJobs((prevActiveJobs) =>
+          prevActiveJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+        setCompletedJobs((prevCompletedJobs) =>
+          prevCompletedJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+        setFilteredActiveJobs((prevFilteredActiveJobs) =>
+          prevFilteredActiveJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+        setFilteredCompletedJobs((prevFilteredCompletedJobs) =>
+          prevFilteredCompletedJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error updating job progress:", error);
+    }
+  };
+
 
   if (loading) {
     return (
