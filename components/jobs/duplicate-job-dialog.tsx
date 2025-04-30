@@ -86,6 +86,10 @@ export function DuplicateJobDialog({
         const tasksResult = await tasksResponse.json();
 
         if (tasksResult.success && tasksResult.data) {
+          // Keep track of newly created tasks
+          const newTasksMap = {}; // Maps original task titles to new task IDs
+          const newTaskIds = []; // Array to store all new task IDs
+          
           // Create new tasks for the duplicated job
           for (const task of tasksResult.data) {
             const newTask = {
@@ -96,13 +100,49 @@ export function DuplicateJobDialog({
             delete newTask._id;
             delete newTask.id;
 
-            await fetch("/api/tasks", {
+            const taskResponse = await fetch("/api/tasks", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify(newTask),
             });
+            
+            const taskResult = await taskResponse.json();
+            
+            if (taskResult.success && taskResult.data) {
+              // Store the new task ID with its title as key
+              newTasksMap[task.title] = taskResult.data._id;
+              newTaskIds.push(taskResult.data._id);
+            }
+          }
+          
+          // Update the job with the list of new task IDs
+          await fetch(`/api/jobs/${newJobId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ tasks: newTaskIds }),
+          });
+          
+          // If the source job has a next task, find the corresponding task in the new job
+          if (sourceJob.nextTaskId) {
+            // Find the title of the next task in the original job
+            const nextTaskDetails = tasksResult.data.find(task => 
+              task.id === sourceJob.nextTaskId || task._id === sourceJob.nextTaskId
+            );
+            
+            if (nextTaskDetails && newTasksMap[nextTaskDetails.title]) {
+              // Set the nextTaskId of the new job
+              await fetch(`/api/jobs/${newJobId}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ nextTaskId: newTasksMap[nextTaskDetails.title] }),
+              });
+            }
           }
         }
 
