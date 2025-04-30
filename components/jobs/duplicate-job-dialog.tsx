@@ -64,13 +64,16 @@ export function DuplicateJobDialog({
     });
 
     try {
-      // Create the duplicated job
+      // Create the duplicated job with a flag to indicate it's a duplication
       const jobResponse = await fetch("/api/jobs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(submissionData),
+        body: JSON.stringify({
+          ...submissionData,
+          _isDuplication: true // Add flag to indicate this is a duplicated job
+        }),
       });
 
       const jobResult = await jobResponse.json();

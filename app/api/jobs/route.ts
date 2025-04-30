@@ -52,30 +52,36 @@ export async function POST(request: Request) {
  
     const job = await jobService.createJob(jobData, userId!);
 
-    // Get business info to provide context for the mapping generation
-    let businessDescription = "";
-    try {
-      const businessInfo = await businessInfoService.getBusinessInfo(userId!);
-      businessDescription = businessInfo?.missionStatement || "";
-    } catch (error) {
-      console.error("Error fetching business info:", error);
-      // Continue even if we can't get the business description
-    }
-
-    // Generate mappings for the new job
-    try {
-      await mappingGenerator.generateMappingsForJob(userId!, job, businessDescription);
-      
-      // Calculate job impact values after creating mappings
+    // Skip mapping generation if the job is being duplicated
+    // The duplicate-job-dialog.tsx will handle copying the mappings
+    const isDuplication = jobData._isDuplication === true;
+    
+    if (!isDuplication) {
+      // Get business info to provide context for the mapping generation
+      let businessDescription = "";
       try {
-        const { updateJobImpactValues } = await import('@/lib/services/job-impact.service');
-        await updateJobImpactValues(userId!);
+        const businessInfo = await businessInfoService.getBusinessInfo(userId!);
+        businessDescription = businessInfo?.missionStatement || "";
       } catch (error) {
-        console.error("Error updating job impact values:", error);
+        console.error("Error fetching business info:", error);
+        // Continue even if we can't get the business description
       }
-    } catch (mappingError) {
-      console.error("Error generating Output mappings for job:", mappingError);
-      // Continue even if mapping generation fails
+
+      // Generate mappings for the new job
+      try {
+        await mappingGenerator.generateMappingsForJob(userId!, job, businessDescription);
+      } catch (mappingError) {
+        console.error("Error generating Output mappings for job:", mappingError);
+        // Continue even if mapping generation fails
+      }
+    }
+    
+    // Always calculate job impact values whether it's a new or duplicated job
+    try {
+      const { updateJobImpactValues } = await import('@/lib/services/job-impact.service');
+      await updateJobImpactValues(userId!);
+    } catch (error) {
+      console.error("Error updating job impact values:", error);
     }
 
     return NextResponse.json({
