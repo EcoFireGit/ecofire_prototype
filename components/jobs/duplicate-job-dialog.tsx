@@ -44,6 +44,7 @@ export function DuplicateJobDialog({
         ...sourceJob,
         title: `${sourceJob.title} (Copy)`,
         nextTaskId: undefined,
+        tasks: [],
         dueDate: sourceJob.dueDate
           ? new Date(sourceJob.dueDate).toISOString().split("T")[0]
           : "",
