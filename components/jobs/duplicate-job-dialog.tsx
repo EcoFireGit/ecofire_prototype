@@ -87,8 +87,8 @@ export function DuplicateJobDialog({
 
         if (tasksResult.success && tasksResult.data) {
           // Keep track of newly created tasks
-          const newTasksMap = {}; // Maps original task titles to new task IDs
-          const newTaskIds = []; // Array to store all new task IDs
+          const newTasksMap: Record<string, string> = {}; // Maps original task titles to new task IDs
+          const newTaskIds: string[] = []; // Array to store all new task IDs
           
           // Create new tasks for the duplicated job
           for (const task of tasksResult.data) {
