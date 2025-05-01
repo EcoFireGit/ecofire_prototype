@@ -21,6 +21,7 @@ import {
 import { useState, useEffect } from "react";
 import { Job } from "./table/columns";
 import { useToast } from "@/hooks/use-toast";
+import { Task } from "@/lib/models/task.model";
 
 interface DuplicateJobDialogProps {
   open: boolean;
@@ -130,7 +131,7 @@ export function DuplicateJobDialog({
           if (sourceJob.nextTaskId) {
             // Find the title of the next task in the original job
             const nextTaskDetails = tasksResult.data.find(
-              (task) =>
+              (task: Task) =>
                 task.id === sourceJob.nextTaskId ||
                 task._id === sourceJob.nextTaskId,
             );
