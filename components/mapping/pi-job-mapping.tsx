@@ -45,7 +45,7 @@ export default function PiJobMappingPage() {
       setJobsList(jobsData.data || []);
       
       if (mappingsResult.success) {
-        const tableData = convertJPMappingToTableData(mappingsResult.data);
+        const tableData = convertJPMappingToTableData(mappingsResult.data, pisData.data);
         setData(tableData);
       } else {
         setError(mappingsResult.error);

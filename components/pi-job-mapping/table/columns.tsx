@@ -16,6 +16,7 @@ import {
 
 // Import the database model type
 import { JobPiMapping } from "@/lib/models/pi-job-mapping.model";
+import { PIs } from "@/lib/models/pi.model";
 
 // Table-specific type that converts from the database model
 export type MappingJP = {
@@ -30,17 +31,23 @@ export type MappingJP = {
 };
 
 // Function to convert from database model to table data
-export function convertJPMappingToTableData(JPMap: JobPiMapping[]): MappingJP[] {
-  return JPMap.map(JobPiMapping => ({
-    id: JobPiMapping._id,
-    jobId: JobPiMapping.jobId,
-    piId: JobPiMapping.piId || '',
-    piImpactValue: JobPiMapping.piImpactValue || 0,
-    jobName: JobPiMapping.jobName,
-    piName: JobPiMapping.piName || '',
-    piTarget: JobPiMapping.piTarget || 0, // Added field
-    notes: JobPiMapping.notes || ''
-  }));
+export function convertJPMappingToTableData(JPMap: JobPiMapping[], pisList: PIs[]): MappingJP[] {
+
+  return JPMap.map(JobPiMapping => {
+    const pi = pisList.find(pi => pi._id === JobPiMapping.piId);
+    
+    return {
+      id: JobPiMapping._id,
+      jobId: JobPiMapping.jobId,
+      piId: JobPiMapping.piId || '',
+      piImpactValue: JobPiMapping.piImpactValue || 0,
+      jobName: JobPiMapping.jobName,
+      piName: pi?.name || 'Unknown Output',
+      piTarget: JobPiMapping.piTarget || 0, // Added field
+      notes: JobPiMapping.notes || ''
+    }
+    });
+
 }
 
 export const columns = (
