@@ -688,7 +688,7 @@ export default function JobsPage() {
   };
 
   const handleCreate = async (jobData: Partial<Job>) => {
-    setCreatingJob(true); // Show loading toast
+    setCreatingJob(true); // Set creating job state to true
     try {
       const response = await fetch("/api/jobs", {
         method: "POST",
@@ -710,7 +710,10 @@ export default function JobsPage() {
           title: "Success",
           description: "Job successfully created",
         });
-        fetchJobs(); // Refresh jobs
+        await fetchJobs(); // Refresh jobs and wait for it to complete
+        
+        // Now we can close the dialog after jobs have been refreshed
+        setDialogOpen(false);
       } else {
         throw new Error(result.error);
       }
@@ -721,7 +724,7 @@ export default function JobsPage() {
         variant: "destructive",
       });
     } finally {
-      setCreatingJob(false); // Hide loading toast
+      setCreatingJob(false); // Reset creating job state
     }
   };
 

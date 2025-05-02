@@ -60,7 +60,6 @@ export function JobDialog({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
   const { toast } = useToast();
-  const creationToastRef = useRef<{ id: string; dismiss: () => void } | null>(null);
 
   // Initialize form data
   useEffect(() => {
@@ -127,19 +126,15 @@ export function JobDialog({
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
 
-    // Show the creation in progress toast
+    // Set isSubmitting state to true to disable the button and show "Creating..." text
     setIsSubmitting(true);
-    creationToastRef.current = toast({
-      title: "Creating job...",
-      description: "Your job is being created. Please wait.",
-      duration: 100000, // Long duration to ensure it stays visible
-    });
-
+    
     // Pass the submission data to parent component
+    // The dialog will remain open until the parent component closes it
     onSubmit(submissionData);
     
-    // Close the dialog
-    onOpenChange(false);
+    // We don't close the dialog here anymore, it will be closed by the parent when job creation completes
+    // onOpenChange(false); 
   };
 
   const handleCreateBusinessFunction = async (name: string) => {
