@@ -36,6 +36,7 @@ export function DuplicateJobDialog({
   sourceJob,
 }: DuplicateJobDialogProps) {
   const [formData, setFormData] = useState<Partial<Job>>({});
+  const [isLoading, setIsLoading] = useState(false); // Add loading state
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,21 +48,20 @@ export function DuplicateJobDialog({
           ? new Date(sourceJob.dueDate).toISOString().split("T")[0]
           : "",
       });
+      // Reset loading state when dialog opens
+      setIsLoading(false);
     }
   }, [open, sourceJob]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Set loading state to true when duplication starts
+    setIsLoading(true);
+    
     const submissionData = { ...formData };
     if (submissionData.dueDate) {
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
-
-    // Show initial toast notification immediately
-    toast({
-      title: "Duplicating Job",
-      description: `Creating a copy of "${sourceJob.title}" with all its tasks...`,
-    });
 
     try {
       // Create the duplicated job with a flag to indicate it's a duplication
@@ -139,13 +139,13 @@ export function DuplicateJobDialog({
           }
         }
 
-        // Show success toast
+        // Show success toast after completion
         toast({
           title: "Job Duplicated",
           description: `Successfully duplicated "${sourceJob.title}" with all its tasks`,
         });
 
-        // Close the dialog and refresh the page
+        // Close the dialog and refresh the page only after completion
         onOpenChange(false);
         window.location.reload();
       } else {
@@ -153,6 +153,8 @@ export function DuplicateJobDialog({
       }
     } catch (error) {
       console.error("Error during job duplication:", error);
+      // Reset loading state on error
+      setIsLoading(false);
       toast({
         title: "Duplication Failed",
         description:
@@ -219,7 +221,9 @@ export function DuplicateJobDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit">Create Duplicate</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Duplicating job..." : "Create Duplicate"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
