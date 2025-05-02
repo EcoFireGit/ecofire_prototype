@@ -18,6 +18,7 @@ import { useSearchParams } from "next/navigation";
 import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
 import { QBOCircles } from "@/components/qbo/qbo-circles";
+import { JobSkeletonGroup } from "@/components/jobs/job-skeleton";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -76,6 +77,7 @@ export default function JobsPage() {
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [isTableViewEnabled, setIsTableViewEnabled] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false); //State to track job creation
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -498,12 +500,22 @@ export default function JobsPage() {
       setDialogOpen(true);
     };
 
-    // Add the event listener
-    window.addEventListener("openJobDialog", handleOpenDialog);
+    // Event handler for editing a job from TasksSidebar
+    const handleEditJob = (event: any) => {
+      if (event.detail && event.detail.job) {
+        setEditingJob(event.detail.job);
+        setDialogOpen(true);
+      }
+    };
 
-    // Clean up the event listener when component unmounts
+    // Add the event listeners
+    window.addEventListener("openJobDialog", handleOpenDialog);
+    window.addEventListener("open-job-edit", handleEditJob);
+
+    // Clean up the event listeners when component unmounts
     return () => {
       window.removeEventListener("openJobDialog", handleOpenDialog);
+      window.removeEventListener("open-job-edit", handleEditJob);
     };
   }, []);
 
@@ -687,6 +699,7 @@ export default function JobsPage() {
   };
 
   const handleCreate = async (jobData: Partial<Job>) => {
+    setCreatingJob(true); // Set creating job state to true
     try {
       const response = await fetch("/api/jobs", {
         method: "POST",
@@ -706,9 +719,12 @@ export default function JobsPage() {
       if (result.success) {
         toast({
           title: "Success",
-          description: "Job created successfully",
+          description: "Job successfully created",
         });
-        fetchJobs();
+        await fetchJobs(); // Refresh jobs and wait for it to complete
+        
+        // Now we can close the dialog after jobs have been refreshed
+        setDialogOpen(false);
       } else {
         throw new Error(result.error);
       }
@@ -718,6 +734,8 @@ export default function JobsPage() {
         description: "Failed to create job",
         variant: "destructive",
       });
+    } finally {
+      setCreatingJob(false); // Reset creating job state
     }
   };
 
@@ -811,11 +829,73 @@ export default function JobsPage() {
     setTasksSidebarOpen(open);
   };
 
+  const updateJobProgressById = async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        // Update the job in the state
+        const updatedJob = result.data;
+        setActiveJobs((prevActiveJobs) =>
+          prevActiveJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+        setCompletedJobs((prevCompletedJobs) =>
+          prevCompletedJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+        setFilteredActiveJobs((prevFilteredActiveJobs) =>
+          prevFilteredActiveJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+        setFilteredCompletedJobs((prevFilteredCompletedJobs) =>
+          prevFilteredCompletedJobs.map((job) =>
+            job.id === updatedJob.id ? updatedJob : job
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error updating job progress:", error);
+    }
+  };
+
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading jobs...</div>
+      <div className="p-4 w-full">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Jobs</h1>
+        <div className="flex gap-2">
+          <div className="w-32 h-10 bg-gray-200 rounded-md animate-pulse"></div>
+          <div className="w-32 h-10 bg-gray-200 rounded-md animate-pulse"></div>
+        </div>
       </div>
+      
+      {/* Filter controls skeletons */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="w-32 h-9 bg-gray-200 rounded-md animate-pulse"></div>
+        ))}
+      </div>
+      
+      {/* Job skeletons */}
+      <div className="flex flex-col xl:flex-row gap-8">
+        <div className="w-full xl:w-1/2 xl:pr-6">
+          <JobSkeletonGroup count={4} />
+        </div>
+        
+        {/* QBO Circles skeleton */}
+        <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:border-l border-gray-200">
+          <div className="h-64 rounded-md bg-gray-100 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full bg-gray-200 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     );
   }
 
