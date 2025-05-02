@@ -8,7 +8,7 @@ import {
   Search,
   Settings,
   Download,
-  Dog,
+  PawPrint,
   Target,
   Clipboard,
   BarChart2,
@@ -79,7 +79,8 @@ const items = [
   {
     title: "Jija",
     url: "/jija",
-    icon: Dog,
+    icon: PawPrint,
+    id: "jija",
   },
   {
     title: "Search",

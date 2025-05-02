@@ -45,9 +45,9 @@ export function convertMappingsToTableData(
     return {
       id: mapping._id,
       piId: mapping.piId,
-      piName: pi?.name || 'Unknown PI',
+      piName: pi?.name || 'Unknown Output',
       qboId: mapping.qboId,
-      qboName: qbo?.name || 'Unknown QBO',
+      qboName: qbo?.name || 'Unknown Outcome',
       piTarget: mapping.piTarget,
       qboTarget: mapping.qboTarget,
       qboImpact: mapping.qboImpact,

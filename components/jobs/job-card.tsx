@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, PawPrint } from "lucide-react";
+import { Trash2, PawPrint, Copy } from "lucide-react";
+import { DuplicateJobDialog } from "./duplicate-job-dialog";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +27,7 @@ interface JobCardProps {
   onSelect: (jobId: string, checked: boolean) => void;
   onOpenTasksSidebar: (job: Job) => void;
   isSelected: boolean;
-  taskOwnerMap?: Record<string, string>; 
+  taskOwnerMap?: Record<string, string>;
   hideCheckbox?: boolean;
   taskCounts?: Record<string, { total: number; completed: number }>;
 }
@@ -39,11 +41,12 @@ export function JobCard({
   isSelected,
   taskOwnerMap,
   hideCheckbox = false,
-  taskCounts = {}
+  taskCounts = {},
 }: JobCardProps) {
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const router = useRouter();
   const [currentJob, setCurrentJob] = useState<Job>(job);
-  
+
   // Update currentJob when props change
   useEffect(() => {
     setCurrentJob(job);
@@ -54,13 +57,14 @@ export function JobCard({
     try {
       const response = await fetch(`/api/jobs/${job.id}`);
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         // Update the local job state with fresh data
         setCurrentJob({
           ...result.data,
           // Preserve the businessFunctionName since it might not be included in the API response
-          businessFunctionName: result.data.businessFunctionName || job.businessFunctionName
+          businessFunctionName:
+            result.data.businessFunctionName || job.businessFunctionName,
         });
       }
     } catch (error) {
@@ -80,15 +84,15 @@ export function JobCard({
 
     // Add event listener
     window.addEventListener(
-      'job-owner-update', 
-      handleOwnerUpdate as EventListener
+      "job-owner-update",
+      handleOwnerUpdate as EventListener,
     );
-    
+
     // Clean up on unmount
     return () => {
       window.removeEventListener(
-        'job-owner-update', 
-        handleOwnerUpdate as EventListener
+        "job-owner-update",
+        handleOwnerUpdate as EventListener,
       );
     };
   }, [job.id]);
@@ -96,13 +100,13 @@ export function JobCard({
   // Format date
   const formatDate = (dateString?: string) => {
     if (!dateString) return "No due date";
-    
+
     // Parse the date and preserve the UTC date
     const date = new Date(dateString);
-    
+
     // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
-    const utcDateString = date.toISOString().split('T')[0];
-    const displayDate = new Date(utcDateString + 'T00:00:00');
+    const utcDateString = date.toISOString().split("T")[0];
+    const displayDate = new Date(utcDateString + "T00:00:00");
 
     return displayDate.toLocaleDateString("en-US", {
       year: "numeric",
@@ -123,8 +127,9 @@ export function JobCard({
   // Get task count
   const getTaskCount = () => {
     // Get the completed tasks from taskCounts
-    const completed = taskCounts && taskCounts[job.id] ? taskCounts[job.id].completed : 0;
-    
+    const completed =
+      taskCounts && taskCounts[job.id] ? taskCounts[job.id].completed : 0;
+
     // Get the total tasks from either taskCounts or job.tasks array
     let total = 0;
     if (taskCounts && taskCounts[job.id]) {
@@ -132,20 +137,20 @@ export function JobCard({
     } else if (currentJob.tasks && Array.isArray(currentJob.tasks)) {
       total = currentJob.tasks.length;
     }
-    
+
     // If there are no tasks, show "No tasks added"
     if (total === 0) {
       return "No tasks added";
     }
-    
+
     return `${completed} of ${total} tasks done`;
   };
 
   // Generate a consistent color for a business function
-  const getFunctionColor = () => {
-    const functionName = currentJob.businessFunctionName || "None";
+  const getBusinessFunctionColor = () => {
+    const businessFunctionName = currentJob.businessFunctionName || "None";
     // Generate a hash code from the function name
-    const hashCode = functionName.split('').reduce((acc, char) => {
+    const hashCode = businessFunctionName.split('').reduce((acc, char) => {
       return char.charCodeAt(0) + ((acc << 5) - acc);
     }, 0);
     
@@ -161,8 +166,8 @@ export function JobCard({
   };
 
   return (
-    <div 
-      style={{ width: '100%', minHeight: '180px' }}
+    <div
+      style={{ width: "100%", minHeight: "180px" }}
       className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
         isSelected ? "ring-2 ring-primary" : ""
       }`}
@@ -183,44 +188,47 @@ export function JobCard({
             )}
             <span 
               className="px-2 py-1 text-xs font-medium rounded"
-              style={getFunctionColor()}
+              style={getBusinessFunctionColor()}
             >
               {currentJob.businessFunctionName || "No function"}
             </span>
           </div>
-          <span className="text-sm font-medium">
-            {getOwnerName()}
-          </span>
+          <span className="text-sm font-medium">{getOwnerName()}</span>
         </div>
-        
+
         {/* Job title */}
         <div className="mb-6 pl-6">
           <h3 className="text-base font-semibold">{currentJob.title}</h3>
         </div>
-        
+
         {/* Bottom section with task count and due date */}
         <div className="flex items-center justify-between pl-6">
           <div className="space-y-1">
             <p className="text-sm text-gray-500">{getTaskCount()}</p>
-            <p className="text-sm text-gray-500">Due date: {formatDate(currentJob.dueDate)}</p>
+            <p className="text-sm text-gray-500">
+              Due date: {formatDate(currentJob.dueDate)}
+            </p>
           </div>
         </div>
       </div>
-      
+
       {/* Action buttons */}
-      <div className="flex justify-end p-2 border-t" onClick={(e) => e.stopPropagation()}>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-8 w-8" 
-          onClick={(e) => {
+      <div
+        className="flex justify-end p-2 border-t"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={async (e) => {
             e.stopPropagation();
-            onEdit(currentJob);
+            setIsDuplicateDialogOpen(true);
           }}
         >
-          <Edit className="h-4 w-4" />
+          <Copy className="h-4 w-4" />
         </Button>
-        
+
         <Button
           variant="ghost"
           size="icon"
@@ -228,7 +236,9 @@ export function JobCard({
           title="Ask Jija about this job"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/jija?jobTitle=${encodeURIComponent(currentJob.title)}`);
+            router.push(
+              `/jija?jobTitle=${encodeURIComponent(currentJob.title)}`,
+            );
           }}
         >
           <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />
@@ -257,6 +267,13 @@ export function JobCard({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      <DuplicateJobDialog
+        open={isDuplicateDialogOpen}
+        onOpenChange={setIsDuplicateDialogOpen}
+        sourceJob={currentJob}
+        onSubmit={() => {}} // The actual duplication logic is handled inside DuplicateJobDialog
+      />
     </div>
   );
 }
