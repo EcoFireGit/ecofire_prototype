@@ -41,25 +41,11 @@ export default function PiJobMappingPage() {
       const jobsData = await jobsResponse.json();
       const mappingsResult = await mappingsResponse.json();
       
-      // Filter out deleted jobs and completed jobs
-      const filteredJobs = jobsData.data.filter((job: any) => 
-        // Keep job if isDeleted is false or doesn't exist AND isDone is false
-        (job.isDeleted === false || job.isDeleted === undefined) && 
-        job.isDone === false
-      );
-      
       setPisList(pisData.data || []);
-      setJobsList(filteredJobs || []);
+      setJobsList(jobsData.data || []);
       
       if (mappingsResult.success) {
-        // Only convert mappings that reference non-deleted and active jobs
-        const activeJobIds = new Set(filteredJobs.map((job: any) => job._id));
-        const filteredMappings = mappingsResult.data.filter((mapping: any) => 
-          // Only include mappings where the jobId is in our filtered job list
-          activeJobIds.has(mapping.jobId)
-        );
-        
-        const tableData = convertJPMappingToTableData(filteredMappings, pisData.data, filteredJobs);
+        const tableData = convertJPMappingToTableData(mappingsResult.data);
         setData(tableData);
       } else {
         setError(mappingsResult.error);

@@ -5,6 +5,7 @@ import {
   Calendar,
   Home,
   Inbox,
+  Search,
   Settings,
   Download,
   PawPrint,
@@ -68,7 +69,7 @@ const items = [
   {
     title: "Business Functions",
     url: "/business-functions",
-    icon: BriefcaseBusinessIcon,
+    icon: Search,
   },
   {
     title: "Business Info",
@@ -82,9 +83,14 @@ const items = [
     id: "jija",
   },
   {
+    title: "Search",
+    url: "/search",
+    icon: Search,
+  },
+  {
     title: "Organizations",
     url: "/organizations",
-    icon: Users,
+    icon: BriefcaseBusinessIcon,
   },
   {
     title: "Calendar",
@@ -97,19 +103,19 @@ const items = [
 // Backstage sub-items
 const backstageItems = [
   {
-    title: "Outcomes",
+    title: "Output & Outcome Mapping",
+    url: "/backstage/mappings",
+    icon: Target,
+  },
+  {
+    title: "Outcome Board",
     url: "/backstage/qos",
     icon: Clipboard,
   },
   {
-    title: "Outputs",
+    title: "Output Board",
     url: "/backstage/pis",
     icon: BarChart2,
-  },
-  {
-    title: "Mappings",
-    url: "/backstage/mappings",
-    icon: Target,
   },
 ];
 
@@ -188,7 +194,7 @@ export function AppSidebar() {
 
     // Check if we're already on the jobs page
     const currentPath = window.location.pathname;
-    if (currentPath === "/jobs") {
+    if (currentPath === '/jobs') {
       // If already on jobs page, apply filters directly
       window.dispatchEvent(
         new CustomEvent("applyWellnessFilters", {
@@ -197,7 +203,7 @@ export function AppSidebar() {
       );
     } else {
       // Otherwise navigate to jobs page - filters will be applied on page load
-      window.location.href = "/jobs";
+      window.location.href = '/jobs';
     }
   }, []);
 
@@ -345,3 +351,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+

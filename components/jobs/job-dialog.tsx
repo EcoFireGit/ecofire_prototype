@@ -19,10 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Job } from "./table/columns";
 import { CreateDialog } from "@/components/business-functions/create-dialog";
-import { useToast } from "@/hooks/use-toast";
 
 interface BusinessFunction {
   id: string;
@@ -56,10 +55,8 @@ export function JobDialog({
   const [formData, setFormData] = useState<Partial<Job>>(emptyFormState);
   const [businessFunctions, setBusinessFunctions] = useState<BusinessFunction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
-  const { toast } = useToast();
 
   // Initialize form data
   useEffect(() => {
@@ -126,15 +123,8 @@ export function JobDialog({
       submissionData.dueDate = `${submissionData.dueDate}T00:00:00.000Z`;
     }
 
-    // Set isSubmitting state to true to disable the button and show "Creating..." text
-    setIsSubmitting(true);
-    
-    // Pass the submission data to parent component
-    // The dialog will remain open until the parent component closes it
     onSubmit(submissionData);
-    
-    // We don't close the dialog here anymore, it will be closed by the parent when job creation completes
-    // onOpenChange(false); 
+    onOpenChange(false);
   };
 
   const handleCreateBusinessFunction = async (name: string) => {
@@ -261,10 +251,8 @@ export function JobDialog({
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={loading || isSubmitting}>
-                {isSubmitting ? 
-                  (mode === "create" ? "Creating..." : "Saving...") : 
-                  (mode === "create" ? "Create" : "Save Changes")}
+              <Button type="submit" disabled={loading}>
+                {mode === "create" ? "Create" : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>

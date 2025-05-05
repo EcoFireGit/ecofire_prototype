@@ -21,21 +21,6 @@ export type BusinessFunction = {
   jobCount?: number;
 }
 
-// Generate a consistent color for a business function
-const getBusinessFunctionColor = (name: string) => {
-  // Generate a hash code from the function name
-  const hashCode = name.split('').reduce((acc, char) => {
-    return char.charCodeAt(0) + ((acc << 5) - acc);
-  }, 0);
-  
-  // Map to HSL color space for better distribution of colors
-  const h = Math.abs(hashCode % 360);
-  const s = 85; // Keep saturation fixed for better readability
-  const l = 88; // Higher lightness for background with dark text
-  
-  return `hsl(${h}, ${s}%, ${l}%)`;
-};
-
 export const columns = (
   onDelete: (id: string) => void,
   onEdit: (id: string, name: string) => void
@@ -45,27 +30,16 @@ export const columns = (
     header: "Name",
     cell: ({ row }) => {
       const isDefault = row.original.isDefault;
-      const name = row.getValue("name") as string;
-      const bgColor = getBusinessFunctionColor(name);
-      const textColor = bgColor.replace('88%', '30%');
-      
       return (
         <div className="flex items-center gap-2">
-          <span 
-            className="px-2 py-1 rounded-md text-sm font-medium"
-            style={{ 
-              backgroundColor: bgColor,
-              color: textColor
-            }}
-          >
-            {name}
-          </span>
+          {row.getValue("name")}
           {/* {isDefault && (
             <Badge variant="secondary">Default</Badge>
           )} 
            
           removed the default badge from the table
            */}
+
         </div>
       );
     }

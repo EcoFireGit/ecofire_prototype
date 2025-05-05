@@ -67,35 +67,31 @@ export async function PUT(
     const { id } = await params;
     const updateData = await request.json();
 
-    // Store the initial update result
     let updatedJob = await jobService.updateJob(id, userId!, updateData);
-    
-    // Check if the job wasn't found
-    if (!updatedJob) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Job not found'
-        },
-        { status: 404 }
-      );
-    }
+
   
-    // Set first task as next task if needed
-    if(updateData && !('nextTaskId' in updateData)) { 
-      const jobWithNextTask = await jobService.setFirstTaskAsNextTaskId(id);
-      if (jobWithNextTask) {
-        updatedJob = jobWithNextTask;
-      }
+    if(updateData && !( 'nextTaskId' in updateData)) { //set first task in the array as next task if the next task is not beig set as NONE/specific value
+      updatedJob = await jobService.setFirstTaskAsNextTaskId(id);
+      if (!updatedJob) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Job not found'
+          },
+          { status: 404 }
+        );
+      } 
     }
 
-    // Update tasks status if requested
     const forceUpdateTasks = request.nextUrl.searchParams.get('updateTasks') === 'true';
+
     if(forceUpdateTasks && updatedJob) {
-      await updateTasksStatus(updateData, updatedJob, userId!);
+        await updateTasksStatus(updateData, updatedJob, userId!);
     }
   
-    // Return the final updated job
+    
+
+
     return NextResponse.json({
       success: true,
       data: updatedJob
