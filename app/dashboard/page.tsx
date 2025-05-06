@@ -333,7 +333,6 @@ export default function Dashboard() {
                               <span
                                 className={`inline-flex items-center rounded-md px-3 py-1 text-sm ${businessFuncClass}`}
                               >
-                                <span className="mr-1">🔊</span>{" "}
                                 {job.businessFunctionName}
                               </span>
                             ) : (
