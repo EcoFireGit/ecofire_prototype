@@ -19,7 +19,9 @@ export default function Dashboard() {
   const [topJobs, setTopJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [taskOwnerMap, setTaskOwnerMap] = useState<Record<string, string>>({});
-  const [taskCounts, setTaskCounts] = useState<Record<string, { total: number; completed: number }>>({});
+  const [taskCounts, setTaskCounts] = useState<
+    Record<string, { total: number; completed: number }>
+  >({});
   const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const router = useRouter();
@@ -109,9 +111,9 @@ export default function Dashboard() {
         if (taskIds.length > 0) {
           await fetchTaskOwners(taskIds);
         }
-        
+
         // Fetch task counts for the top jobs
-        await fetchTaskCounts(top5Jobs.map(job => job.id));
+        await fetchTaskCounts(top5Jobs.map((job) => job.id));
       }
     } catch (error) {
       console.error("Error fetching job data:", error);
@@ -202,23 +204,23 @@ export default function Dashboard() {
 
   const fetchTaskCounts = async (jobIds: string[]) => {
     if (jobIds.length === 0) return;
-    
+
     try {
       // Construct query string with all job IDs
-      const queryString = jobIds.map(id => `ids=${id}`).join('&');
+      const queryString = jobIds.map((id) => `ids=${id}`).join("&");
       const response = await fetch(`/api/jobs/progress?${queryString}`);
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch task counts');
+        throw new Error("Failed to fetch task counts");
       }
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         setTaskCounts(result.data);
       }
     } catch (error) {
-      console.error('Error fetching task counts:', error);
+      console.error("Error fetching task counts:", error);
     }
   };
 
@@ -334,20 +336,23 @@ export default function Dashboard() {
 
                       // Generate a consistent color for a business function
                       const getBusinessFunctionColor = () => {
-                        const businessFunctionName = job.businessFunctionName || "None";
+                        const businessFunctionName =
+                          job.businessFunctionName || "None";
                         // Generate a hash code from the function name
-                        const hashCode = businessFunctionName.split('').reduce((acc, char) => {
-                          return char.charCodeAt(0) + ((acc << 5) - acc);
-                        }, 0);
-                        
+                        const hashCode = businessFunctionName
+                          .split("")
+                          .reduce((acc, char) => {
+                            return char.charCodeAt(0) + ((acc << 5) - acc);
+                          }, 0);
+
                         // Map to HSL color space for better distribution of colors
                         const h = Math.abs(hashCode % 360);
                         const s = 85; // Keep saturation fixed for better readability
                         const l = 88; // Higher lightness for background with dark text
-                        
+
                         return {
                           backgroundColor: `hsl(${h},${s}%,${l}%)`,
-                          color: `hsl(${h},${s}%,30%)`
+                          color: `hsl(${h},${s}%,30%)`,
                         };
                       };
 
@@ -356,23 +361,19 @@ export default function Dashboard() {
                         // Get the task counts from our taskCounts state
                         const completed = taskCounts[job.id]?.completed || 0;
                         const total = taskCounts[job.id]?.total || 0;
-                        
+
                         // If there are no tasks, show "No tasks added"
                         if (total === 0) {
                           return "No tasks added";
                         }
-                        
+
                         return `${completed} of ${total} tasks done`;
                       };
 
                       const businessFuncStyle = getBusinessFunctionColor();
 
                       return (
-                        <tr
-                          key={job.id}
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleOpenTasksSidebar(job)}
-                        >
+                        <tr key={job.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">
                             <div>
                               {job.title}
