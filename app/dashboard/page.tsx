@@ -277,20 +277,79 @@ export default function Dashboard() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4 w-full">
-              {topJobs.map(job => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  onEdit={() => router.push(`/jobs?edit=${job.id}`)}
-                  onDelete={(id) => console.log("Delete not available in dashboard view")}
-                  onSelect={handleSelectJob}
-                  onOpenTasksSidebar={handleOpenTasksSidebar}
-                  isSelected={false}
-                  taskOwnerMap={taskOwnerMap}
-                  hideCheckbox={true}
-                />
-              ))}
+            <div className="w-full overflow-hidden rounded-lg bg-white">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full whitespace-nowrap">
+                  <thead>
+                    <tr className="border-b bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3">Jobs</th>
+                      <th className="px-6 py-3">Business Func.</th>
+                      <th className="px-6 py-3">Due Date</th>
+                      <th className="px-6 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {topJobs.map(job => {
+                      // Parse due date for formatting
+                      let formattedDate = "N/A";
+                      if (job.dueDate) {
+                        const date = new Date(job.dueDate);
+                        formattedDate = date.toLocaleDateString("en-US", { 
+                          month: "numeric", 
+                          day: "numeric", 
+                          year: "2-digit"
+                        });
+                      }
+                      
+                      // Determine business function class based on name
+                      const isSales = job.businessFunctionName?.toLowerCase().includes('sales');
+                      const isMarketing = job.businessFunctionName?.toLowerCase().includes('marketing');
+                      
+                      const businessFuncClass = isSales 
+                        ? "bg-green-100 text-green-800" 
+                        : isMarketing 
+                          ? "bg-orange-100 text-orange-800" 
+                          : "bg-blue-100 text-blue-800";
+                      
+                      return (
+                        <tr 
+                          key={job.id} 
+                          className="hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleOpenTasksSidebar(job)}
+                        >
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            {job.title}
+                          </td>
+                          <td className="px-6 py-4">
+                            {job.businessFunctionName ? (
+                              <span className={`inline-flex items-center rounded-md px-3 py-1 text-sm ${businessFuncClass}`}>
+                                <span className="mr-1">🔊</span> {job.businessFunctionName}
+                              </span>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {formattedDate}
+                          </td>
+                          <td className="px-6 py-4 text-right text-sm font-medium">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/jobs?edit=${job.id}`);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </section>
