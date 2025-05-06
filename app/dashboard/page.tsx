@@ -1,17 +1,16 @@
-
 // app/dashboard/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import QBOProgressChart from '@/components/dashboard/qbo-progress-chart';
-import { QBOs } from '@/lib/models/qbo.model';
-import { Job } from '@/components/jobs/table/columns';
-import { JobCard } from '@/components/jobs/job-card';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { TasksSidebar } from '@/components/tasks/tasks-sidebar';
+import { useState, useEffect } from "react";
+import QBOProgressChart from "@/components/dashboard/qbo-progress-chart";
+import { QBOs } from "@/lib/models/qbo.model";
+import { Job } from "@/components/jobs/table/columns";
+import { JobCard } from "@/components/jobs/job-card";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
 
 export default function Dashboard() {
   const [qbos, setQbos] = useState<QBOs[]>([]);
@@ -28,17 +27,17 @@ export default function Dashboard() {
   const fetchQBOs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/qbos');
+      const response = await fetch("/api/qbos");
       const data = await response.json();
-      
+
       if (data.success) {
         setQbos(data.data);
         setError(null);
       } else {
-        setError(data.error || 'Failed to fetch QBOs');
+        setError(data.error || "Failed to fetch QBOs");
       }
     } catch (err) {
-      setError('An error occurred while fetching QBOs');
+      setError("An error occurred while fetching QBOs");
       console.error(err);
     } finally {
       setLoading(false);
@@ -48,19 +47,19 @@ export default function Dashboard() {
   const fetchJobs = async () => {
     try {
       setJobsLoading(true);
-      
+
       // Fetch jobs
-      const response = await fetch('/api/jobs');
+      const response = await fetch("/api/jobs");
       const result = await response.json();
-      
+
       if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch jobs');
+        throw new Error(result.error || "Failed to fetch jobs");
       }
-      
+
       // Fetch business functions to map IDs to names
-      const bfResponse = await fetch('/api/business-functions');
+      const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
-      
+
       // Create a map of business function IDs to names
       const businessFunctionMap: Record<string, string> = {};
       if (bfResult.success && Array.isArray(bfResult.data)) {
@@ -70,52 +69,52 @@ export default function Dashboard() {
           }
         });
       }
-      
+
       // Convert API response to Job format with resolved business function names
       let jobs = result.data.map((job: any) => ({
         id: job._id,
         title: job.title,
         notes: job.notes || undefined,
         businessFunctionId: job.businessFunctionId || undefined,
-        businessFunctionName: job.businessFunctionId && businessFunctionMap[job.businessFunctionId] 
-          ? businessFunctionMap[job.businessFunctionId] 
-          : job.businessFunctionName || undefined,
+        businessFunctionName:
+          job.businessFunctionId && businessFunctionMap[job.businessFunctionId]
+            ? businessFunctionMap[job.businessFunctionId]
+            : job.businessFunctionName || undefined,
         dueDate: job.dueDate ? new Date(job.dueDate).toISOString() : undefined,
         isDone: job.isDone || false,
         nextTaskId: job.nextTaskId || undefined,
         tasks: job.tasks || [],
         impact: job.impact || 0,
       }));
-      
+
       // Filter active jobs only
       jobs = jobs.filter((job: Job) => !job.isDone);
-      
+
       // Sort jobs - can add more complex sorting logic here as needed
       // For now, simple sorting by impact score (higher is better)
       // Ensure impact values are defined with fallback to 0
       jobs.sort((a: Job, b: Job) => (b.impact || 0) - (a.impact || 0));
-      
+
       // Get the top 5 jobs
       const top5Jobs = jobs.slice(0, 5);
       setTopJobs(top5Jobs);
-      
+
       // Fetch task owners for the top jobs
       if (top5Jobs.length > 0) {
         const taskIds = top5Jobs
           .filter((job: Job) => job.nextTaskId)
           .map((job: Job) => job.nextTaskId as string);
-          
+
         if (taskIds.length > 0) {
           await fetchTaskOwners(taskIds);
         }
       }
-      
     } catch (error) {
-      console.error('Error fetching job data:', error);
+      console.error("Error fetching job data:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to load job data',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to load job data",
+        variant: "destructive",
       });
     } finally {
       setJobsLoading(false);
@@ -154,7 +153,7 @@ export default function Dashboard() {
       taskIds.forEach((id) => queryParams.append("ids", id));
 
       const tasksResponse = await fetch(
-        `/api/tasks/batch?${queryParams.toString()}`
+        `/api/tasks/batch?${queryParams.toString()}`,
       );
       const tasksResult = await tasksResponse.json();
 
@@ -204,7 +203,7 @@ export default function Dashboard() {
     <div className="w-full px-4 py-8 max-w-full" style={{ maxWidth: "100vw" }}>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Button 
+        <Button
           onClick={() => {
             fetchQBOs();
             fetchJobs();
@@ -213,19 +212,24 @@ export default function Dashboard() {
           disabled={loading || jobsLoading}
           className="flex items-center gap-2"
         >
-          {(loading || jobsLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+          {(loading || jobsLoading) && (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          )}
           Refresh Data
         </Button>
       </div>
-      
+
       {/* Tasks Sidebar */}
       <TasksSidebar
         open={tasksSidebarOpen}
         onOpenChange={setTasksSidebarOpen}
         selectedJob={selectedJob}
       />
-      
-      <div className="w-full max-w-none space-y-8" style={{ overflowX: "visible" }}>
+
+      <div
+        className="w-full max-w-none space-y-8"
+        style={{ overflowX: "visible" }}
+      >
         {/* QBO Progress Chart */}
         <section className="w-full max-w-none" style={{ minWidth: "100%" }}>
           {loading && qbos.length === 0 ? (
@@ -239,28 +243,28 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="w-full">
-              <QBOProgressChart 
-                qbos={qbos} 
+              <QBOProgressChart
+                qbos={qbos}
                 onRefresh={fetchQBOs}
                 width="100%"
               />
             </div>
           )}
         </section>
-        
+
         {/* Top 5 Recommended Jobs */}
         <section className="w-full max-w-none" style={{ minWidth: "100%" }}>
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold">Top Impactful Jobs</h2>
-            <Button 
-              variant="ghost" 
-              onClick={() => router.push('/jobs')}
+            <Button
+              variant="ghost"
+              onClick={() => router.push("/jobs")}
               className="text-sm flex items-center"
             >
               View all <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
-          
+
           {jobsLoading ? (
             <div className="flex justify-center items-center h-64">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -269,9 +273,9 @@ export default function Dashboard() {
           ) : topJobs.length === 0 ? (
             <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-8 rounded mb-6 text-center">
               <p>No active jobs found. Create your first job to get started.</p>
-              <Button 
-                className="mt-4" 
-                onClick={() => router.push('/jobs?open=true')}
+              <Button
+                className="mt-4"
+                onClick={() => router.push("/jobs?open=true")}
               >
                 Create Job
               </Button>
@@ -283,37 +287,41 @@ export default function Dashboard() {
                   <thead>
                     <tr className="border-b bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <th className="px-6 py-3">Jobs</th>
-                      <th className="px-6 py-3">Business Func.</th>
+                      <th className="px-6 py-3">Business Function</th>
                       <th className="px-6 py-3">Due Date</th>
                       <th className="px-6 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {topJobs.map(job => {
+                    {topJobs.map((job) => {
                       // Parse due date for formatting
-                      let formattedDate = "N/A";
+                      let formattedDate = "No due date";
                       if (job.dueDate) {
                         const date = new Date(job.dueDate);
-                        formattedDate = date.toLocaleDateString("en-US", { 
-                          month: "numeric", 
-                          day: "numeric", 
-                          year: "2-digit"
+                        formattedDate = date.toLocaleDateString("en-US", {
+                          month: "numeric",
+                          day: "numeric",
+                          year: "2-digit",
                         });
                       }
-                      
+
                       // Determine business function class based on name
-                      const isSales = job.businessFunctionName?.toLowerCase().includes('sales');
-                      const isMarketing = job.businessFunctionName?.toLowerCase().includes('marketing');
-                      
-                      const businessFuncClass = isSales 
-                        ? "bg-green-100 text-green-800" 
-                        : isMarketing 
-                          ? "bg-orange-100 text-orange-800" 
+                      const isSales = job.businessFunctionName
+                        ?.toLowerCase()
+                        .includes("sales");
+                      const isMarketing = job.businessFunctionName
+                        ?.toLowerCase()
+                        .includes("marketing");
+
+                      const businessFuncClass = isSales
+                        ? "bg-green-100 text-green-800"
+                        : isMarketing
+                          ? "bg-orange-100 text-orange-800"
                           : "bg-blue-100 text-blue-800";
-                      
+
                       return (
-                        <tr 
-                          key={job.id} 
+                        <tr
+                          key={job.id}
                           className="hover:bg-gray-50 cursor-pointer"
                           onClick={() => handleOpenTasksSidebar(job)}
                         >
@@ -322,8 +330,11 @@ export default function Dashboard() {
                           </td>
                           <td className="px-6 py-4">
                             {job.businessFunctionName ? (
-                              <span className={`inline-flex items-center rounded-md px-3 py-1 text-sm ${businessFuncClass}`}>
-                                <span className="mr-1">🔊</span> {job.businessFunctionName}
+                              <span
+                                className={`inline-flex items-center rounded-md px-3 py-1 text-sm ${businessFuncClass}`}
+                              >
+                                <span className="mr-1">🔊</span>{" "}
+                                {job.businessFunctionName}
                               </span>
                             ) : (
                               <span className="text-gray-500">-</span>
@@ -332,18 +343,7 @@ export default function Dashboard() {
                           <td className="px-6 py-4 text-sm text-gray-500">
                             {formattedDate}
                           </td>
-                          <td className="px-6 py-4 text-right text-sm font-medium">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/jobs?edit=${job.id}`);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </td>
+                          <td className="px-6 py-4 text-right text-sm font-medium"></td>
                         </tr>
                       );
                     })}
