@@ -191,6 +191,7 @@ export default function Dashboard() {
   useEffect(() => {
     fetchQBOs();
     fetchJobs();
+    // The fetchJobs function will call fetchTaskCounts for the top jobs
   }, []);
 
   const handleOpenTasksSidebar = (job: Job) => {
@@ -350,17 +351,18 @@ export default function Dashboard() {
                         };
                       };
 
-                      // Get task count
+                      // Get task count with completion information
                       const getTaskCount = () => {
-                        // Get the task counts from our job object
-                        const taskCounts = job.tasks ? job.tasks.length : 0;
+                        // Get the task counts from our taskCounts state
+                        const completed = taskCounts[job.id]?.completed || 0;
+                        const total = taskCounts[job.id]?.total || 0;
                         
                         // If there are no tasks, show "No tasks added"
-                        if (taskCounts === 0) {
+                        if (total === 0) {
                           return "No tasks added";
                         }
                         
-                        return `${taskCounts} tasks`;
+                        return `${completed} of ${total} tasks done`;
                       };
 
                       const businessFuncStyle = getBusinessFunctionColor();
