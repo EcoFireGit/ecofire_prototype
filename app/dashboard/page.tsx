@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [topJobs, setTopJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [taskOwnerMap, setTaskOwnerMap] = useState<Record<string, string>>({});
+  const [taskCounts, setTaskCounts] = useState<Record<string, { total: number; completed: number }>>({});
   const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const router = useRouter();
@@ -108,6 +109,9 @@ export default function Dashboard() {
         if (taskIds.length > 0) {
           await fetchTaskOwners(taskIds);
         }
+        
+        // Fetch task counts for the top jobs
+        await fetchTaskCounts(top5Jobs.map(job => job.id));
       }
     } catch (error) {
       console.error("Error fetching job data:", error);
@@ -193,6 +197,28 @@ export default function Dashboard() {
     // Open the tasks sidebar directly instead of redirecting
     setSelectedJob(job);
     setTasksSidebarOpen(true);
+  };
+
+  const fetchTaskCounts = async (jobIds: string[]) => {
+    if (jobIds.length === 0) return;
+    
+    try {
+      // Construct query string with all job IDs
+      const queryString = jobIds.map(id => `ids=${id}`).join('&');
+      const response = await fetch(`/api/jobs/progress?${queryString}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch task counts');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setTaskCounts(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching task counts:', error);
+    }
   };
 
   const handleSelectJob = (jobId: string, checked: boolean) => {
@@ -305,19 +331,39 @@ export default function Dashboard() {
                         });
                       }
 
-                      // Determine business function class based on name
-                      const isSales = job.businessFunctionName
-                        ?.toLowerCase()
-                        .includes("sales");
-                      const isMarketing = job.businessFunctionName
-                        ?.toLowerCase()
-                        .includes("marketing");
+                      // Generate a consistent color for a business function
+                      const getBusinessFunctionColor = () => {
+                        const businessFunctionName = job.businessFunctionName || "None";
+                        // Generate a hash code from the function name
+                        const hashCode = businessFunctionName.split('').reduce((acc, char) => {
+                          return char.charCodeAt(0) + ((acc << 5) - acc);
+                        }, 0);
+                        
+                        // Map to HSL color space for better distribution of colors
+                        const h = Math.abs(hashCode % 360);
+                        const s = 85; // Keep saturation fixed for better readability
+                        const l = 88; // Higher lightness for background with dark text
+                        
+                        return {
+                          backgroundColor: `hsl(${h},${s}%,${l}%)`,
+                          color: `hsl(${h},${s}%,30%)`
+                        };
+                      };
 
-                      const businessFuncClass = isSales
-                        ? "bg-green-100 text-green-800"
-                        : isMarketing
-                          ? "bg-orange-100 text-orange-800"
-                          : "bg-blue-100 text-blue-800";
+                      // Get task count
+                      const getTaskCount = () => {
+                        // Get the task counts from our job object
+                        const taskCounts = job.tasks ? job.tasks.length : 0;
+                        
+                        // If there are no tasks, show "No tasks added"
+                        if (taskCounts === 0) {
+                          return "No tasks added";
+                        }
+                        
+                        return `${taskCounts} tasks`;
+                      };
+
+                      const businessFuncStyle = getBusinessFunctionColor();
 
                       return (
                         <tr
@@ -326,12 +372,18 @@ export default function Dashboard() {
                           onClick={() => handleOpenTasksSidebar(job)}
                         >
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {job.title}
+                            <div>
+                              {job.title}
+                              <div className="text-xs text-gray-500 mt-1">
+                                {getTaskCount()}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             {job.businessFunctionName ? (
                               <span
-                                className={`inline-flex items-center rounded-md px-3 py-1 text-sm ${businessFuncClass}`}
+                                className="inline-flex items-center rounded-md px-3 py-1 text-sm"
+                                style={businessFuncStyle}
                               >
                                 {job.businessFunctionName}
                               </span>
