@@ -113,7 +113,7 @@ export default function Dashboard() {
         }
 
         // Fetch task counts for the top jobs
-        await fetchTaskCounts(top5Jobs.map((job) => job.id));
+        await fetchTaskCounts(top5Jobs.map((job: Job) => job.id));
       }
     } catch (error) {
       console.error("Error fetching job data:", error);
