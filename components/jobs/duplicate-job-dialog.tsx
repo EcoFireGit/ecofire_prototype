@@ -94,32 +94,49 @@ export function DuplicateJobDialog({
           const newTasksMap: Record<string, string> = {}; // Maps original task titles to new task IDs
           const newTaskIds: string[] = []; // Array to store all new task IDs
 
-          // Create new tasks for the duplicated job
-          for (const task of tasksResult.data) {
-            const newTask = {
-              ...task,
-              jobId: newJobId,
-              completed: false,
-            };
-            delete newTask._id;
-            delete newTask.id;
+          // Create new tasks for the duplicated job in parallel
+          const taskCreationPromises = tasksResult.data.map(
+            async (task: Partial<Task>) => {
+              // Prepare the new task data
+              const newTask = {
+                ...task,
+                jobId: newJobId,
+                completed: false,
+              };
+              delete newTask._id;
+              delete newTask.id;
 
-            const taskResponse = await fetch("/api/tasks", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(newTask),
-            });
+              // Send the request to create the task
+              const taskResponse = await fetch("/api/tasks", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(newTask),
+              });
 
-            const taskResult = await taskResponse.json();
+              const taskResult = await taskResponse.json();
 
-            if (taskResult.success && taskResult.data) {
+              // Return the result to be processed after all tasks are created
+              return {
+                success: taskResult.success,
+                originalTitle: task.title,
+                newTaskId: taskResult.success ? taskResult.data._id : null,
+              };
+            },
+          );
+
+          // Wait for all task creation requests to complete
+          const taskResults = await Promise.all(taskCreationPromises);
+
+          // Process the results to populate newTasksMap and newTaskIds
+          taskResults.forEach((result) => {
+            if (result.success && result.newTaskId) {
               // Store the new task ID with its title as key
-              newTasksMap[task.title] = taskResult.data._id;
-              newTaskIds.push(taskResult.data._id);
+              newTasksMap[result.originalTitle] = result.newTaskId;
+              newTaskIds.push(result.newTaskId);
             }
-          }
+          });
 
           // Update the job with the list of new task IDs
           await fetch(`/api/jobs/${newJobId}`, {
@@ -164,26 +181,35 @@ export function DuplicateJobDialog({
             (mapping: any) => mapping.jobId === sourceJob.id,
           );
 
-          // Create new mappings for each original mapping
-          for (const mapping of originalJobMappings) {
-            const newMapping = {
-              jobId: newJobId,
-              jobName: newJobTitle,
-              piId: mapping.piId,
-              piName: mapping.piName,
-              piImpactValue: mapping.piImpactValue,
-              piTarget: mapping.piTarget || 0,
-              notes: `Duplicated from job: ${sourceJob.title}`,
-            };
+          // Create new mappings for each original mapping in parallel
+          const mappingCreationPromises = originalJobMappings.map(
+            async (mapping: any) => {
+              // Prepare the new mapping data
+              const newMapping = {
+                jobId: newJobId,
+                jobName: newJobTitle,
+                piId: mapping.piId,
+                piName: mapping.piName,
+                piImpactValue: mapping.piImpactValue,
+                piTarget: mapping.piTarget || 0,
+                notes: `Duplicated from job: ${sourceJob.title}`,
+              };
 
-            await fetch("/api/pi-job-mappings", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(newMapping),
-            });
-          }
+              // Send the request to create the mapping
+              const response = await fetch("/api/pi-job-mappings", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(newMapping),
+              });
+
+              return await response.json();
+            },
+          );
+
+          // Wait for all mapping creation requests to complete
+          await Promise.all(mappingCreationPromises);
         }
 
         // Show success toast
