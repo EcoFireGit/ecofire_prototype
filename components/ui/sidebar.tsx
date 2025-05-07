@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { ChevronLeft, ChevronRight, PanelLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -261,9 +261,24 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
-  React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
+  React.ComponentProps<typeof Button> & {
+    icon?: "panel-left" | "chevron-left" | "chevron-right"
+  }
+>(({ className, onClick, icon = "panel-left", ...props }, ref) => {
   const { toggleSidebar } = useSidebar()
+
+  // Render the selected icon
+  const IconComponent = React.useMemo(() => {
+    switch (icon) {
+      case "chevron-left":
+        return () => <ChevronLeft className="h-5 w-5" />
+      case "chevron-right":
+        return () => <ChevronRight className="h-5 w-5" />
+      case "panel-left":
+      default:
+        return () => <PanelLeft className="h-5 w-5" />
+    }
+  }, [icon])
 
   return (
     <Button
@@ -278,7 +293,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
+      <IconComponent />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

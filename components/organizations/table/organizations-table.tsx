@@ -138,6 +138,12 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                       onClick={() =>
                         (window.location.href = `/organizations/${org._id}/members`)
                       }
+                      disabled={org.userRole !== "admin"}
+                      className={
+                        org.userRole !== "admin"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }
                     >
                       <Users className="h-4 w-4" /> Add members
                     </Button>

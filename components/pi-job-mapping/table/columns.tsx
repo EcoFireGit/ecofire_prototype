@@ -49,12 +49,11 @@ export function convertJPMappingToTableData(JPMap: JobPiMapping[], pisList: PIs[
       notes: JobPiMapping.notes || ''
     }
     });
-
 }
 
 export const columns = (
   onEdit: (JP: MappingJP) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
 ): ColumnDef<MappingJP>[] => [
   {
     accessorKey: "jobName",
@@ -70,15 +69,15 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("piTarget") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "piImpactValue",
-    header: "Output Impact Value",
+    header: "Output Impact",
     cell: ({ row }) => {
       const value = row.getValue("piImpactValue") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "notes",
@@ -100,14 +99,10 @@ export const columns = (
       const JP = row.original;
       return (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(JP)}
-          >
+          <Button variant="ghost" size="icon" onClick={() => onEdit(JP)}>
             <Edit className="h-4 w-4" />
           </Button>
-         
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -118,8 +113,9 @@ export const columns = (
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the Mapping between
-                  "{JP.jobName}" and "{JP.piName}" and remove it from our servers.
+                  This action cannot be undone. This will permanently delete the
+                  Mapping between "{JP.jobName}" and "{JP.piName}" and remove it
+                  from our servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -132,6 +128,6 @@ export const columns = (
           </AlertDialog>
         </div>
       );
-    }
-  }
+    },
+  },
 ];
