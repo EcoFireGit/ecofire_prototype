@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
                         deadline: deadlineDate,
                         points: outcome.points,
                         notes:
-                          `(Updated during onboarding for ${businessName}) ` +
+                          `[Updated during onboarding for ${businessName}] ` +
                           outcome.notes,
                       });
                       console.log(`QBO updated for outcome: ${outcome.name}`);
@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
                       // Update the job notes if needed
                       await jobService.updateJob(jobId, userId!, {
                         notes:
-                          `(Updated during onboarding for ${businessName}) ` +
+                          `[Updated during onboarding for ${businessName}] ` +
                           job.notes,
                       });
 
@@ -415,7 +415,7 @@ export async function POST(req: NextRequest) {
                         targetValue: pi.targetValue,
                         deadline: deadlineDate,
                         notes:
-                          `(Updated during onboarding for ${businessName}) ` +
+                          `[Updated during onboarding for ${businessName}] ` +
                           pi.notes,
                       });
                       console.log(`PI updated: ${pi.name}`);
@@ -552,7 +552,7 @@ export async function POST(req: NextRequest) {
                           piImpactValue: mapping.piImpactValue,
                           piTarget: mapping.piTarget,
                           notes:
-                            `(Updated during onboarding for ${businessName}) ` +
+                            `[Updated during onboarding for ${businessName}] ` +
                             mapping.notes,
                         },
                       );
@@ -698,7 +698,7 @@ export async function POST(req: NextRequest) {
                           qboTarget: mapping.qboTarget,
                           qboImpact: mapping.qboImpact,
                           notes:
-                            `(Updated during onboarding for ${businessName}) ` +
+                            `[Updated during onboarding for ${businessName}] ` +
                             mapping.notes,
                         },
                       );
