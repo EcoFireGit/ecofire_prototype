@@ -3,10 +3,9 @@ import { AppSidebar } from "@/components/dashboard/app-sidebar";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <main className="w-full max-w-full">
-        <SidebarTrigger />
         {children}
       </main>
     </SidebarProvider>

@@ -146,15 +146,23 @@ export function JobCard({
     return `${completed} of ${total} tasks done`;
   };
 
-  // Get function color
-  const getFunctionColor = () => {
-    const functionName = currentJob.businessFunctionName?.toLowerCase() || "";
-    if (functionName.includes("product"))
-      return "bg-orange-100 text-orange-800";
-    if (functionName.includes("design")) return "bg-green-100 text-green-800";
-    if (functionName.includes("engineering"))
-      return "bg-blue-100 text-blue-800";
-    return "bg-gray-100 text-gray-800"; // Default color
+  // Generate a consistent color for a business function
+  const getBusinessFunctionColor = () => {
+    const businessFunctionName = currentJob.businessFunctionName || "None";
+    // Generate a hash code from the function name
+    const hashCode = businessFunctionName.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    // Map to HSL color space for better distribution of colors
+    const h = Math.abs(hashCode % 360);
+    const s = 85; // Keep saturation fixed for better readability
+    const l = 88; // Higher lightness for background with dark text
+    
+    return {
+      backgroundColor: `hsl(${h},${s}%,${l}%)`,
+      color: `hsl(${h},${s}%,30%)`
+    };
   };
 
   return (
@@ -178,8 +186,9 @@ export function JobCard({
                 />
               </div>
             )}
-            <span
-              className={`px-2 py-1 text-xs font-medium rounded ${getFunctionColor()}`}
+            <span 
+              className="px-2 py-1 text-xs font-medium rounded"
+              style={getBusinessFunctionColor()}
             >
               {currentJob.businessFunctionName || "No function"}
             </span>

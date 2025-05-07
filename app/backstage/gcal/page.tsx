@@ -118,7 +118,7 @@ export default function CalendarPage() {
 
       toast({
         title: "Success",
-        description: `${selectedRows.length} calendar(s) added successfully with ${allEvents.length} events`,
+        description: `Watching ${selectedRows.length} calendar(s) for upcoming events`,
       });
 
       setSelectedRows([]);
@@ -292,10 +292,8 @@ export default function CalendarPage() {
             <thead>
               <tr>
                 <th className="border border-gray-300 p-2 text-left">Select</th>
-                <th className="border border-gray-300 p-2 text-left">ID</th>
-                <th className="border border-gray-300 p-2 text-left">Etag</th>
                 <th className="border border-gray-300 p-2 text-left">
-                  Summary
+                  Calendar Name
                 </th>
                 <th className="border border-gray-300 p-2 text-left">
                   Timezone
@@ -323,54 +321,14 @@ export default function CalendarPage() {
                       onChange={() => toggleRowSelection(row)}
                     />
                   </td>
-                  <td className="p-2">{row.id}</td>
-                  <td className="p-2">{row.etag}</td>
                   <td className="p-2">{row.summary}</td>
                   <td className="p-2">{row.timeZone}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-          {/* Render Events Table */}
-          {events.length > 0 ? (
-            <>
-              <h3 className="text-xl font-semibold mb-4">Calendar Events</h3>
-              <table className="w-full border-collapse border border-gray-200">
-                <thead>
-                  <tr>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Date
-                    </th>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Time
-                    </th>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Event Name
-                    </th>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Calendar Name
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map((event, idx) => (
-                    <tr key={idx} className="border border-gray-300">
-                      <td className="p-2">{event.date}</td>
-                      <td className="p-2">{event.time}</td>
-                      <td className="p-2">{event.name}</td>
-                      <td className="p-2">{event.calendar}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          ) : (
-            <p>No events found for the selected calendars.</p> // Fallback message
-          )}
         </div>
       )}
     </div>
   );
 }
-
