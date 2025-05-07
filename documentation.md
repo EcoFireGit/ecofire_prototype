@@ -764,7 +764,7 @@ const tourSteps = [
 ## Calendar Integration
 
 ### Overview
-The Calendar Integration feature lets users integration their personal calendars in Prioriwise. Users authorize and provide access to their calendars in Google account. It also creates a Prioriwise calendar in their google account. 
+The Calendar Integration feature lets users integrate their personal calendars in Prioriwise. Users authorize and provide access to their calendars in Google account. It also creates a Prioriwise calendar in their google account. 
 
 ### Key Components
 Google Calendar configuration in Google Cloud console. 
@@ -776,13 +776,13 @@ Must take caution to restrict events to read only from User's non-prioriwise Cal
 1. User is redirected to Google to Authorize prioriwise for access to his calendars -- must check  SELECT ALL when prompted by google
 2. After the authorization, user is redirected to Prioriwise website. The redirect URL must be same as the one that user has logged in to.
 3. After successful authorization and linkage, a user can request Prioriwise to pull its calendars and choose to integrate one or some of them with Prioriwise
-4. A new calendar -- Prioriwise- can also be created in user's google calendar on certain actions
+4. A new calendar -- Prioriwise -- can also be created in user's google calendar on certain actions
 
 ### Events
 Based on REPRIORITIZE_EVENT_TIME_IN_HOURS configuration setting, a user's events from the list of authorized calendars are pulled. 
 
 ### FAQ in case of Errors
-Check redirect URI
+Check redirect URI, it MUST be same as the URL that a user logged in to
 Allow access to individual users on Google Cloud console
 Make sure redirect uri is added to the list of callbacks on Google console
 
@@ -793,11 +793,10 @@ Make sure redirect uri is added to the list of callbacks on Google console
 ### Overview
 Search lets a user finds jobs and tasks by a keyword in job's name/title, notes and  task's name/title, notes, and tags
 
+#### Key Rules
+Indices are created on Job and Task collection on title, notes, and tags. To enable search on other fields, add them to an index in models
+A Mongoose query that performs a full-text search on a Job and Task  collection  and returns results sorted by relevance score. 
 
-## Search
-
-### Overview
-Search lets a user finds jobs and tasks by a keyword in job's name/title, notes and  task's name/title, notes, and tags
 
 ## Next Step For Each Job
 
@@ -805,7 +804,7 @@ Search lets a user finds jobs and tasks by a keyword in job's name/title, notes 
 The feature displays or selects the  task in the series that is due next.
 
 #### Key Rules
-Each job has an array of tasks that belongs to it
+Each job has an array of tasks that belong to it
 Each job has a nextTaskId field that shows the next task 
 After a job is created, the first task is set as next task by default
 Marking a current task as complete, BE selects the first incomplete and active task in the tasks array as the next task
