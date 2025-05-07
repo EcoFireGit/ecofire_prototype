@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     // Common system prompt for both steps
     const systemPrompt =
       "You are an elite business strategy consultant specializing in guiding startups and small businesses. " +
-      'You are consulting a new business owner whose business is named: "' +
+      'You are consulting a small business owner whose business is named: "' +
       businessName +
       '", which is in the industry of ' +
       businessIndustry +
@@ -79,12 +79,12 @@ export async function POST(req: NextRequest) {
       " stage of growth." +
       'The business mission statement as follows: "' +
       businessDescription +
-      '". Provide them with initial strategic recommendations and next steps to establish or grow their business. ' +
+      '". Provide them with strategic recommendations and next steps to grow their business. ' +
       "Be specific, actionable, and empathetic in your response.";
 
     // Different prompts for each step
     const outcomePrompt =
-      'Please suggest the 3 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50, "notes": "Explanation of how this outcome metric relates to the business mission statement" } }. The deadline for each outcome should be ' +
+      'Please suggest the 4 most important outcome metrics for the next 3 months that I can use to track my progress towards accomplishing my mission and distribute 100 points among these outcome metrics as per their importance towards my mission. One of these outcome metrics must be "Percentage increase in revenue". Output your result in the form of a JSON in the following format: { "outcome1": { "name": "Outcome 1", "targetValue": 100, "deadline": "2025-12-31", "points": 50, "notes": "Explanation of how this outcome metric relates to the business mission statement" } }. The deadline for each outcome should be ' +
       getDateThreeMonthsFromNow().toDateString().split("T")[0] +
       ". Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.";
 
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       'Please generate the 10 most important jobs to be done in my business for achieving my mission statement. For each job, also generate up to 3 specific tasks that need to be completed to accomplish that job. Output your result in the form of a JSON in the following format: { "job1": { "title": "Job 1 Title", "notes": "Description of what needs to be done", "tasks": [{"title": "Task 1 Title", "notes": "Description of the task"}, {"title": "Task 2 Title", "notes": "Description of the task"}, {"title": "Task 3 Title", "notes": "Description of the task"}] } }. Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.';
 
     const pisPrompt =
-      'Considering all of my jobs to be done, what are all the 5 most important quantifiable metrics I can use to track my progress on each of them? It is not necessary for every job to be done to be associated with a unique metric. Avoid outcome metrics. Output your result in the form of a JSON in the following format: { "pi1": { "name": "PI 1", "targetValue": 100, "deadline": "2025-12-31", "notes": "Explanation of how this quantifiable metric relates to the jobs to be done" }} }. The deadline for each outcome should be ' +
+      'Considering all of my jobs to be done, what are all the 6 most important quantifiable metrics I can use to track my progress on each of them? It is not necessary for every job to be done to be associated with a unique metric. Avoid outcome metrics. One of these outcome metrics must be "Percentage cost savings". Output your result in the form of a JSON in the following format: { "pi1": { "name": "PI 1", "targetValue": 100, "deadline": "2025-12-31", "notes": "Explanation of how this quantifiable metric relates to the jobs to be done" }} }. The deadline for each outcome should be ' +
       getDateThreeMonthsFromNow().toDateString().split("T")[0] +
       ".  Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.";
 
