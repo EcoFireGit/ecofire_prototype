@@ -770,7 +770,7 @@ The Calendar Integration feature lets users integrate their personal calendars i
 Google Calendar configuration in Google Cloud console. 
 ClientID, ClientSecret, Redirect Uri in the app must match the configuration in Step 1
 Google Calendar user auth, authorized calendarIds, prioriwise calendarId are stored in google_calendar_auth table
-Must take caution to restrict events to read only from User's non-prioriwise Calendars
+Must take caution to restrict events to read only from User's non-prioriwise Calendars. Currently, there are no api routes available to create events in non-prioriwise Calendars
 
 ### User Workflow
 1. User is redirected to Google to Authorize prioriwise for access to his calendars -- must check  SELECT ALL when prompted by google
