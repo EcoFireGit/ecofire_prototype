@@ -53,11 +53,6 @@ const items = [
     icon: Home,
   },
   {
-    title: "Onboarding",
-    url: "/onboarding",
-    icon: ClipboardCheck,
-  },
-  {
     title: "Quick Guide",
     url: "#",
     icon: Inbox,
@@ -112,6 +107,11 @@ const backstageItems = [
     title: "Mappings",
     url: "/backstage/mappings",
     icon: Target,
+  },
+  {
+    title: "Onboarding",
+    url: "/backstage/onboarding",
+    icon: ClipboardCheck,
   },
 ];
 
