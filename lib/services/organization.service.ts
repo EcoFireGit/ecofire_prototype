@@ -15,11 +15,11 @@ export class OrganizationService {
     await dbConnect();
     const userOrgs = await UserOrganization.find({ userId });
     const orgIds = userOrgs.map((userOrg) => userOrg.organizationId);
-    
+
     if (orgIds.length === 0) {
       return [];
     }
-    
+
     return await Organization.find({
       _id: { $in: orgIds },
       isDeleted: { $ne: true },
@@ -72,11 +72,6 @@ export class OrganizationService {
       { new: true },
     );
 
-    if (result) {
-      await UserOrganization.deleteMany({ organizationId: id });
-      return true;
-    }
-
-    return false;
+    return !!result;
   }
 }
