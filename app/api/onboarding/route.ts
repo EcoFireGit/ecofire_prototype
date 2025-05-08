@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       "and is currently in the " +
       growthStage +
       " stage of growth." +
-      'The business mission statement as follows: "' +
+      'A brief description of the business follows: "' +
       businessDescription +
       '". Provide them with strategic recommendations and next steps to grow their business. ' +
       "Be specific, actionable, and empathetic in your response.";
