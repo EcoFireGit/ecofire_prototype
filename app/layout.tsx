@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import React, { useState } from "react";
 import {
   ClerkProvider,
@@ -14,19 +14,23 @@ import { ViewProvider } from "@/lib/contexts/view-context";
 
 // Simple hash function for demonstration
 function simpleHash(str: string): string {
-  let hash = 0, i, chr;
+  let hash = 0,
+    i,
+    chr;
+  if (!str) {
+    throw new Error("COHORT_PASSWORD must be a valid string");
+  }
   if (str.length === 0) return hash.toString();
   for (i = 0; i < str.length; i++) {
     chr = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + chr;
+    hash = (hash << 5) - hash + chr;
     hash |= 0;
   }
   return hash.toString();
 }
 
-
 const PASSWORD_HASH_KEY = "app_pw_hash";
-const REQUIRED_PASSWORD = process.env.COHORT_PASSWORD; // Set your password here
+const REQUIRED_PASSWORD = process.env.NEXT_PUBLIC_COHORT_PASSWORD; // Set your password here
 
 // Initialize localStorage (client-side only)
 if (typeof window !== "undefined" && !localStorage.getItem(PASSWORD_HASH_KEY)) {
@@ -85,7 +89,7 @@ export default function RootLayout({
             <SignedOut>
               <main className="split-landing">
                 {/* Left marketing side remains unchanged */}
-              
+
                 <section className="split-left">
                   <div className="welcome">
                     <img
@@ -97,11 +101,15 @@ export default function RootLayout({
                       Welcome to <span className="brand">Prioriwise</span>
                     </h1>
                     <p className="subtitle">
-                      Boost your productivity and focus on what truly matters.<br />
-                      <span className="highlight">Ready to transform the way you work?</span>
+                      Boost your productivity and focus on what truly matters.
+                      <br />
+                      <span className="highlight">
+                        Ready to transform the way you work?
+                      </span>
                     </p>
                     <p className="description">
-                      Let's get started!<br />
+                      Let's get started!
+                      <br />
                       Please start by signing in!
                     </p>
                   </div>
@@ -124,23 +132,27 @@ export default function RootLayout({
                     <div className="bubble" style={{ top: "90%", left: "40%" }}>
                       Finally, a tool that understands!
                     </div>
-                    <img style={{ top: "20%", left: "50%" }}
+                    <img
+                      style={{ top: "20%", left: "50%" }}
                       src="/LANDING_PAGE_NOBG.png"
                       alt="Meditating mascot"
                       className="mascot"
                     />
                   </div>
                 </section>
-            
 
                 {/* Right sign-in side with password gate */}
                 <section className="split-right">
                   <PasswordGate>
                     <div className="signin-box">
                       <h2>Sign in</h2>
-                      <p className="signin-subtitle">Login to access your Jobs</p>
+                      <p className="signin-subtitle">
+                        Login to access your Jobs
+                      </p>
                       <SignInButton>
-                        <button className="sign-in-btn">Sign in with Email</button>
+                        <button className="sign-in-btn">
+                          Sign in with Email
+                        </button>
                       </SignInButton>
                     </div>
                   </PasswordGate>
