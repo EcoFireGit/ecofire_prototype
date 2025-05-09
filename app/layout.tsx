@@ -26,11 +26,11 @@ function simpleHash(str: string): string {
 
 
 const PASSWORD_HASH_KEY = "app_pw_hash";
-const REQUIRED_PASSWORD = "EcoFireIsAwesome!123"; // Set your password here
+const REQUIRED_PASSWORD = process.env.COHORT_PASSWORD; // Set your password here
 
 // Initialize localStorage (client-side only)
 if (typeof window !== "undefined" && !localStorage.getItem(PASSWORD_HASH_KEY)) {
-  localStorage.setItem(PASSWORD_HASH_KEY, simpleHash(REQUIRED_PASSWORD));
+  localStorage.setItem(PASSWORD_HASH_KEY, simpleHash(REQUIRED_PASSWORD!));
 }
 
 function PasswordGate({ children }: { children: React.ReactNode }) {
@@ -138,7 +138,7 @@ export default function RootLayout({
                   <PasswordGate>
                     <div className="signin-box">
                       <h2>Sign in</h2>
-                      <p className="signin-subtitle">Login to access your tasks</p>
+                      <p className="signin-subtitle">Login to access your Jobs</p>
                       <SignInButton>
                         <button className="sign-in-btn">Sign in with Email</button>
                       </SignInButton>
