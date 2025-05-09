@@ -1,5 +1,5 @@
 // errors/CustomError.ts
-import { ErrorCodes } from './ErrorCodes';
+import { ErrorCodes } from './error.codes';
 
 export class CustomError extends Error {
     code: number;  // Custom error code
