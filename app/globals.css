@@ -407,3 +407,54 @@ body {
   }
 }
 
+/* Password Gate Styles */
+.password-gate {
+  width: 100%;
+  max-width: 380px;
+  padding: 2rem;
+}
+
+.password-gate form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+.password-gate h3 {
+  margin: 0 0 1rem 0;
+  color: #222;
+  font-size: 1.5rem;
+}
+
+.password-gate input {
+  padding: 0.8rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+.password-gate button {
+  background: #ff6b00;
+  color: white;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.password-gate button:hover {
+  background: #ff8c42;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.9rem;
+  margin-top: -0.5rem;
+}
+
