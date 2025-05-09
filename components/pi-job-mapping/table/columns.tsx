@@ -16,6 +16,8 @@ import {
 
 // Import the database model type
 import { JobPiMapping } from "@/lib/models/pi-job-mapping.model";
+import { PIs } from "@/lib/models/pi.model";
+import { Jobs } from "@/lib/models/job.model";
 
 // Table-specific type that converts from the database model
 export type MappingJP = {
@@ -30,22 +32,28 @@ export type MappingJP = {
 };
 
 // Function to convert from database model to table data
-export function convertJPMappingToTableData(JPMap: JobPiMapping[]): MappingJP[] {
-  return JPMap.map(JobPiMapping => ({
-    id: JobPiMapping._id,
-    jobId: JobPiMapping.jobId,
-    piId: JobPiMapping.piId || '',
-    piImpactValue: JobPiMapping.piImpactValue || 0,
-    jobName: JobPiMapping.jobName,
-    piName: JobPiMapping.piName || '',
-    piTarget: JobPiMapping.piTarget || 0, // Added field
-    notes: JobPiMapping.notes || ''
-  }));
+export function convertJPMappingToTableData(JPMap: JobPiMapping[], pisList: PIs[], jobsList: Jobs[]): MappingJP[] {
+
+  return JPMap.map(JobPiMapping => {
+    const pi = pisList.find(pi => pi._id === JobPiMapping.piId);
+    const job = jobsList.find(job => job._id === JobPiMapping.jobId);
+    
+    return {
+      id: JobPiMapping._id,
+      jobId: JobPiMapping.jobId,
+      piId: JobPiMapping.piId || '',
+      piImpactValue: JobPiMapping.piImpactValue || 0,
+      jobName: job?.title || 'Unknown Job',
+      piName: pi?.name || 'Unknown Output',
+      piTarget: JobPiMapping.piTarget || 0, // Added field
+      notes: JobPiMapping.notes || ''
+    }
+    });
 }
 
 export const columns = (
   onEdit: (JP: MappingJP) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
 ): ColumnDef<MappingJP>[] => [
   {
     accessorKey: "jobName",
@@ -61,15 +69,15 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("piTarget") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "piImpactValue",
-    header: "Output Impact Value",
+    header: "Output Impact",
     cell: ({ row }) => {
       const value = row.getValue("piImpactValue") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "notes",
@@ -91,14 +99,10 @@ export const columns = (
       const JP = row.original;
       return (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(JP)}
-          >
+          <Button variant="ghost" size="icon" onClick={() => onEdit(JP)}>
             <Edit className="h-4 w-4" />
           </Button>
-         
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -109,8 +113,9 @@ export const columns = (
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the Mapping between
-                  "{JP.jobName}" and "{JP.piName}" and remove it from our servers.
+                  This action cannot be undone. This will permanently delete the
+                  Mapping between "{JP.jobName}" and "{JP.piName}" and remove it
+                  from our servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -123,6 +128,6 @@ export const columns = (
           </AlertDialog>
         </div>
       );
-    }
-  }
+    },
+  },
 ];

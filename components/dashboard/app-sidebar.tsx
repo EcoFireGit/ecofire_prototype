@@ -5,10 +5,9 @@ import {
   Calendar,
   Home,
   Inbox,
-  Search,
   Settings,
   Download,
-  Dog,
+  PawPrint,
   Target,
   Clipboard,
   BarChart2,
@@ -29,6 +28,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
@@ -52,13 +53,10 @@ const items = [
     icon: Home,
   },
   {
-    title: "Onboarding",
-    url: "/onboarding",
-    icon: ClipboardCheck,
-  },
-  {
     title: "Quick Guide",
-    url: "#",
+    url: "https://coda.io/@urvashi-batra/prioriwise-getting-started-guide",
+    target: "_blank",
+    rel: "noopener noreferrer",
     icon: Inbox,
   },
   {
@@ -69,7 +67,7 @@ const items = [
   {
     title: "Business Functions",
     url: "/business-functions",
-    icon: Search,
+    icon: BriefcaseBusinessIcon,
   },
   {
     title: "Business Info",
@@ -79,17 +77,13 @@ const items = [
   {
     title: "Jija",
     url: "/jija",
-    icon: Dog,
-  },
-  {
-    title: "Search",
-    url: "/search",
-    icon: Search,
+    icon: PawPrint,
+    id: "jija",
   },
   {
     title: "Organizations",
     url: "/organizations",
-    icon: BriefcaseBusinessIcon,
+    icon: Users,
   },
   {
     title: "Calendar",
@@ -102,25 +96,32 @@ const items = [
 // Backstage sub-items
 const backstageItems = [
   {
-    title: "Output & Outcome Mapping",
-    url: "/backstage/mappings",
-    icon: Target,
-  },
-  {
-    title: "Outcome Board",
+    title: "Outcomes",
     url: "/backstage/qos",
     icon: Clipboard,
   },
   {
-    title: "Output Board",
+    title: "Outputs",
     url: "/backstage/pis",
     icon: BarChart2,
+  },
+  {
+    title: "Mappings",
+    url: "/backstage/mappings",
+    icon: Target,
+  },
+  {
+    title: "Onboarding",
+    url: "/backstage/onboarding",
+    icon: ClipboardCheck,
   },
 ];
 
 export function AppSidebar() {
   // Get current pathname for highlighting the active item
   const pathname = usePathname();
+  // Access sidebar context to determine if we're in collapsed state
+  const { state } = useSidebar();
 
   // Function to check if a menu item is active
   const isActive = (url: string) => {
@@ -193,7 +194,7 @@ export function AppSidebar() {
 
     // Check if we're already on the jobs page
     const currentPath = window.location.pathname;
-    if (currentPath === '/jobs') {
+    if (currentPath === "/jobs") {
       // If already on jobs page, apply filters directly
       window.dispatchEvent(
         new CustomEvent("applyWellnessFilters", {
@@ -202,21 +203,46 @@ export function AppSidebar() {
       );
     } else {
       // Otherwise navigate to jobs page - filters will be applied on page load
-      window.location.href = '/jobs';
+      window.location.href = "/jobs";
     }
   }, []);
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="h-16">
+          <SidebarGroupLabel className="h-16 flex items-center">
+            {state !== "collapsed" && (
+              <img
+                src="/PRIORIWISE_BLUE.png"
+                alt="PRIORIWISE"
+                className="h-10 w-auto my-4"
+              ></img>
+            )}
+            {state !== "collapsed" && (
+              <SidebarTrigger
+                className="ml-auto text-white"
+                icon="chevron-left"
+              />
+            )}
+          </SidebarGroupLabel>
+
+          {/* Centered chevron below logo when collapsed */}
+          {state === "collapsed" && (
             <img
-              src="/PRIORIWISE_ECOFIRE_WHITE.png"
+              src="/PRIORIWISE_SYMBOL.png"
               alt="PRIORIWISE"
               className="h-10 w-auto my-4"
             ></img>
-          </SidebarGroupLabel>
+          )}
+          {state === "collapsed" && (
+            <div className="flex justify-center mt-2 mb-4">
+              <SidebarTrigger
+                className="bg-sidebar text-white shadow-md rounded-full"
+                icon="chevron-right"
+              />
+            </div>
+          )}
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
@@ -225,17 +251,21 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.title} id={item.id}>
-                    <SidebarMenuButton size={"lg"} asChild>
-                      <Link href={item.url}>
+                    <SidebarMenuButton
+                      size={"lg"}
+                      asChild
+                      className="flex items-center"
+                    >
+                      <Link href={item.url} target={item.target} rel={item.rel}>
                         <IconComponent
-                          className={active ? "text-[#F05523]" : ""}
+                          className={`${active ? "text-[#F05523]" : ""} ${state === "collapsed" ? "mx-auto" : ""}`}
                         />
                         <span
-                          className={
+                          className={`${state === "collapsed" ? "hidden" : ""} ${
                             active
                               ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
                               : ""
-                          }
+                          }`}
                         >
                           {item.title}
                         </span>
@@ -249,26 +279,44 @@ export function AppSidebar() {
               {userPreferences.enableBackstage && (
                 <Collapsible className="group/collapsible">
                   <SidebarMenuItem>
-                    <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent hover:text-sidebar-accent-foreground">
-                      <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
-                      <span>Backstage</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </CollapsibleTrigger>
+                    {state === "collapsed" ? (
+                      <SidebarMenuButton
+                        size={"lg"}
+                        asChild
+                        className="flex items-center justify-center"
+                      >
+                        <Link href="/backstage/qos">
+                          <ChartNoAxesCombinedIcon className="mx-auto" />
+                        </Link>
+                      </SidebarMenuButton>
+                    ) : (
+                      <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent hover:text-sidebar-accent-foreground">
+                        <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
+                        <span>Backstage</span>
+                        <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </CollapsibleTrigger>
+                    )}
                   </SidebarMenuItem>
-                  <CollapsibleContent>
-                    <SidebarMenu className="pl-6">
-                      {backstageItems.map((item) => (
-                        <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton size={"lg"} asChild>
-                            <Link href={item.url}>
-                              <item.icon />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </CollapsibleContent>
+                  {state !== "collapsed" && (
+                    <CollapsibleContent>
+                      <SidebarMenu className="pl-6">
+                        {backstageItems.map((item) => (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton
+                              size={"lg"}
+                              asChild
+                              className="flex items-center"
+                            >
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </CollapsibleContent>
+                  )}
                 </Collapsible>
               )}
             </SidebarMenu>
@@ -281,9 +329,17 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <Popover>
               <PopoverTrigger asChild>
-                <SidebarMenuButton size={"lg"} id="wellness-check">
-                  <Heart className="text-purple-500 fill-purple-500" />
-                  <span>Wellness Check</span>
+                <SidebarMenuButton
+                  size={"lg"}
+                  id="wellness-check"
+                  className="flex items-center"
+                >
+                  <Heart
+                    className={`text-purple-500 fill-purple-500 ${state === "collapsed" ? "mx-auto" : ""}`}
+                  />
+                  <span className={state === "collapsed" ? "hidden" : ""}>
+                    Wellness Check
+                  </span>
                 </SidebarMenuButton>
               </PopoverTrigger>
               <PopoverContent
@@ -333,15 +389,23 @@ export function AppSidebar() {
               </PopoverContent>
             </Popover>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <OrganizationSwitcher />
-          </SidebarMenuItem>
+          {state !== "collapsed" && (
+            <SidebarMenuItem>
+              <OrganizationSwitcher />
+            </SidebarMenuItem>
+          )}
 
           <SidebarMenuItem>
-            <SidebarMenuButton size={"lg"} asChild>
+            <SidebarMenuButton
+              size={"lg"}
+              asChild
+              className="flex items-center"
+            >
               <Link href="/dashboard/settings">
-                <Settings />
-                <span>Settings</span>
+                <Settings className={state === "collapsed" ? "mx-auto" : ""} />
+                <span className={state === "collapsed" ? "hidden" : ""}>
+                  Settings
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -350,4 +414,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-

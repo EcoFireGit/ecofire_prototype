@@ -8,14 +8,14 @@ export default function PiQboMappingPage() {
   return (
     <Tabs defaultValue="pi-job" className="w-auto ml-5">
       <TabsList>
-        <TabsTrigger value="pi-job">Output to job mapping</TabsTrigger>
+        <TabsTrigger value="pi-job">Job to Output mapping</TabsTrigger>
         <TabsTrigger value="pi-qbo">Output to Outcome mapping</TabsTrigger>
       </TabsList>
       <TabsContent value="pi-job">
-        <PiJobMappingPage/>
+        <PiJobMappingPage />
       </TabsContent>
       <TabsContent value="pi-qbo">
-        <PIQBOMappingsPage/>
+        <PIQBOMappingsPage />
       </TabsContent>
     </Tabs>
   );

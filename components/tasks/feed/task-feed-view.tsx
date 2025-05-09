@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
-import { TaskDialog } from "@/components/tasks/tasks-dialog";
+import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
 import FilterComponent from "@/components/filters/filter-component";
 import TaskSortingComponent from "@/components/sorting/task-sorting-component";
+import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { getPrioriCalendarId } from "@/lib/services/gcal.service";
 // Type imports only
-import type { Task } from "@/lib/models/task.model";
+//import type { Task } from "@/lib/models/task.model";
+import { Job } from "@/components/jobs/table/columns";
+import { Task } from "../types";
+
 import type { Jobs } from "@/lib/models/job.model";
 
 export default function TaskFeedView() {
@@ -41,6 +45,8 @@ export default function TaskFeedView() {
   // State for task dialog
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
 
   // State for confirmation dialogs
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
@@ -635,62 +641,150 @@ export default function TaskFeedView() {
     }
   };
 
-  // Edit task
-  const handleEditTask = (task: any) => {
-    setEditingTask(task);
+  const handleAddTask = () => {
+    setDialogMode("create");
+    setCurrentTask(undefined);
+    setEditingTask(null); // Clear editing task when creating a new task
     setTaskDialogOpen(true);
   };
 
-  // Handle task update
-  const handleTaskUpdate = async (taskData: any) => {
+  // Edit task
+  const handleEditTask = (task: any) => {
+    setDialogMode("edit");
+    // Make sure we have a consistent task object with both id and _id properties
+    const fullTask = {
+      ...task,
+      id: task.id || task._id,
+      _id: task._id || task.id,
+    };
+    setCurrentTask(fullTask);
+    setEditingTask(fullTask);
+    setTaskDialogOpen(true);
+  };
+
+  const handleTaskSubmit = async (taskData: Partial<Task>) => {
     try {
-      if (!editingTask) return;
+      // Make sure tags is always defined as an array
+      const processedTaskData = {
+        ...taskData,
+        tags: taskData.tags || [],
+      };
 
-      const response = await fetch(`/api/tasks/${editingTask._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(taskData),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Update both tasks and filteredTasks in the local state
-        const updatedTask = { ...editingTask, ...taskData };
-
-        setTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task._id === editingTask._id ? updatedTask : task,
-          ),
-        );
-
-        // Re-sort tasks after update
-        const updatedTasks = [
-          ...tasks.map((task) =>
-            task._id === editingTask._id ? updatedTask : task,
-          ),
-        ];
-
-        const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
-        setTasks(sortedUpdatedTasks);
-
-        // Apply filters again to ensure the updated task still matches the current filters
-        handleFilterChange(activeFilters);
-
-        toast({
-          title: "Success",
-          description: "Task updated successfully",
+      if (dialogMode === "create") {
+        // Create new task
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(processedTaskData),
         });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Map from MongoDB _id to id for frontend consistency
+          const newTask: Task = {
+            id: result.data._id,
+            title: result.data.title,
+            owner: result.data.owner,
+            date: result.data.date,
+            requiredHours: result.data.requiredHours,
+            focusLevel: result.data.focusLevel,
+            joyLevel: result.data.joyLevel,
+            notes: result.data.notes,
+            tags: result.data.tags || [],
+            jobId: result.data.jobId,
+            completed: result.data.completed,
+            isNextTask: false,
+          };
+
+          // Add task to the state
+          setTasks((prevTasks) => [...prevTasks, newTask]);
+
+          // Re-sort and update filtered tasks
+          const updatedTasks = [...tasks, newTask];
+          const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
+          setTasks(sortedUpdatedTasks);
+          handleFilterChange(activeFilters);
+
+          toast({
+            title: "Success",
+            description: "Task created successfully",
+          });
+        } else {
+          throw new Error(result.error || "Failed to create task");
+        }
       } else {
-        throw new Error(result.error || "Failed to update task");
+        // Update existing task
+        if (!currentTask) return;
+
+        const response = await fetch(`/api/tasks/${currentTask.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(processedTaskData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Map from MongoDB _id to id for frontend consistency
+          const updatedTask: Task = {
+            id: result.data._id,
+            title: result.data.title,
+            owner: result.data.owner,
+            date: result.data.date,
+            requiredHours: result.data.requiredHours,
+            focusLevel: result.data.focusLevel,
+            joyLevel: result.data.joyLevel,
+            notes: result.data.notes,
+            tags: result.data.tags || [],
+            jobId: result.data.jobId,
+            completed: result.data.completed,
+            isNextTask: false,
+          };
+
+          // If the task completion status changed, trigger a progress update
+          if (currentTask.completed !== updatedTask.completed) {
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: result.data.jobId },
+            });
+            window.dispatchEvent(event);
+          }
+
+          // Update task in all state arrays - ensure we properly update with the full task data
+          const updateTaskState = (tasksArray: any[]) =>
+            tasksArray.map((task) => {
+              if (task.id === updatedTask.id) {
+                // Create a complete merged object to ensure all properties are updated
+                return {
+                  ...task,
+                  ...updatedTask,
+                };
+              }
+              return task;
+            });
+
+          // Apply updates to all task arrays
+          setTasks(updateTaskState(tasks));
+          setFilteredTasks(updateTaskState(filteredTasks));
+          setSortedTasks(updateTaskState(sortedTasks));
+
+          toast({
+            title: "Success",
+            description: "Task updated successfully",
+          });
+        } else {
+          throw new Error(result.error || "Failed to update task");
+        }
       }
     } catch (error) {
-      console.error("Error updating task:", error);
+      console.error("Error submitting task:", error);
       toast({
         title: "Error",
-        description: "Failed to update task",
+        description: "Failed to submit task",
         variant: "destructive",
       });
     }
@@ -756,8 +850,23 @@ export default function TaskFeedView() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      {/* Add the FilterComponent and TaskSortingComponent at the top */}
+    <div className="p-4 w-full">
+      <div className="flex gap-2">
+        <div className="w-full max-w-none">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Tasks</h1>
+
+            {/* Add the FilterComponent and TaskSortingComponent at the top */}
+
+            <div className="mb-4">
+              <Button onClick={handleAddTask}>
+                <Plus className="mr-2 h-4 w-4" /> Create Task
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <FilterComponent
           onFilterChange={handleFilterChange}
@@ -792,17 +901,15 @@ export default function TaskFeedView() {
         </div>
       </div>
 
-      {/* Task Edit Dialog */}
-      {editingTask && (
-        <TaskDialog
-          mode="edit"
-          open={taskDialogOpen}
-          onOpenChange={setTaskDialogOpen}
-          onSubmit={handleTaskUpdate}
-          initialData={editingTask}
-          jobId={editingTask.jobId}
-        />
-      )}
+      {/* Task Dialog - Always render with proper mode and data */}
+      <TaskDialog
+        mode={dialogMode}
+        open={taskDialogOpen}
+        onOpenChange={setTaskDialogOpen}
+        onSubmit={handleTaskSubmit}
+        initialData={editingTask}
+        jobs={jobs} // Pass the jobs object to TaskDialog
+      />
 
       {/* Task Completion Confirmation Dialog */}
       <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
@@ -857,3 +964,4 @@ export default function TaskFeedView() {
     </div>
   );
 }
+

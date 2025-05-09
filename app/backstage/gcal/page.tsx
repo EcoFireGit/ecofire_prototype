@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 
 import CalendarAuth from "@/components/gcal/calendar-auth";
 import { Gcal, convertGcalsToTableData } from "@/components/gcal/table/columns";
+import { useSearchParams } from "next/navigation";
 
 export default function CalendarPage() {
   const [data, setData] = useState<Gcal[]>([]);
@@ -16,6 +19,9 @@ export default function CalendarPage() {
   const [authInitialized, setAuthInitialized] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Gcal[]>([]);
   const { toast } = useToast();
+  const driverRef = useRef<any>(null);
+  const tourStartedRef = useRef(false); // Track if tour was already started
+  const searchParams = useSearchParams();
 
   type CalendarEvent = {
     date: string;
@@ -112,7 +118,7 @@ export default function CalendarPage() {
 
       toast({
         title: "Success",
-        description: `${selectedRows.length} calendar(s) added successfully with ${allEvents.length} events`,
+        description: `Watching ${selectedRows.length} calendar(s) for upcoming events`,
       });
 
       setSelectedRows([]);
@@ -127,7 +133,88 @@ export default function CalendarPage() {
     }
   };
 
-  // Initialize authentication and fetch data
+  // Start Google Calendar tour
+  const startGcalTour = (stepIndex = 0) => {
+    console.log(`🚀 Starting Google Calendar tour at step ${stepIndex}`);
+
+    const tourSteps = [
+      {
+        // First step: Authorize Google Calendar button
+        element: "#authorize-gcal",
+        popover: {
+          title: "Authorize Google Calendar",
+          description:
+            "Connect your Google account to enable calendar integration. Click authorize to proceed with the connection.",
+        },
+      },
+      {
+        // Second step: Get Calendars button
+        element: "#get-calendars",
+        popover: {
+          title: "Get Your Calendars",
+          description:
+            "Fetch all your available calendars from Google to choose which ones to sync.",
+        },
+      },
+      {
+        // Third step: Select Calendars button
+        element: "#select-calendars",
+        popover: {
+          title: "Select Your Calendars",
+          description:
+            "Choose which calendars you want to add. You will receive notifications for upcoming events from these calendars.",
+        },
+      },
+      {
+        // Fourth step: Create prioriwise calendar
+        element: "#create-prioriwise-calendar",
+        popover: {
+          title: "Create Prioriwise calendar",
+          description:
+            "You can schedule your tasks to be done as events in your Prioriwise calendar.",
+        },
+      },
+      {
+        // Final step
+        element: "#help-button",
+        popover: {
+          title: "You're All Set!",
+          description:
+            "You've completed the tour. You can restart it anytime from the help button in your Navbar.",
+        },
+      },
+    ];
+
+    try {
+      const driverOptions = {
+        showProgress: true,
+        animate: true,
+        allowClose: true,
+        overlayClickNext: false,
+        onDestroyed: () => {
+          console.log("🏆 GCal tour completed or closed manually");
+
+          // Clear the tour parameter from URL without page reload
+          const url = new URL(window.location.href);
+          url.searchParams.delete("tour");
+          url.searchParams.delete("step");
+          window.history.replaceState({}, "", url.toString());
+        },
+        steps: tourSteps,
+      };
+
+      console.log(
+        "🔍 Starting tour with steps:",
+        tourSteps.map((step) => step.element),
+      );
+      driverRef.current = driver(driverOptions);
+      driverRef.current.drive(stepIndex);
+    } catch (error) {
+      console.error("❌ Error starting tour:", error);
+    }
+  };
+
+  // Initialize authentication, fetch data, and check for tour parameter
   useEffect(() => {
     setAuthInitialized(true);
     if (authInitialized) {
@@ -135,12 +222,50 @@ export default function CalendarPage() {
     }
   }, [authInitialized]);
 
+  // Handle tour initialization - separate from data loading
+  useEffect(() => {
+    if (authInitialized && !loading && !tourStartedRef.current) {
+      // Check if tour should be started
+      const tourType = searchParams?.get("tour");
+      const tourStep = parseInt(searchParams?.get("step") || "0", 10);
+
+      if (tourType === "gcal") {
+        console.log("📣 Tour parameter detected in URL, starting tour");
+        tourStartedRef.current = true; // Mark as started
+
+        // Remove the tour parameters from URL to prevent loops
+        const url = new URL(window.location.href);
+        url.searchParams.delete("tour");
+        url.searchParams.delete("step");
+        window.history.replaceState({}, "", url.toString());
+
+        // Use setTimeout to ensure DOM is fully loaded
+        setTimeout(() => {
+          startGcalTour(tourStep);
+        }, 1000);
+      }
+    }
+  }, [authInitialized, loading, searchParams]);
+
+  // Cleanup function to destroy driver on unmount
+  useEffect(() => {
+    return () => {
+      if (driverRef.current) {
+        try {
+          driverRef.current.destroy();
+        } catch (error) {
+          console.error("Error destroying driver:", error);
+        }
+      }
+    };
+  }, []);
+
   // Handle row selection
   const toggleRowSelection = (row: Gcal) => {
     setSelectedRows((prevSelectedRows) =>
       prevSelectedRows.some((selectedRow) => selectedRow.id === row.id)
         ? prevSelectedRows.filter((selectedRow) => selectedRow.id !== row.id)
-        : [...prevSelectedRows, row]
+        : [...prevSelectedRows, row],
     );
   };
 
@@ -156,22 +281,10 @@ export default function CalendarPage() {
             <Button
               onClick={handleCreate}
               className="bg-blue-500 hover:bg-blue-600"
+              id="select-calendars"
             >
               <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar
             </Button>
-            {/* removing the testing buttons 
-            <Button
-              onClick={handleGetGcal}
-              className="bg-green-500 hover:bg-green-600"
-            >
-              Get api/gcal (Testing)
-            </Button>
-            <Button
-              onClick={handleGetNotifications}
-              className="bg-green-500 hover:bg-green-600"
-            >
-              Get api/notification (Testing)
-            </Button> */}
           </div>
 
           {/* Render Calendar Table */}
@@ -179,10 +292,8 @@ export default function CalendarPage() {
             <thead>
               <tr>
                 <th className="border border-gray-300 p-2 text-left">Select</th>
-                <th className="border border-gray-300 p-2 text-left">ID</th>
-                <th className="border border-gray-300 p-2 text-left">Etag</th>
                 <th className="border border-gray-300 p-2 text-left">
-                  Summary
+                  Calendar Name
                 </th>
                 <th className="border border-gray-300 p-2 text-left">
                   Timezone
@@ -195,7 +306,7 @@ export default function CalendarPage() {
                   key={row.id}
                   className={`border border-gray-300 ${
                     selectedRows.some(
-                      (selectedRow) => selectedRow.id === row.id
+                      (selectedRow) => selectedRow.id === row.id,
                     )
                       ? "bg-blue-100"
                       : ""
@@ -205,56 +316,17 @@ export default function CalendarPage() {
                     <input
                       type="checkbox"
                       checked={selectedRows.some(
-                        (selectedRow) => selectedRow.id === row.id
+                        (selectedRow) => selectedRow.id === row.id,
                       )}
                       onChange={() => toggleRowSelection(row)}
                     />
                   </td>
-                  <td className="p-2">{row.id}</td>
-                  <td className="p-2">{row.etag}</td>
                   <td className="p-2">{row.summary}</td>
                   <td className="p-2">{row.timeZone}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-          {/* Render Events Table */}
-          {events.length > 0 ? (
-            <>
-              <h3 className="text-xl font-semibold mb-4">Calendar Events</h3>
-              <table className="w-full border-collapse border border-gray-200">
-                <thead>
-                  <tr>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Date
-                    </th>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Time
-                    </th>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Event Name
-                    </th>
-                    <th className="border border-gray-300 p-2 text-left">
-                      Calendar Name
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map((event, idx) => (
-                    <tr key={idx} className="border border-gray-300">
-                      <td className="p-2">{event.date}</td>
-                      <td className="p-2">{event.time}</td>
-                      <td className="p-2">{event.name}</td>
-                      <td className="p-2">{event.calendar}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          ) : (
-            <p>No events found for the selected calendars.</p> // Fallback message
-          )}
         </div>
       )}
     </div>
