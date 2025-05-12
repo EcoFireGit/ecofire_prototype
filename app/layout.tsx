@@ -18,7 +18,7 @@ function simpleHash(str: string): string {
     i,
     chr;
   if (!str) {
-    throw new Error("COHORT_PASSWORD must be a valid string");
+    throw new Error("NEXT_PUBLIC_COHORT_PASSWORD must be a valid string");
   }
   if (str.length === 0) return hash.toString();
   for (i = 0; i < str.length; i++) {

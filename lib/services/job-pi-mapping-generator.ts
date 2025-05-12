@@ -91,7 +91,7 @@ export class JobPIMappingGenerator {
                 piImpactValue: mapping.piImpactValue,
                 piTarget: mapping.piTarget,
                 notes:
-                  `(Auto-generated mapping for job ${mapping.jobName}) ` +
+                  `[Auto-generated mapping for job ${mapping.jobName}] ` +
                   mapping.notes,
               },
               userId,
