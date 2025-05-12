@@ -1,5 +1,3 @@
-// components/business-functions/table/business-functions-table.tsx
-
 "use client"
 
 import {
@@ -16,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useRouter } from "next/navigation" // <-- Import useRouter
 
 // Define the BusinessFunction type
 export type BusinessFunction = {
@@ -29,7 +28,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends { name: string }, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
@@ -38,6 +37,8 @@ export function DataTable<TData, TValue>({
     columns,
     getCoreRowModel: getCoreRowModel(),
   })
+
+  const router = useRouter() // <-- Initialize router
 
   return (
     <div className="rounded-md border">
@@ -66,6 +67,13 @@ export function DataTable<TData, TValue>({
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
+                className="cursor-pointer hover:bg-gray-100"
+                onClick={() => {
+                  // Get the business function name from the row
+                  const businessFunctionName = (row.original as { name: string }).name
+                  // Navigate to /jobs with the filter as a query param
+                  router.push(`/jobs?businessFunction=${encodeURIComponent(businessFunctionName)}`)
+                }}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
