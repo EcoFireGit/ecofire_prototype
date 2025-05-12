@@ -599,15 +599,13 @@ export default function TaskFeedView() {
 
       // Use current local time as the start time
       const startDate = new Date();
-     // console.log(startDate);
+      const taskDate = new Date(task.date);
       // Keep the date from the task but use current time
       startDate.setFullYear(
-        new Date(task.date).getFullYear(),
-        new Date(task.date).getMonth(),
-        new Date(task.date).getDate()+1,
+        taskDate.getFullYear(),
+        taskDate.getMonth(),
+        taskDate.getUTCDate(),
       );
-     // console.log(task.date);
-     // console.log(startDate);
       const endDate = new Date(
         startDate.getTime() + task.requiredHours * 60 * 60 * 1000,
       );
@@ -967,4 +965,3 @@ export default function TaskFeedView() {
     </div>
   );
 }
-
