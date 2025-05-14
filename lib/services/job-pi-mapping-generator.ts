@@ -28,21 +28,24 @@ export class JobPIMappingGenerator {
       }
 
       // Create a context string with job and PIs information for the AI
-      const jobContext = `JobTitle: ${job.title}, Notes: ${job.notes}`;
+      const jobContext = `Job ID: ${job._id}, JobTitle: ${job.title}, Notes: ${job.notes}`;
       const pisContext = pis
-        .map((pi) => `PI Name: ${pi.name}, Notes: ${pi.notes}`)
+        .map(
+          (pi) =>
+            `PI ID: ${pi._id}, PI Name: ${pi.name}, PI target value: ${pi.targetValue}, Notes: ${pi.notes},`,
+        )
         .join("\n");
 
       // Create a custom prompt for mapping generation
       const mappingsPrompt =
         `Based on the following Job and Progress Indicators (PIs), create mappings between the job and PIs that make sense. ` +
         `\n\nJOB:\n${jobContext}\n\nPROGRESS INDICATORS:\n${pisContext}\n\n` +
-        `Generate mappings between the job and PIs where the job must impact one or more PIs. ` +
+        `Generate mappings between the job and existing PIs where the job must impact one or more PIs. ` +
         `For each mapping, you need to specify how much impact the job has on a specific PI using a piImpactValue. ` +
         `The piImpactValue should not exceed the targetValue for that PI. ` +
-        `Ensure that the job is mapped to at least one PI, and choose PIs that are most relevant to the job. ` +
+        `IMPORTANT: Ensure that the job is mapped to at least one existing PI, and only choose from existing PIs that are most relevant to the job. ` +
         `Output your result in the form of a JSON in the following format: ` +
-        `{ "mapping1": { "jobId": "${job._id}", "jobName": "${job.title}", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": 10, "piTarget": pi-target-value-here, "notes": "Explanation of this mapping" } }. ` +
+        `{ "mapping1": { "jobId": "${job._id}", "jobName": "${job.title}", "piId": "pi-id-here", "piName": "PI Name Here", "piImpactValue": piImpactValue-here, "piTarget": pi-target-value-here, "notes": "Explanation of this mapping" } }. ` +
         `Your output should strictly follow this format with double quotes for all keys and string values, not single quotes. This should be the only output.`;
 
       // Create a system prompt (similar to onboarding)
