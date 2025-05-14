@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown, ArrowDown, ArrowUp, Clock, CalendarClock } from "lucide-react";
+import { ArrowUpDown, ArrowDown, ArrowUp, Clock} from "lucide-react";
 import { Job } from "@/components/jobs/table/columns";
 
 export type SortOption = "recommended" | "dueDate-asc" | "dueDate-desc" | "hoursRequired-asc" | "hoursRequired-desc";
@@ -135,14 +135,13 @@ const SortingComponent: React.FC<SortingComponentProps> = ({
 
   return (
     <div className="flex items-center">
-      <div className="flex items-center gap-2">
-        <CalendarClock className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-2 mb-4">
         <span className="text-sm text-muted-foreground mr-2">Sort by:</span>
         <Select
           value={sortOption}
           onValueChange={(value: SortOption) => setSortOption(value)}
         >
-          <SelectTrigger className="w-[220px] h-9">
+          <SelectTrigger className="w-[250px] h-9">
             <SelectValue>
               <div className="flex items-center">
                 {getOptionDetails(sortOption).icon}
