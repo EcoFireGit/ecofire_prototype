@@ -72,6 +72,7 @@ export class JobDuplicationService {
         };
         delete newTask._id;
         delete newTask.id;
+        delete newTask.date;
 
         // Create the task
         const taskResult = await this.taskService.createTask(newTask, userId);
