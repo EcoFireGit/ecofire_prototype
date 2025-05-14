@@ -94,6 +94,8 @@ export function QBOCircles({ onSelectJob }: QBOCircleProps) {
     const colors = [
       "bg-blue-100 border-blue-500 text-blue-800",
       "bg-green-100 border-green-500 text-green-800",
+      "bg-orange-100 border-orange-500 text-orange-800",
+      "bg-violet-100 border-violet-500 text-violet-800",
       "bg-purple-100 border-purple-500 text-purple-800",
       "bg-amber-100 border-amber-500 text-amber-800",
       "bg-rose-100 border-rose-500 text-rose-800",

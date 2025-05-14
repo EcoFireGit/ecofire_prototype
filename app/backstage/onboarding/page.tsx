@@ -506,6 +506,33 @@ export default function OnboardingPage() {
       "Mature",
       "custom",
     ]);
+
+    async function fetchBusinessInfo() {
+      try {
+        const response = await fetch("/api/business-info");
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Object.keys(data).length > 0) {
+            // Pre-populate fields with existing business info
+            setBusinessName(data.name || "");
+            setBusinessIndustry(data.industry || "");
+            setMonthsInBusiness(data.monthsInBusiness || 0);
+            setAnnualRevenue(data.annualRevenue || 0);
+            setGrowthStage(data.growthStage || "");
+            setInput(data.missionStatement || "");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching business info:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load business information",
+          variant: "destructive",
+        });
+      }
+    }
+
+    fetchBusinessInfo();
   }, []);
 
   return (
@@ -744,14 +771,6 @@ export default function OnboardingPage() {
                                         Target:
                                       </span>{" "}
                                       {outcome.targetValue}
-                                    </p>
-                                    <p>
-                                      <span className="font-medium">
-                                        Deadline:
-                                      </span>{" "}
-                                      {new Date(
-                                        outcome.deadline,
-                                      ).toLocaleDateString()}
                                     </p>
                                     <div className="mb-3 text-sm text-gray-700">
                                       <p>{outcome.notes}</p>

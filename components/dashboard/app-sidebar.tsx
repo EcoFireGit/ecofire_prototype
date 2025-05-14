@@ -53,13 +53,10 @@ const items = [
     icon: Home,
   },
   {
-    title: "Onboarding",
-    url: "/onboarding",
-    icon: ClipboardCheck,
-  },
-  {
     title: "Quick Guide",
-    url: "#",
+    url: "https://coda.io/@urvashi-batra/prioriwise-getting-started-guide",
+    target: "_blank",
+    rel: "noopener noreferrer",
     icon: Inbox,
   },
   {
@@ -112,6 +109,11 @@ const backstageItems = [
     title: "Mappings",
     url: "/backstage/mappings",
     icon: Target,
+  },
+  {
+    title: "Onboarding",
+    url: "/backstage/onboarding",
+    icon: ClipboardCheck,
   },
 ];
 
@@ -254,7 +256,7 @@ export function AppSidebar() {
                       asChild
                       className="flex items-center"
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} target={item.target} rel={item.rel}>
                         <IconComponent
                           className={`${active ? "text-[#F05523]" : ""} ${state === "collapsed" ? "mx-auto" : ""}`}
                         />
