@@ -14,7 +14,7 @@ const customJestConfig = {
     // Handle image/static asset imports
     '^.+\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
-  testEnvironment: 'jest-environment-jsdom', // Simulate a browser for React testing
+  testEnvironment: 'node',  // Set the test environment to 'node'
 };
 
 module.exports = createJestConfig(customJestConfig);
