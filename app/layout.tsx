@@ -98,7 +98,7 @@ export default function RootLayout({
                       className="logo"
                     />
                     <h1 className="title">
-                      Welcome to <span className="brand">Prioriwise</span>
+                      Welcome to <span className="brand">Prioriwise!</span>
                     </h1>
                     <p className="subtitle">
                       Boost your productivity and focus on what truly matters.
