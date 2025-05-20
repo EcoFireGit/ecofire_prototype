@@ -138,16 +138,12 @@ const Navbar = () => {
   // Handle create job button click
   const handleCreateJobClick = (e: { preventDefault: () => void }) => {
     // If already on jobs page, prevent default navigation and use custom event
-    if (pathname === "/jobs") {
-      e.preventDefault();
+
 
       // Create and dispatch a custom event that the JobsPage can listen for
       const event = new CustomEvent("openJobDialog");
       window.dispatchEvent(event);
-    } else {
-      // Normal navigation to jobs page with query param
-      router.push("/jobs?open=true");
-    }
+   
   };
 
   // Handle notification click
@@ -275,11 +271,9 @@ const Navbar = () => {
           )}
         </Button>
 
-        <Link href="/jobs?open=true" onClick={handleCreateJobClick}>
-          <Button className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
+          <Button type ="submit" onClick ={handleCreateJobClick} className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
             Create a Job
           </Button>
-        </Link>
         <UserButton />
       </div>
 
