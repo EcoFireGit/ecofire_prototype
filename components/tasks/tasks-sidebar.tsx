@@ -150,6 +150,7 @@ export function TasksSidebar({
   const { refreshJobOwner, refreshJobProgress } = useTaskContext();
   const router = useRouter();
 
+  
   // Reset the initialSortDone flag when the sidebar is closed
   useEffect(() => {
     if (!open) {
@@ -297,6 +298,7 @@ export function TasksSidebar({
   };
 
   const handleAddTask = () => {
+
     setDialogMode("create");
     setCurrentTask(undefined);
     setTaskDialogOpen(true);
@@ -344,6 +346,7 @@ export function TasksSidebar({
     }
   };
 
+
   const handleCompleteTask = async (
     id: string,
     jobid: string,
@@ -358,24 +361,47 @@ export function TasksSidebar({
         body: JSON.stringify({ completed }),
       });
       const result = await response.json();
+  
       if (result.success) {
-        // Use the function form of setState to ensure you're working with the latest state
         setTasks((prevTasks) => {
-          return prevTasks.map((task) => {
-            if (task.id === id) {
-              // Update completed status and remove isNextTask if it's being completed
-              return {
-                ...task,
-                completed,
-                // If the task is being completed and it was the next task, remove that status
-                isNextTask: completed ? false : task.isNextTask,
-              };
+          // Mark the completed status
+          let updatedTasks = prevTasks.map((task) =>
+            task.id === id
+              ? { ...task, completed, isNextTask: completed ? false : task.isNextTask }
+              : task
+          );
+  
+          // If the completed task was the next task, auto-assign the next incomplete task
+          if (id === nextTaskId && completed) {
+            // Find the next incomplete task in the job's order (after the current one)
+            const orderedTaskIds = selectedJob?.tasks || [];
+            const completedIndex = orderedTaskIds.indexOf(id);
+            let newNextTaskId = undefined;
+  
+            // Find the next incomplete task in order
+            for (let i = completedIndex + 1; i < orderedTaskIds.length; i++) {
+              const candidate = updatedTasks.find((t) => t.id === orderedTaskIds[i]);
+              if (candidate && !candidate.completed) {
+                newNextTaskId = candidate.id;
+                break;
+              }
             }
-            return task;
-          });
+  
+            setNextTaskId(newNextTaskId);
+  
+            // Update isNextTask flag for all tasks
+            updatedTasks = updatedTasks.map((task) => ({
+              ...task,
+              isNextTask: task.id === newNextTaskId,
+            }));
+  
+            // Update backend with new nextTaskId
+            updateJobNextTask(newNextTaskId || "none");
+          }
+  
+          return updatedTasks;
         });
-
-        // Then trigger a refresh of the job progress
+  
         refreshJobProgress(jobid);
       } else {
         toast({
@@ -393,6 +419,13 @@ export function TasksSidebar({
       });
     }
   };
+  
+  
+  
+  
+  
+  
+  
 
   const handleNextTaskChange = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
@@ -418,6 +451,7 @@ export function TasksSidebar({
 
       // Update isNextTask flag for all tasks
       setTasks(
+       
         tasks.map((task) => ({
           ...task,
           isNextTask: task.id === taskIdToSave,
@@ -426,6 +460,7 @@ export function TasksSidebar({
 
       // Set the flag in the parent component to indicate a refresh is needed
       // But don't actually refresh yet - wait until sidebar is closed
+     
       if (typeof onRefreshJobs === "function") {
         onRefreshJobs();
       }
