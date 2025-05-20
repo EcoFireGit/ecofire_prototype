@@ -787,6 +787,14 @@ Check redirect URI, it MUST be same as the URL that a user logged in to
 Allow access to individual users on Google Cloud console
 Make sure redirect uri is added to the list of callbacks on Google console
 
+## PI Table
+
+### Overview
+The PI Table is used to store and display all PI(Performance Indicators) a user creates. The PI table is located in the backstage. 
+
+### Key Rules
+Each PI is related to a job to a certain outcome. It holds a starting value, a target value, and a deadline. 
+
 
 
 ## Search
