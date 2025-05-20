@@ -819,10 +819,10 @@ A user can also select a next Task from the dropdown on Job Details view
 Using jest as testing framework. Jest configuration is set in jest.config.ts
 
 ### How to write unit tests
-Tests are written in __tests__ folder 
+Tests are written in  \_\_tests\_\_  folder.
 For Unit tests, all dependencies in a function are mocked. 
 
-#### Execute tests
+### Execute tests
 Run tests by running command-- 
-npx jest <test-filename>
-ex: npx jest __tests__/api/jobs.test.ts
+npx jest \<test-filename\>.
+For example: npx jest  \_\_tests__/api/jobs.test.ts
