@@ -4,6 +4,12 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';  // Import useSearchParams from next/navigation
 import { SignUp, useUser } from '@clerk/clerk-react'; // Clerk components
+import {
+  ClerkProvider,
+  SignInButton,
+  SignedIn,
+  SignedOut,
+} from "@clerk/nextjs";
 
 const SignUpPage = () => {
   const searchParams = useSearchParams(); // Use this to get the query parameters
@@ -76,13 +82,16 @@ const SignUpPage = () => {
   }
 
   return (
-    <div>
-      <h2>Complete Your Registration</h2>
-      <SignUp
-        path="/sign-up"
-        redirectUrl={`/dashboard`}  // Redirect to your app's dashboard after successful sign-up
-      />
-    </div>
+    <ClerkProvider>
+
+      <div>
+        <h2>Complete Your Registration</h2>
+        <SignUp
+          path="/sign-up"
+          redirectUrl={`/jobs`}  // Redirect to your app's dashboard after successful sign-up
+        />
+      </div>
+      </ClerkProvider>
   );
 };
 
