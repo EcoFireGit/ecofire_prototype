@@ -360,25 +360,34 @@ export function TasksSidebar({
         },
         body: JSON.stringify({ completed }),
       });
+  
+      if (!response.ok) {
+        throw new Error("Failed to update task");
+      }
+  
       const result = await response.json();
   
       if (result.success) {
         setTasks((prevTasks) => {
-          // Mark the completed status
-          let updatedTasks = prevTasks.map((task) =>
-            task.id === id
-              ? { ...task, completed, isNextTask: completed ? false : task.isNextTask }
-              : task
-          );
+          // Update completed status
+          let updatedTasks = prevTasks.map((task) => {
+            if (task.id === id) {
+              return {
+                ...task,
+                completed,
+                isNextTask: completed ? false : task.isNextTask,
+              };
+            }
+            return task;
+          });
   
-          // If the completed task was the next task, auto-assign the next incomplete task
+          // If the completed task was the next task, set the next incomplete one as next
           if (id === nextTaskId && completed) {
-            // Find the next incomplete task in the job's order (after the current one)
             const orderedTaskIds = selectedJob?.tasks || [];
             const completedIndex = orderedTaskIds.indexOf(id);
-            let newNextTaskId = undefined;
   
             // Find the next incomplete task in order
+            let newNextTaskId: string | undefined = undefined;
             for (let i = completedIndex + 1; i < orderedTaskIds.length; i++) {
               const candidate = updatedTasks.find((t) => t.id === orderedTaskIds[i]);
               if (candidate && !candidate.completed) {
@@ -387,22 +396,27 @@ export function TasksSidebar({
               }
             }
   
-            setNextTaskId(newNextTaskId);
-  
-            // Update isNextTask flag for all tasks
-            updatedTasks = updatedTasks.map((task) => ({
+            // Update isNextTask flag
+            updatedTasks = updatedTasks.map(task => ({
               ...task,
               isNextTask: task.id === newNextTaskId,
             }));
   
-            // Update backend with new nextTaskId
+            // Update nextTaskId and backend
+            setNextTaskId(newNextTaskId);
             updateJobNextTask(newNextTaskId || "none");
           }
   
           return updatedTasks;
         });
   
+        // Refresh progress bar or other job-related UI
         refreshJobProgress(jobid);
+  
+        toast({
+          title: "Success",
+          description: "Task updated successfully",
+        });
       } else {
         toast({
           title: "Error",
@@ -419,6 +433,7 @@ export function TasksSidebar({
       });
     }
   };
+  
   
   
   
