@@ -46,6 +46,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/react-table": "^8.21.2",
     "@types/mongoose": "^5.11.97",
+    "@vercel/analytics": "^1.5.0",
     "@vercel/blob": "^0.26.0",
     "ai": "4.1.63",
     "class-variance-authority": "^0.7.1",

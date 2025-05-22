@@ -11,6 +11,7 @@ import Navbar from "@/components/landing_page/navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { TaskProvider } from "@/hooks/task-context";
 import { ViewProvider } from "@/lib/contexts/view-context";
+import { Analytics } from '@vercel/analytics/next';
 
 // Simple hash function for demonstration
 function simpleHash(str: string): string {
@@ -164,6 +165,7 @@ export default function RootLayout({
               <TaskProvider>{children}</TaskProvider>
             </SignedIn>
             <Toaster />
+            <Analytics />
           </body>
         </html>
       </ViewProvider>
