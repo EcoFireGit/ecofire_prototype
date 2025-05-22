@@ -33,7 +33,7 @@ import {
 interface Member {
   _id: string;
   userId: string;
-  email: string;
+  email?: string;
   organizationId: string;
   role: "admin" | "member";
   joinedAt: string;

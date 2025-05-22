@@ -89,9 +89,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const searchParams = useSearchParams(); // Use this to get the query parameters
-  const orgId = searchParams.get('orgId');
-  const token = searchParams.get('__clerk_ticket');
   return (
     <ClerkProvider>
       <ViewProvider>
@@ -155,20 +152,6 @@ export default function RootLayout({
                 {/* Right sign-in side with password gate */}
                 <section className="split-right">
                   <PasswordGate>
-                    { orgId && token ? (
-                      
-                        <div className="signin-box">
-                          <h2>Sign Up</h2>
-                          <p className="signin-subtitle">
-                            SignUp to access your Jobs
-                          </p>
-                          <SignUpButton>
-                            <button className="sign-in-btn">
-                              Sign up to the app
-                            </button>
-                          </SignUpButton>
-                        </div>
-                      ): (
                       <div className="signin-box">
                         <h2>Sign in</h2>
                         <p className="signin-subtitle">
@@ -179,8 +162,8 @@ export default function RootLayout({
                             Sign in to the app
                           </button>
                         </SignInButton>
-                      </div>)
-                    }
+                      </div>
+                    
                   </PasswordGate>
                 </section>
               </main>
