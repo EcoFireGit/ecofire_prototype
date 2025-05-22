@@ -16,6 +16,7 @@
 13. [Sorting and Filtering](#sorting-and-filtering)
 14. [Onboarding Tour](#onboarding-tour)
 15. [Calendar Integration](#calendar-integration)
+16. [Unit Testing](#unit-testing)
 
 
 ## Project Overview
@@ -812,4 +813,16 @@ Deleting a current task, BE selects the next incomplete and active task in the a
 A user can also select a next Task from the dropdown on Job Details view
 
 
+## Unit Testing
 
+### Overview
+Using jest as testing framework. Jest configuration is set in jest.config.ts
+
+### How to write unit tests
+Tests are written in  \_\_tests\_\_  folder.
+For Unit tests, all dependencies in a function are mocked. 
+
+### Execute tests
+Run tests by running command-- 
+npx jest \<test-filename\>.
+For example: npx jest  \_\_tests__/api/jobs.test.ts
