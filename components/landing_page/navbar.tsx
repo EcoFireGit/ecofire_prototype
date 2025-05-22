@@ -5,11 +5,44 @@ import { useRouter, usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Search, Bell, HelpCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { JobDialog } from "@/components/jobs/job-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Jobs } from "@/lib/models/job.model";
+import { Job, columns } from "@/components/jobs/table/columns";
+import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
+
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+function convertJobsToTableData(
+  jobs: Jobs[],
+  businessFunctions: BusinessFunctionForDropdown[],
+): Job[] {
+  return jobs.map((job) => {
+    // Find the business function name if it exists
+    const businessFunction = job.businessFunctionId
+      ? businessFunctions.find((bf) => bf.id === job.businessFunctionId)
+      : undefined;
+
+    return {
+      id: job._id,
+      title: job.title,
+      notes: job.notes || undefined,
+      businessFunctionId: job.businessFunctionId || undefined,
+      businessFunctionName: businessFunction?.name || undefined,
+      dueDate: job.dueDate ? new Date(job.dueDate).toISOString() : undefined,
+      isDone: job.isDone || false,
+      nextTaskId: job.nextTaskId || undefined,
+      tasks: job.tasks || [],
+      impact: job.impact || 0,
+      // Owner removed as it's now derived from the next task
+    };
+  });
+}
+
 
 // Create a direct custom event to handle same-page tour starts
 const TOUR_START_EVENT = "directTourStart";
@@ -39,6 +72,7 @@ interface NotificationData {
   };
 }
 
+ 
 // Function to format minutes into hours and minutes
 const formatTimeRemaining = (minutes: number): string => {
   if (minutes < 60) {
@@ -65,6 +99,79 @@ const Navbar = () => {
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [appointmentVisible, setAppointmentVisible] = useState(false);
   const [eventTitle, setEventTitle] = useState<string>("");
+  
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false); //State to track job creation
+  const [editingJob, setEditingJob] = useState<Job | undefined>(undefined);
+ const [businessFunctions, setBusinessFunctions] = useState<
+    BusinessFunctionForDropdown[]
+  >([]);
+const [loading, setLoading] = useState(true);
+const [owners, setOwners] = useState<{ _id: string; name: string }[]>([]);
+const [tags, setTags] = useState<{ _id: string; name: string }[]>([]);
+const [taskOwnerMap, setTaskOwnerMap] = useState<Record<string, string>>({});
+const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
+const [error, setError] = useState<string | null>(null);
+const [activeJobs, setActiveJobs] = useState<Job[]>([]);
+  const [filteredActiveJobs, setFilteredActiveJobs] = useState<Job[]>([]);
+  const [sortedActiveJobs, setSortedActiveJobs] = useState<Job[]>([]);
+  const [completedJobs, setCompletedJobs] = useState<Job[]>([]);
+  const [filteredCompletedJobs, setFilteredCompletedJobs] = useState<Job[]>([]);
+  const [sortedCompletedJobs, setSortedCompletedJobs] = useState<Job[]>([]);
+
+
+  const handleCreate = async (jobData: Partial<Job>) => {
+    setCreatingJob(true); // Set creating job state to true
+    try {
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...jobData,
+          // Ensure we're sending businessFunctionId, not businessFunctionName
+          businessFunctionId: jobData.businessFunctionId,
+          // No need to send owner as it's derived from the next task
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Job successfully created",
+        });
+        await fetchJobs(); // Refresh jobs and wait for it to complete
+
+        // Now we can close the dialog after jobs have been refreshed
+        setDialogOpen(false);
+        router.push('/jobs');
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create job",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingJob(false); // Reset creating job state
+    }
+  };
+
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      // If dialog is closing, reset editing job
+      setEditingJob(undefined);
+    }
+  };
+
 
   // Function to first fetch api/gcal to create notifications in the backend and then fetch notifications
   const fetchNotifications = async () => {
@@ -121,6 +228,250 @@ const Navbar = () => {
     }
   };
 
+  const fetchOwners = async () => {
+    try {
+      const response = await fetch("/api/owners");
+      const result = await response.json();
+
+      let ownersData: { _id: string; name: string }[] = [];
+
+      if (Array.isArray(result)) {
+        ownersData = result.map((owner) => ({
+          _id: owner._id,
+          name: owner.name,
+        }));
+      } else if (result.data && Array.isArray(result.data)) {
+        ownersData = result.data.map((owner: any) => ({
+          _id: owner._id,
+          name: owner.name,
+        }));
+      }
+
+      setOwners(ownersData);
+      return ownersData;
+    } catch (error) {
+      console.error("Error fetching owners:", error);
+      return [];
+    }
+  };
+
+  const fetchTaskOwners = async (taskIds: string[]) => {
+    if (!taskIds.length) return;
+
+    try {
+      // First, fetch all owners for this user
+      const ownersResponse = await fetch("/api/owners");
+      const ownersResult = await ownersResponse.json();
+
+      let ownerMap: Record<string, string> = {};
+
+      // Check the structure of the owners response
+      if (Array.isArray(ownersResult)) {
+        // Case 1: API returns direct array of owners
+        ownersResult.forEach((owner) => {
+          if (owner._id && owner.name) {
+            ownerMap[owner._id] = owner.name;
+          }
+        });
+      } else if (ownersResult.data && Array.isArray(ownersResult.data)) {
+        // Case 2: API returns { data: [...owners] }
+        ownersResult.data.forEach((owner: any) => {
+          if (owner._id && owner.name) {
+            ownerMap[owner._id] = owner.name;
+          }
+        });
+      }
+
+      // Now fetch the tasks with the owner IDs we want to map
+      const queryParams = new URLSearchParams();
+      taskIds.forEach((id) => queryParams.append("ids", id));
+
+      const tasksResponse = await fetch(
+        `/api/tasks/batch?${queryParams.toString()}`,
+      );
+      const tasksResult = await tasksResponse.json();
+
+      if (!tasksResult.success && !tasksResult.data) {
+        console.error("Tasks API did not return success or data");
+        return;
+      }
+
+      const tasks = tasksResult.data || tasksResult;
+
+      // Map task IDs to owner names
+      const taskOwnerMapping: Record<string, string> = {};
+
+      // Also store the detailed task information for filtering
+      const taskDetailsMap: Record<string, any> = {};
+
+      tasks.forEach((task: any) => {
+        // Store task details for filtering
+        taskDetailsMap[task.id || task._id] = task;
+
+        // In your system, task.owner should be the owner ID
+        if (task.owner && typeof task.owner === "string") {
+          // Look up the owner name from our previously built map
+          taskOwnerMapping[task.id || task._id] =
+            ownerMap[task.owner] || "Not assigned";
+        } else {
+          taskOwnerMapping[task.id || task._id] = "Not assigned";
+        }
+      });
+
+      // Update the state with our new mapping
+      setTaskOwnerMap(taskOwnerMapping);
+      setTaskDetails(taskDetailsMap);
+    } catch (error) {
+      console.error("Error creating task owner mapping:", error);
+    }
+  };
+
+  const sortByRecommended = (jobs: Job[]): Job[] => {
+    return [...jobs].sort((a, b) => {
+      // First compare due dates (null dates go to the end)
+      const dateA = a.dueDate
+        ? new Date(a.dueDate).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      const dateB = b.dueDate
+        ? new Date(b.dueDate).getTime()
+        : Number.MAX_SAFE_INTEGER;
+
+      if (dateA !== dateB) {
+        return dateA - dateB; // Ascending by date
+      }
+
+      // If dates are the same (or both null), sort by impact descending
+      const impactA = a.impact || 0;
+      const impactB = b.impact || 0;
+      return impactB - impactA; // Descending by impact
+    });
+  };
+
+  // Add a fetchTags function
+  const fetchTags = async () => {
+    try {
+      const response = await fetch("/api/task-tags");
+      const result = await response.json();
+
+      if (result.success && Array.isArray(result.data)) {
+        setTags(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
+  };
+
+  const handleEdit = async (jobData: Partial<Job>) => {
+    if (!editingJob) return;
+
+    try {
+      const response = await fetch(`/api/jobs/${editingJob.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...jobData,
+          // Ensure we're sending businessFunctionId, not businessFunctionName
+          businessFunctionId: jobData.businessFunctionId,
+          // No need to send owner as it's derived from the next task
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Job updated successfully",
+        });
+        // First close the dialog
+        setDialogOpen(false);
+        // Then clear the editing job state
+        setEditingJob(undefined);
+        // Finally fetch updated jobs
+        fetchJobs();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update job",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+
+      // First fetch business functions
+      const bfResponse = await fetch("/api/business-functions");
+      const bfResult = await bfResponse.json();
+
+      let currentBusinessFunctions = [];
+      if (bfResult.success) {
+        currentBusinessFunctions = bfResult.data.map((bf: any) => ({
+          id: bf._id,
+          name: bf.name,
+        }));
+        // Update state for later use
+        setBusinessFunctions(currentBusinessFunctions);
+      }
+
+      // Also fetch owners for filters
+      await fetchOwners();
+      // Fetch tags for filters
+      await fetchTags();
+
+      // Then fetch jobs
+      const jobsResponse = await fetch("/api/jobs");
+      const jobsResult = await jobsResponse.json();
+
+      if (jobsResult.success) {
+        // Collect all next task IDs to fetch their owners
+        const taskIds = jobsResult.data
+          .filter((job: any) => job.nextTaskId)
+          .map((job: any) => job.nextTaskId);
+
+        // Fetch task owners if any tasks exist
+        if (taskIds.length > 0) {
+          await fetchTaskOwners(taskIds);
+        }
+
+        // Use the business functions we just fetched
+        const allJobs = convertJobsToTableData(
+          jobsResult.data,
+          currentBusinessFunctions,
+        );
+
+        // Separate active and completed jobs
+        const activeJobs = allJobs.filter((job) => !job.isDone);
+        const completedJobs = allJobs.filter((job) => job.isDone);
+
+        // Apply sorting to the initial jobs
+        const sortedActiveJobs = sortByRecommended(activeJobs);
+        const sortedCompletedJobs = sortByRecommended(completedJobs);
+
+        setActiveJobs(activeJobs);
+        setFilteredActiveJobs(activeJobs);
+        setSortedActiveJobs(sortedActiveJobs);
+        setCompletedJobs(completedJobs);
+        setFilteredCompletedJobs(completedJobs);
+        setSortedCompletedJobs(sortedCompletedJobs);
+      } else {
+        setError(jobsResult.error);
+      }
+    } catch (err) {
+      setError("Failed to fetch data");
+      console.error("Error fetching data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Set up polling for notifications every 60 seconds
   useEffect(() => {
     // Fetch on initial load
@@ -138,16 +489,12 @@ const Navbar = () => {
   // Handle create job button click
   const handleCreateJobClick = (e: { preventDefault: () => void }) => {
     // If already on jobs page, prevent default navigation and use custom event
-    if (pathname === "/jobs") {
-      e.preventDefault();
 
+      setDialogOpen(true);
       // Create and dispatch a custom event that the JobsPage can listen for
-      const event = new CustomEvent("openJobDialog");
-      window.dispatchEvent(event);
-    } else {
-      // Normal navigation to jobs page with query param
-      router.push("/jobs?open=true");
-    }
+      // const event = new CustomEvent("openJobDialog");
+      // window.dispatchEvent(event);
+   
   };
 
   // Handle notification click
@@ -275,11 +622,17 @@ const Navbar = () => {
           )}
         </Button>
 
-        <Link href="/jobs?open=true" onClick={handleCreateJobClick}>
-          <Button className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
+    <JobDialog
+          mode={editingJob ? "edit" : "create"}
+          open={dialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          onSubmit={editingJob ? handleEdit : handleCreate}
+          initialData={editingJob}
+        />
+
+          <Button type ="submit" onClick ={handleCreateJobClick} className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
             Create a Job
           </Button>
-        </Link>
         <UserButton />
       </div>
 
