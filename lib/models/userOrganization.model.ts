@@ -4,6 +4,7 @@ import mongoose, { Schema } from 'mongoose';
 export interface UserOrganization extends mongoose.Document {
   userId: string;
   organizationId: string;
+  email: string;
   role: 'admin' | 'member';
   joinedAt: Date;
 }
@@ -12,6 +13,7 @@ const userOrganizationSchema = new Schema<UserOrganization>(
   {
     userId: { type: String, required: true },
     organizationId: { type: String, required: true },
+    email: { type: String },
     role: { 
       type: String, 
       enum: ['admin', 'member'], 

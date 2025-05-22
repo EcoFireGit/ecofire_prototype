@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     userId!,
     org._id.toString(),
     "admin",
+    authResult.email!
   );
 
   return NextResponse.json({

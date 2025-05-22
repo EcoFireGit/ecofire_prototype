@@ -5,7 +5,6 @@ import InviteUser from "../models/invite-users.model";
 export class InviteUsersService {
   async createInviteUser(userId :string, email: string, orgId: string) {
     await dbConnect();
-    
     const invitation = await InviteUser.findOne({ email: email, organizationId: orgId });
     if (invitation) {
         console.log('Invite already exists');

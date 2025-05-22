@@ -1,59 +1,123 @@
-import { useState } from 'react';
+'use client';
 
-const InviteUserForm = () => {
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+interface InviteUserDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  organizationId: string;
+  onSubmit: () => void;
+}
+
+export function InviteUserDialog({
+  open,
+  onOpenChange,
+  organizationId,
+  onSubmit,
+}: InviteUserDialogProps) {
   const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
+  const [role, setRole] = useState<'admin' | 'member'>('member');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate email input
-    if (!email) {
-      setMessage('Please provide an email address.');
-      return;
-    }
+    setError('');
+    setIsSubmitting(true);
 
     try {
-      // Send the invitation request to the API route
-      const res = await fetch('/api/invite', {
+      const response = await fetch(`/api/organizations/${organizationId}/invite`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }), // Only email is sent
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role }),
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        setMessage('Invitation sent successfully!');
+      const data = await response.json();
+
+      if (data.success) {
+        onSubmit();
+        onOpenChange(false);
+        setEmail('');
+        setRole('member');
       } else {
-        setMessage(`Error: ${data.message}`);
+        setError(data.error || 'Failed to send invitation');
       }
-    } catch (error) {
-      setMessage('An error occurred while sending the invitation.');
-      console.error('Error inviting user:', error);
+    } catch (err) {
+      console.error('Invite error:', err);
+      setError('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div>
-      <h2>Invite User</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit">Send Invitation</button>
-      </form>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Invite User to Organization</DialogTitle>
+        </DialogHeader>
 
-      {message && <p>{message}</p>}
-    </div>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@example.com"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select
+              value={role}
+              onValueChange={(value: 'admin' | 'member') => setRole(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Inviting...' : 'Send Invite'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
-};
-
-export default InviteUserForm;
+}

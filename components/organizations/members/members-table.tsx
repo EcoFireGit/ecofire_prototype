@@ -33,6 +33,7 @@ import {
 interface Member {
   _id: string;
   userId: string;
+  email: string;
   organizationId: string;
   role: "admin" | "member";
   joinedAt: string;
@@ -127,7 +128,7 @@ export function MembersTable({
           ) : (
             members.map((member) => (
               <TableRow key={member._id}>
-                <TableCell>{member.userId}</TableCell>
+                <TableCell>{member.email ?? member.userId}</TableCell>
                 <TableCell>
                   <Select
                     defaultValue={member.role}
