@@ -772,14 +772,6 @@ export default function OnboardingPage() {
                                       </span>{" "}
                                       {outcome.targetValue}
                                     </p>
-                                    <p>
-                                      <span className="font-medium">
-                                        Deadline:
-                                      </span>{" "}
-                                      {new Date(
-                                        outcome.deadline,
-                                      ).toLocaleDateString()}
-                                    </p>
                                     <div className="mb-3 text-sm text-gray-700">
                                       <p>{outcome.notes}</p>
                                     </div>

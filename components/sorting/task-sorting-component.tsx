@@ -12,8 +12,7 @@ import {
   ArrowUpDown,
   ArrowDown,
   ArrowUp,
-  Clock,
-  CalendarClock,
+  Clock
 } from "lucide-react";
 
 export type TaskSortOption =
@@ -159,7 +158,7 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
   return (
     <div className="flex items-center">
       <div className="flex items-center gap-2">
-        <CalendarClock className="h-4 w-4 text-muted-foreground" />
+       
         <span className="text-sm text-muted-foreground mr-2">Sort by:</span>
         <Select
           value={sortOption}

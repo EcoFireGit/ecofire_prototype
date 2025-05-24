@@ -90,7 +90,7 @@ export function NextTaskSelector({
       <Button
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className="mt-3"
+        className="mt-6"
       >
         <ArrowUp className="h-4 w-4 mr-2" />
         Make Next Step
