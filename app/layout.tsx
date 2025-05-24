@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TaskProvider } from "@/hooks/task-context";
 import { ViewProvider } from "@/lib/contexts/view-context";
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 // Simple hash function for demonstration
 function simpleHash(str: string): string {
@@ -166,6 +167,7 @@ export default function RootLayout({
             </SignedIn>
             <Toaster />
             <Analytics />
+            <SpeedInsights />
           </body>
         </html>
       </ViewProvider>
