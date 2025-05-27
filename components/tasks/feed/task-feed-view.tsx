@@ -701,15 +701,15 @@ export default function TaskFeedView() {
           };
 
           // Add task ID to job's tasks array if jobId exists
-          if (newTask.jobId && jobs[newTask.jobId]) {
+          if (result.data.jobId && jobs[result.data.jobId]) {
             try {
               // Get current tasks array for the job
-              const currentJob = jobs[newTask.jobId];
+              const currentJob = jobs[result.data.jobId];
               const currentTasks = currentJob.tasks || [];
-              const updatedTasks = [...currentTasks, newTask.id];
+              const updatedTasks = [...currentTasks, result.data._id];
 
               // Update the job with the new tasks array
-              const jobUpdateResponse = await fetch(`/api/jobs/${newTask.jobId}`, {
+              const jobUpdateResponse = await fetch(`/api/jobs/${result.data.jobId}`, {
                 method: "PUT",
                 headers: {
                   "Content-Type": "application/json",
@@ -723,15 +723,15 @@ export default function TaskFeedView() {
                 // Update local jobs state
                 setJobs(prevJobs => ({
                   ...prevJobs,
-                  [newTask.jobId]: {
-                    ...prevJobs[newTask.jobId],
+                  [result.data.jobId]: {
+                    ...prevJobs[result.data.jobId],
                     tasks: updatedTasks
                   }
                 }));
 
                 // Trigger a job progress update event
                 const event = new CustomEvent("job-progress-update", {
-                  detail: { jobId: newTask.jobId },
+                  detail: { jobId: result.data.jobId },
                 });
                 window.dispatchEvent(event);
               }
