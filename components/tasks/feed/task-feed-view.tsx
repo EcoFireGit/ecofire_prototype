@@ -700,6 +700,46 @@ export default function TaskFeedView() {
             isNextTask: false,
           };
 
+          // Add task ID to job's tasks array if jobId exists
+          if (newTask.jobId && jobs[newTask.jobId]) {
+            try {
+              // Get current tasks array for the job
+              const currentJob = jobs[newTask.jobId];
+              const currentTasks = currentJob.tasks || [];
+              const updatedTasks = [...currentTasks, newTask.id];
+
+              // Update the job with the new tasks array
+              const jobUpdateResponse = await fetch(`/api/jobs/${newTask.jobId}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ tasks: updatedTasks }),
+              });
+
+              if (!jobUpdateResponse.ok) {
+                console.error("Failed to update job tasks array");
+              } else {
+                // Update local jobs state
+                setJobs(prevJobs => ({
+                  ...prevJobs,
+                  [newTask.jobId]: {
+                    ...prevJobs[newTask.jobId],
+                    tasks: updatedTasks
+                  }
+                }));
+
+                // Trigger a job progress update event
+                const event = new CustomEvent("job-progress-update", {
+                  detail: { jobId: newTask.jobId },
+                });
+                window.dispatchEvent(event);
+              }
+            } catch (jobUpdateError) {
+              console.error("Error updating job tasks:", jobUpdateError);
+            }
+          }
+
           // Add task to the state
           setTasks((prevTasks) => [...prevTasks, newTask]);
 
