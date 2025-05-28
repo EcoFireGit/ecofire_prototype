@@ -933,10 +933,10 @@ export default function TaskFeedView() {
             onViewTask={handleViewNotes}
             onAddToCalendar={handleAddToCalendar}
             ownerMap={ownerMap}
+            businessFunctionMap={businessFunctionMap}
             loading={loading}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
-            businessFunctionMap={businessFunctionMap}
             isNextTask={isNextTask}
           />
         </div>
