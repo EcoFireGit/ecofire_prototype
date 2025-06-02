@@ -118,6 +118,17 @@ Location: `components/jobs/table/jobs-table.tsx`
   - Custom column rendering
   - Responsive design
 
+Location: `components/pis/table/pi-table.tsx`
+- Purpose: Reuseable table component with row selection
+- Features:
+  - Responsive Design
+
+Location: `components/gcal/table/gcal-table.tsx`
+- Purpose: Reusable table component with live data population
+- Features:
+  - Live data update from users google calendar
+  - Responsive design
+
 ### OrganizationSwitcher Component
 Location: `components/organizations/OrganizationSwitcher.tsx`
 - Purpose: Provides UI for switching between personal and organization views
@@ -209,6 +220,20 @@ interface Jobs extends mongoose.Document {
   userId: string;
   dueDate?: Date;
   isDone: boolean;
+}
+```
+
+### PI Model
+```typescript
+interface PIs extends mongoose.Document {
+  _id: string;
+  name: string;
+  unit: string;
+  beginningValue: number;
+  targetValue: number;
+  deadline: Date;
+  notes?: string;
+  userId: string;
 }
 ```
 
