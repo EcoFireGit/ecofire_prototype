@@ -84,6 +84,7 @@ export function TaskDialog({
   // Job State Management
   const [jobId, setJobId] = useState<string | undefined>(undefined);
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
+  const [jobError, setJobError] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -244,6 +245,13 @@ export function TaskDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!jobId || jobId === "none") {
+      setJobError("Please assign a job to this task.");
+      return;
+    } else {
+      setJobError(null);
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -354,7 +362,7 @@ export function TaskDialog({
               {/* Title */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="title" className="text-right">
-                  Title
+                  Title <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="title"
@@ -369,12 +377,14 @@ export function TaskDialog({
               {!propJobId && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="job" className="text-right">
-                    Job
+                    Job <span className="text-red-500">*</span>
                   </Label>
                   <div className="col-span-3 space-y-2">
                     <Select
                       value={jobId || "none"}
+                      required
                       onValueChange={(value) => {
+                        setJobError(null);
                         if (value === "create") {
                           setIsJobDialogOpen(true);
                         } else {
@@ -397,6 +407,9 @@ export function TaskDialog({
                         <SelectItem value="create">+ Create New Job</SelectItem>
                       </SelectContent>
                     </Select>
+                    {jobError && (
+                      <p className="text-sm text-red-500 mt-1">{jobError}</p>
+                    )}
                   </div>
                 </div>
               )}

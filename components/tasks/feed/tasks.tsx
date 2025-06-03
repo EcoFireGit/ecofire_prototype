@@ -125,6 +125,11 @@ export function NextTasks({
     return jobs[jobId].impact || 0;
   };
 
+  // Helper function to get a consistent unique ID for each task
+  const getTaskId = (task: any, index: number) => {
+    return task._id || task.id || `task-${index}`;
+  };
+
   if (loading) {
     return <NextTasksSkeletonLoader />;
   }
@@ -141,11 +146,12 @@ export function NextTasks({
 
   return (
     <div className="space-y-4 w-full">
-      {tasks.map((task) => {
+      {tasks.map((task, index) => {
+        const taskId = getTaskId(task, index);
         const taskIsNext = isNextTask(task);
         return (
           <Card
-            key={task._id}
+            key={taskId} // Use just the taskId, which now includes index as fallback
             className={`overflow-hidden hover:shadow-md transition-shadow w-full ${
               taskIsNext ? "border-orange-500 border-2" : ""
             }`}
@@ -156,7 +162,7 @@ export function NextTasks({
                   <div className="pt-1">
                     <Checkbox
                       checked={task.completed === true}
-                      onCheckedChange={(value) => onComplete(task._id, !!value)}
+                      onCheckedChange={(value) => onComplete(taskId, !!value)}
                       aria-label="Mark as completed"
                     />
                   </div>
@@ -261,7 +267,7 @@ export function NextTasks({
                                 "Are you sure you want to delete this task?",
                               )
                             ) {
-                              onDeleteTask(task._id);
+                              onDeleteTask(taskId);
                             }
                           }}
                           title="Delete task"
@@ -380,4 +386,3 @@ function NextTasksSkeletonLoader() {
 }
 
 export default NextTasks;
-
