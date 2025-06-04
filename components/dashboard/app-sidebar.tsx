@@ -121,7 +121,9 @@ export function AppSidebar() {
   // Get current pathname for highlighting the active item
   const pathname = usePathname();
   // Access sidebar context to determine if we're in collapsed state
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
+
+  const effectiveState = isMobile ? "expanded" : state;
 
   // Function to check if a menu item is active
   const isActive = (url: string) => {
@@ -212,14 +214,14 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="h-16 flex items-center">
-            {state !== "collapsed" && (
+            {effectiveState !== "collapsed" && (
               <img
                 src="/PRIORIWISE_BLUE.png"
                 alt="PRIORIWISE"
                 className="h-10 w-auto my-4"
-              ></img>
+              />
             )}
-            {state !== "collapsed" && (
+            {effectiveState !== "collapsed" && (
               <SidebarTrigger
                 className="ml-auto text-white"
                 icon="chevron-left"
@@ -227,22 +229,23 @@ export function AppSidebar() {
             )}
           </SidebarGroupLabel>
 
-          {/* Centered chevron below logo when collapsed */}
-          {state === "collapsed" && (
-            <img
-              src="/PRIORIWISE_SYMBOL.png"
-              alt="PRIORIWISE"
-              className="h-10 w-auto my-4"
-            ></img>
-          )}
-          {state === "collapsed" && (
-            <div className="flex justify-center mt-2 mb-4">
-              <SidebarTrigger
-                className="bg-sidebar text-white shadow-md rounded-full"
-                icon="chevron-right"
+          {/* Show symbol and trigger for collapsed desktop only */}
+          {!isMobile && effectiveState === "collapsed" && (
+            <>
+              <img
+                src="/PRIORIWISE_SYMBOL.png"
+                alt="PRIORIWISE"
+                className="h-10 w-auto my-4"
               />
-            </div>
+              <div className="flex justify-center mt-2 mb-4">
+                <SidebarTrigger
+                  className="bg-sidebar text-white shadow-md rounded-full"
+                  icon="chevron-right"
+                />
+              </div>
+            </>
           )}
+
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
@@ -258,10 +261,14 @@ export function AppSidebar() {
                     >
                       <Link href={item.url} target={item.target} rel={item.rel}>
                         <IconComponent
-                          className={`${active ? "text-[#F05523]" : ""} ${state === "collapsed" ? "mx-auto" : ""}`}
+                          className={`${active ? "text-[#F05523]" : ""} ${
+                            !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
+                          }`}
                         />
                         <span
-                          className={`${state === "collapsed" ? "hidden" : ""} ${
+                          className={`${
+                            !isMobile && effectiveState === "collapsed" ? "hidden" : ""
+                          } ${
                             active
                               ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
                               : ""
@@ -279,7 +286,7 @@ export function AppSidebar() {
               {userPreferences.enableBackstage && (
                 <Collapsible className="group/collapsible">
                   <SidebarMenuItem>
-                    {state === "collapsed" ? (
+                    {!isMobile && effectiveState === "collapsed" ? (
                       <SidebarMenuButton
                         size={"lg"}
                         asChild
@@ -297,7 +304,7 @@ export function AppSidebar() {
                       </CollapsibleTrigger>
                     )}
                   </SidebarMenuItem>
-                  {state !== "collapsed" && (
+                  {(isMobile || effectiveState !== "collapsed") && (
                     <CollapsibleContent>
                       <SidebarMenu className="pl-6">
                         {backstageItems.map((item) => (
@@ -323,6 +330,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      
       <SidebarFooter>
         <SidebarMenu>
           {/* Wellness Check Button */}
@@ -335,9 +343,11 @@ export function AppSidebar() {
                   className="flex items-center"
                 >
                   <Heart
-                    className={`text-purple-500 fill-purple-500 ${state === "collapsed" ? "mx-auto" : ""}`}
+                    className={`text-purple-500 fill-purple-500 ${
+                      !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
+                    }`}
                   />
-                  <span className={state === "collapsed" ? "hidden" : ""}>
+                  <span className={!isMobile && effectiveState === "collapsed" ? "hidden" : ""}>
                     Wellness Check
                   </span>
                 </SidebarMenuButton>
@@ -389,11 +399,11 @@ export function AppSidebar() {
               </PopoverContent>
             </Popover>
           </SidebarMenuItem>
-          {state !== "collapsed" && (
+          
+          {/* Organization Switcher - show properly in all states */}
             <SidebarMenuItem>
               <OrganizationSwitcher />
             </SidebarMenuItem>
-          )}
 
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -402,8 +412,8 @@ export function AppSidebar() {
               className="flex items-center"
             >
               <Link href="/dashboard/settings">
-                <Settings className={state === "collapsed" ? "mx-auto" : ""} />
-                <span className={state === "collapsed" ? "hidden" : ""}>
+                <Settings className={!isMobile && effectiveState === "collapsed" ? "mx-auto" : ""} />
+                <span className={!isMobile && effectiveState === "collapsed" ? "hidden" : ""}>
                   Settings
                 </span>
               </Link>
