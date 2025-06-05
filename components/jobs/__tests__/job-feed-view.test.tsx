@@ -22,14 +22,12 @@ jest.mock('@/hooks/use-toast', () => ({
     })
 }));
 
-
 jest.mock('lucide-react', () => ({
     Plus: ({ ...props }: any) => <div data-testid="plus-icon" {...props}>+</div>,
     ArrowUp: ({ ...props }: any) => <div data-testid="arrow-up-icon" {...props}>↑</div>,
     LayoutGrid: ({ ...props }: any) => <div data-testid="layout-grid-icon" {...props}>⊞</div>,
     LayoutList: ({ ...props }: any) => <div data-testid="layout-list-icon" {...props}>☰</div>,
 }));
-
 
 jest.mock('@/components/ui/button', () => ({
     Button: ({ children, onClick, variant, size, ...props }: any) => 
@@ -87,7 +85,6 @@ jest.mock('@/components/jobs/jobs-grid', () => ({
         </div>
     )
 }));
-
 
 jest.mock('@/components/jobs/table/jobs-table', () => ({
     DataTable: ({ data = [], columns }: any) => (
@@ -160,7 +157,16 @@ describe('JobsPage', () => {
                     args[0].includes('act(...)') ||
                     args[0].includes('Failed to fetch user preferences') ||
                     args[0].includes('Error fetching data') ||
-                    args[0].includes('Error creating task owner mapping')
+                    args[0].includes('Error creating task owner mapping') ||
+                    args[0].includes('Error fetching owners') ||
+                    args[0].includes('Error fetching tags') ||
+                    args[0].includes('Tasks API did not return success') ||
+                    args[0].includes('Error marking jobs as done') ||
+                    args[0].includes('Error marking jobs as active') ||
+                    args[0].includes('Failed to create job') ||
+                    args[0].includes('Failed to update job') ||
+                    args[0].includes('Failed to delete job') ||
+                    args[0].includes('Failed to calculate job impact')
                 )
             ) {
                 return;
@@ -466,12 +472,12 @@ describe('JobsPage', () => {
         test('should delete job when delete button is clicked', async () => {
             const user = userEvent.setup();
             (global.fetch as jest.Mock) = jest.fn()
-                .mockImplementationOnce(mockFetch)
-                .mockImplementationOnce(mockFetch)
-                .mockImplementationOnce(mockFetch)
-                .mockImplementationOnce(mockFetch)
-                .mockImplementationOnce(mockFetch)
-                .mockImplementationOnce(mockFetch)
+                .mockImplementationOnce(mockFetch) 
+                .mockImplementationOnce(mockFetch) 
+                .mockImplementationOnce(mockFetch) 
+                .mockImplementationOnce(mockFetch) 
+                .mockImplementationOnce(mockFetch) 
+                .mockImplementationOnce(mockFetch) 
                 .mockImplementationOnce(() => Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve({ success: true })
