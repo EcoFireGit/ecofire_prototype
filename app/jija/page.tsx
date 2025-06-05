@@ -219,6 +219,16 @@ export default function Chat() {
     fetchRecentChats();
   }, [userId]);
 
+
+  useEffect(() => {
+    if (!selectedChatId && recentChats.length > 0) {
+      const lastChat = recentChats[0]; // Assuming the most recent chat is first
+      if (lastChat && lastChat.chatId) {
+        loadChatSession(lastChat.chatId);
+      }
+    }
+  }, [recentChats, selectedChatId]);
+
   // Get a preview of the conversation (first user message and assistant response)
   const getChatPreview = (chat: ChatSession) => {
     const userMessage =
