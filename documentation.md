@@ -812,17 +812,80 @@ Marking a current task as complete, BE selects the first incomplete and active t
 Deleting a current task, BE selects the next incomplete and active task in the array as next task
 A user can also select a next Task from the dropdown on Job Details view
 
+## Responsive Design
+
+- Sidebar was not accessible on mobile and tablet devices
+- Added hamburger menu to access sidebar on smaller devices
+- Added SheetTitle for screen-reader accessibility
 
 ## Unit Testing
 
 ### Overview
-Using jest as testing framework. Jest configuration is set in jest.config.ts
+We use Jest as our testing framework. Configuration is defined in jest.config.ts.
+- For server side tests, use jestEnvironment = node
+- For client side tests, use jestEnvironment = jsDom
 
 ### How to write unit tests
 Tests are written in  \_\_tests\_\_  folder.
-For Unit tests, all dependencies in a function are mocked. 
+For Unit tests, all dependencies in a function are mocked for isolated testing. 
+
+#### Basic structure of Jest tests:
+
+```
+jest.mock('next/navigation', () => ({
+    useSearchParams: () => ({
+        get: jest.fn()
+    })
+}));
+
+describe('JobsPage', () => {
+
+    beforeEach(() => {
+        global.fetch = jest.fn();
+    })
+
+    afterEach(() => {
+        jest.resetAllMocks();
+    })
+});
+```
+
+1. **jest.mock**: Components usually use external libraries like Next.js Navigation, since you can’t control those libraries themselves, you mock them, or basically create fake outputs from them, so you can control what goes into your components.
+2. **describe**: The describe block contains all the tests for a certain component, to keep them organized
+3. Each describe block with contain:
+    1. beforeEach: this runs before every test. Here you would mock fetch the data again to start from a clean slate for each test
+    2. afterEach: this runs after each test. Here you would reset all the mock data that you created
+    
+    Basically you set up a clean room before each test, and clean up the mess after each test.
+
+#### Writing tests
+
+```
+test('test name', () => {
+	// setup each test
+	render(<JobsPage/>);
+	
+	// do something with it
+	
+	// check if what you did with it worked or not
+	expect(screen.getByText('Jobs')).toBeInTheDocument();
+});
+```
+You will have multiple tests within a describe block. The beauty of it is that if 1 test fails, it won’t affect the other tests. They are isolated.
 
 ### Execute tests
 Run tests by running command-- 
 npx jest \<test-filename\>.
 For example: npx jest  \_\_tests__/api/jobs.test.ts
+
+#### To run individual tests (and find out coverage rate)
+Use command:
+```
+npm test -- --coverage <test-file-name>.test.tsx
+```
+
+#### To run batch tests
+Use command:
+```
+npm test -- --coverage
+```
