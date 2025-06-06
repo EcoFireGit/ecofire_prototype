@@ -871,6 +871,8 @@ test('test name', () => {
 	expect(screen.getByText('Jobs')).toBeInTheDocument();
 });
 ```
+You can use `it()` and `test()` interchangably.
+
 You will have multiple tests within a describe block. The beauty of it is that if 1 test fails, it won’t affect the other tests. They are isolated.
 
 ### Execute tests
