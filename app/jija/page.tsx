@@ -442,6 +442,14 @@ export default function Chat() {
         )}
 
         <div className="fixed bottom-0 w-full max-w-4xl mb-8">
+
+       
+  {/* Welcome Text */}
+  <div className="mb-2 text-lg text-gray-700 font-semibold">
+    Welcome! How can I help you today?
+  </div>
+
+
           <form onSubmit={handleSubmit} className="relative flex items-center">
             <TextareaAutosize
               className="w-full p-2 border border-gray-300 rounded shadow-xl resize-none pr-10"
