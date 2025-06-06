@@ -280,7 +280,7 @@ export default function CalendarPage() {
             <h2 className="text-2xl font-bold">Calendars</h2>
             <Button
               onClick={handleCreate}
-              className="bg-blue-500 hover:bg-blue-600"
+              className="bg-primary hover:bg-primary/90"
               id="select-calendars"
             >
               <Plus className="mr-2 h-4 w-4" /> Add Selected Calendar

@@ -34,31 +34,31 @@ export type MappingTableData = {
 
 // Function to convert from database models to table data
 export function convertMappingsToTableData(
-  mappings: PIQBOMapping[], 
-  pisList: PIs[], 
-  qbosList: QBOs[]
+  mappings: PIQBOMapping[],
+  pisList: PIs[],
+  qbosList: QBOs[],
 ): MappingTableData[] {
-  return mappings.map(mapping => {
-    const pi = pisList.find(pi => pi._id === mapping.piId);
-    const qbo = qbosList.find(qbo => qbo._id === mapping.qboId);
-    
+  return mappings.map((mapping) => {
+    const pi = pisList.find((pi) => pi._id === mapping.piId);
+    const qbo = qbosList.find((qbo) => qbo._id === mapping.qboId);
+
     return {
       id: mapping._id,
       piId: mapping.piId,
-      piName: pi?.name || 'Unknown Output',
+      piName: pi?.name || "Unknown Output",
       qboId: mapping.qboId,
-      qboName: qbo?.name || 'Unknown Outcome',
-      piTarget: mapping.piTarget,
-      qboTarget: mapping.qboTarget,
-      qboImpact: mapping.qboImpact,
-      notes: mapping.notes
+      qboName: qbo?.name || "Unknown Outcome",
+      piTarget: pi?.targetValue || 0,
+      qboTarget: qbo?.targetValue || 0,
+      qboImpact: mapping.qboImpact || 0,
+      notes: mapping.notes || "",
     };
   });
 }
 
 export const columns = (
   onEdit: (mapping: MappingTableData) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
 ): ColumnDef<MappingTableData>[] => [
   {
     accessorKey: "piName",
@@ -70,7 +70,7 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("piTarget") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "qboName",
@@ -82,7 +82,7 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("qboTarget") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "qboImpact",
@@ -90,7 +90,7 @@ export const columns = (
     cell: ({ row }) => {
       const value = row.getValue("qboImpact") as number;
       return value.toString();
-    }
+    },
   },
   {
     accessorKey: "notes",
@@ -112,14 +112,10 @@ export const columns = (
       const mapping = row.original;
       return (
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(mapping)}
-          >
+          <Button variant="ghost" size="icon" onClick={() => onEdit(mapping)}>
             <Edit className="h-4 w-4" />
           </Button>
-         
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -130,8 +126,9 @@ export const columns = (
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the mapping between
-                  "{mapping.piName}" and "{mapping.qboName}" and remove it from our servers.
+                  This action cannot be undone. This will permanently delete the
+                  mapping between "{mapping.piName}" and "{mapping.qboName}" and
+                  remove it from our servers.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -144,6 +141,7 @@ export const columns = (
           </AlertDialog>
         </div>
       );
-    }
-  }
+    },
+  },
 ];
+
