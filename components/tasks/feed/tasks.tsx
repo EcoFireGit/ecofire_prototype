@@ -50,14 +50,14 @@ export function NextTasks({
 
   const formatDate = (dateString?: Date | string) => {
     if (!dateString) return null;
-    
+
     // Parse the date and preserve the UTC date
     const date = new Date(dateString);
-    
+
     // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
-    const utcDateString = date.toISOString().split('T')[0];
-    const displayDate = new Date(utcDateString + 'T00:00:00');
-  
+    const utcDateString = date.toISOString().split("T")[0];
+    const displayDate = new Date(utcDateString + "T00:00:00");
+
     return displayDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -71,8 +71,8 @@ export function NextTasks({
   };
 
   const getJobTitle = (jobId?: string) => {
-    if (!jobId || !jobs[jobId]) return "Unknown project";
-    return jobs[jobId].title || "Unknown project";
+    if (!jobId || !jobs[jobId]) return "Unknown job";
+    return jobs[jobId].title || "Unknown job";
   };
 
   const getBusinessFunctionName = (jobId?: string) => {
