@@ -871,7 +871,7 @@ test('test name', () => {
 	expect(screen.getByText('Jobs')).toBeInTheDocument();
 });
 ```
-You can use `it()` and `test()` interchangably.
+You can use `it()` and `test()` interchangably. Both do the same thing. Use Network tab to get details of the API requests. The JSON returned as response from each API, can be used as template, to create mock data.
 
 You will have multiple tests within a describe block. The beauty of it is that if 1 test fails, it won’t affect the other tests. They are isolated.
 
