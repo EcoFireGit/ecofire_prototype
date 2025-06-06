@@ -34,6 +34,24 @@ interface ProcessedMessage {
 }
 
 export default function Chat() {
+  const welcomeMessages = [
+    "Welcome! How can I help you today?",
+    "Hi there! What would you like to talk about?",
+    "Hello! Ask me anything.",
+    "Ready when you are. What's on your mind?",
+    "Greetings! How can I assist you?",
+    "Hey! I'm here to help—what do you need?",
+    "Good to see you! How can I support you today?",
+    "Hi! Feel free to ask me anything at all.",
+    "Need assistance? I'm just a message away!",
+    "Let’s get started. What can I do for you?",
+    "Hello there! Got questions? I've got answers.",
+    "Hi! What brings you here today?",
+    "Welcome back! How can I be of service?"
+  ];
+  
+  
+
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -50,7 +68,7 @@ export default function Chat() {
   const jobTitle = searchParams.get("jobTitle");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [hasAutoLoadedLatestChat, setHasAutoLoadedLatestChat] = useState(false);
-
+  const [welcomeText, setWelcomeText] = useState("");
 
   const {
     error,
@@ -73,6 +91,9 @@ export default function Chat() {
       fetchRecentChats(0);
     },
   });
+
+  
+
 
   // Set prefilled input when jobTitle is present
   useEffect(() => {
@@ -240,6 +261,12 @@ export default function Chat() {
   }, [recentChats, selectedChatId, hasAutoLoadedLatestChat]);
   
 
+  useEffect(() => {
+    // Choose a random welcome message on mount
+    const randomIndex = Math.floor(Math.random() * welcomeMessages.length);
+    setWelcomeText(welcomeMessages[randomIndex]);
+  }, []);
+  
 
   // Get a preview of the conversation (first user message and assistant response)
   const getChatPreview = (chat: ChatSession) => {
@@ -443,11 +470,13 @@ export default function Chat() {
 
         <div className="fixed bottom-0 w-full max-w-4xl mb-8">
 
-       
-  {/* Welcome Text */}
-  <div className="mb-2 text-lg text-gray-700 font-semibold">
-    Welcome! How can I help you today?
-  </div>
+            
+        {/* Welcome Text */}
+            {selectedChatId === null && (
+        <div className="mb-2 text-lg text-gray-700 font-semibold text-center">
+          {welcomeText}
+        </div>
+      )}
 
 
           <form onSubmit={handleSubmit} className="relative flex items-center">
