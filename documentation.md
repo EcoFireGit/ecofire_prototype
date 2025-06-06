@@ -1,6 +1,7 @@
 # EcoFire Prototype Documentation
 
 ## Table of Contents
+
 1. [Project Overview](#project-overview)
 2. [Technology Stack](#technology-stack)
 3. [Project Structure](#project-structure)
@@ -18,11 +19,12 @@
 15. [Calendar Integration](#calendar-integration)
 16. [Unit Testing](#unit-testing)
 
-
 ## Project Overview
+
 EcoFire Prototype is a job management system built with Next.js, featuring active and completed jobs tracking. The application uses MongoDB for data storage and Clerk for authentication.
 
 ## Technology Stack
+
 - **Frontend**: Next.js 15.1.6, React 19
 - **Database**: MongoDB with Mongoose
 - **Authentication**: Clerk
@@ -33,6 +35,7 @@ EcoFire Prototype is a job management system built with Next.js, featuring activ
 - **Development**: TypeScript
 
 ## Project Structure
+
 ```
 ECOFIRE_PROTOTYPE/
 ├── .next/
@@ -56,18 +59,24 @@ ECOFIRE_PROTOTYPE/
 ```
 
 ## Setup and Installation
+
 1. Clone the repository
 2. Install dependencies:
+
    ```bash
    npm i
    ```
+
 3. Set up environment variables in `.env.local`:
+
    ```
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<your-key>
    CLERK_SECRET_KEY=<your-key>
    MONGODB_URI=<your-mongodb-uri>
    ```
+
 4. Run development server:
+
    ```bash
    npm run dev
    ```
@@ -75,18 +84,19 @@ ECOFIRE_PROTOTYPE/
 ## Features
 
 ### Job Management
+
 - **Active Jobs Table**
   - Create, Read, Update, Delete (CRUD) operations
   - Job status tracking
   - Notes and business function assignment
   - Bulk completion of jobs
-  
 - **Completed Jobs Table**
   - View completed jobs
   - Delete completed jobs
   - No editing capability for completed jobs
 
 ### Job Properties
+
 - Title (required)
 - Notes (optional)
 - Owner (optional)
@@ -97,12 +107,15 @@ ECOFIRE_PROTOTYPE/
 ## Component Documentation
 
 ### JobDialog Component
+
 Location: `components/jobs/job-dialog.tsx`
+
 - Purpose: Creates and edits job entries
 - Props:
+
   ```typescript
   interface JobDialogProps {
-    mode: 'create' | 'edit';
+    mode: "create" | "edit";
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSubmit: (job: Partial<Job>) => void;
@@ -111,7 +124,9 @@ Location: `components/jobs/job-dialog.tsx`
   ```
 
 ### DataTable Component
+
 Location: `components/jobs/table/jobs-table.tsx`
+
 - Purpose: Reusable table component with row selection
 - Features:
   - Row selection
@@ -119,7 +134,9 @@ Location: `components/jobs/table/jobs-table.tsx`
   - Responsive design
 
 ### OrganizationSwitcher Component
+
 Location: `components/organizations/OrganizationSwitcher.tsx`
+
 - Purpose: Provides UI for switching between personal and organization views
 - Features:
   - Dropdown for organization selection
@@ -127,7 +144,9 @@ Location: `components/organizations/OrganizationSwitcher.tsx`
   - Handles view switching process
 
 ### FilterComponent
+
 Location: `components/jobs/filter-component.tsx`
+
 - Purpose: Provides UI for filtering jobs
 - Features:
   - Multiple filter options (hours required, focus level, joy level, etc.)
@@ -135,7 +154,9 @@ Location: `components/jobs/filter-component.tsx`
   - Responsive design
 
 ### SortingComponent
+
 Location: `components/jobs/sorting-component.tsx`
+
 - Purpose: Manages sort options and performs sorting of job data
 - Features:
   - Multiple sort options (recommended, due date, hours required)
@@ -143,7 +164,9 @@ Location: `components/jobs/sorting-component.tsx`
   - Custom sort logic for different job properties
 
 ### OnboardingContext
+
 Location: `lib/contexts/onboarding-context.tsx`
+
 - Purpose: Manages tour state across the application
 - Features:
   - Stores tour completion status in localStorage
@@ -151,7 +174,9 @@ Location: `lib/contexts/onboarding-context.tsx`
   - Makes tour state available to all components
 
 ### TourController
+
 Location: `components/onboarding/tour-controller.tsx`
+
 - Purpose: Controls when the tour is rendered
 - Features:
   - Handles accessibility features (ESC key to exit)
@@ -159,7 +184,9 @@ Location: `components/onboarding/tour-controller.tsx`
   - Manages the tour lifecycle
 
 ### DriverTour
+
 Location: `components/onboarding/driver-tour.tsx`
+
 - Purpose: Implements the main tour using driver.js
 - Features:
   - Defines tour steps for the main dashboard
@@ -171,26 +198,32 @@ Location: `components/onboarding/driver-tour.tsx`
 ### Jobs API
 
 #### GET /api/jobs
+
 - Returns all jobs for authenticated user
 - Filters based on isDone status
 
 #### POST /api/jobs
+
 - Creates new job
 - Required fields: title
 
 #### PUT /api/jobs/[id]
+
 - Updates existing job
 - Supports partial updates
 
 #### DELETE /api/jobs/[id]
+
 - Deletes specified job
 
 ### Organizations API
 
 #### GET /api/organizations
+
 - Returns all organizations the user belongs to
 
 #### POST /api/organizations
+
 - Creates a new organization
 - Adds the user as admin
 - Required fields: name
@@ -198,6 +231,7 @@ Location: `components/onboarding/driver-tour.tsx`
 ## Database Schema
 
 ### Job Model
+
 ```typescript
 interface Jobs extends mongoose.Document {
   _id: string;
@@ -213,6 +247,7 @@ interface Jobs extends mongoose.Document {
 ```
 
 ### Organization Model
+
 ```typescript
 interface Organization extends mongoose.Document {
   _id: string;
@@ -223,21 +258,24 @@ interface Organization extends mongoose.Document {
 ```
 
 ### UserOrganization Model
+
 ```typescript
 interface UserOrganization extends mongoose.Document {
   userId: string;
   organizationId: string;
-  role: 'admin' | 'member';
+  role: "admin" | "member";
 }
 ```
 
 ## Authentication
+
 - Implemented using Clerk
 - User ID is required for all job operations
 - Authentication state is managed through Clerk's hooks and middleware
 - Organization view managed via cookies
 
 ## State Management
+
 - Local state management using React hooks
 - Table selection state managed by TanStack Table
 - Toast notifications for user feedback
@@ -247,6 +285,7 @@ interface UserOrganization extends mongoose.Document {
 - Onboarding tour state managed through context
 
 ## Best Practices
+
 1. Always use TypeScript types for components and data
 2. Implement error handling for API calls
 3. Use loading states for async operations
@@ -256,6 +295,7 @@ interface UserOrganization extends mongoose.Document {
 ## Common Tasks
 
 ### Adding a New Field to Jobs
+
 1. Update the Job interface in `lib/models/job.model.ts`
 2. Update the MongoDB schema
 3. Add the field to the job dialog form
@@ -263,6 +303,7 @@ interface UserOrganization extends mongoose.Document {
 5. Update any relevant API handlers
 
 ### Implementing a New Feature
+
 1. Create necessary components in the appropriate directory
 2. Add required API routes
 3. Update database models if needed
@@ -270,6 +311,7 @@ interface UserOrganization extends mongoose.Document {
 5. Add proper types and error handling
 
 ### Implementing a New Table
+
 1. Create the DB model for the table, e.g., `lib/models/owner.model.ts`
 2. Create a service for the table, e.g., `lib/services/owner.service.ts`
 3. Create API routes for reading and adding entries in the table, e.g., `api/owners/route.ts`
@@ -283,6 +325,7 @@ interface UserOrganization extends mongoose.Document {
 ## Settings Feature
 
 ### Overview
+
 The Settings page provides control over advanced features and UI options. Currently manages:
 
 1. **Backstage Access**: Controls visibility of advanced administrative features
@@ -291,6 +334,7 @@ The Settings page provides control over advanced features and UI options. Curren
 ### Technical Implementation
 
 #### User Preferences Model
+
 ```typescript
 // models/user-preferences.js
 interface UserPreferences extends mongoose.Document {
@@ -302,29 +346,33 @@ interface UserPreferences extends mongoose.Document {
 ```
 
 #### Service Layer
+
 ```typescript
 // lib/services/user-preferences.service.js
 export class UserPreferencesService {
   async getUserPreferences(userId: string) {...}
-  async updateUserPreferences(userId: string, updates: Partial<{ 
-    enableBackstage: boolean, 
-    enableTableView: boolean 
+  async updateUserPreferences(userId: string, updates: Partial<{
+    enableBackstage: boolean,
+    enableTableView: boolean
   }>) {...}
 }
 ```
 
 #### API Routes
+
 - **GET /api/user/preferences**: Retrieves user preferences
 - **PATCH /api/user/preferences**: Updates user preferences
 
 #### Implementation Details
 
 ##### Settings Page
+
 - Located at `/dashboard/settings`
 - Uses Toggle UI components with visual feedback
 - Auto-refreshes when Backstage access is toggled
 
 ##### AppSidebar Component
+
 ```typescript
 // components/dashboard/app-sidebar.tsx
 const [userPreferences, setUserPreferences] = useState({
@@ -341,6 +389,7 @@ const [userPreferences, setUserPreferences] = useState({
 ```
 
 ##### Jobs Page View Switcher
+
 ```typescript
 // Modified JobsPage component
 const [isTableViewEnabled, setIsTableViewEnabled] = useState(false);
@@ -351,7 +400,7 @@ const fetchUserPreferences = async () => {
     const response = await fetch("/api/user/preferences");
     const result = await response.json();
     setIsTableViewEnabled(result.data.enableTableView);
-    
+
     // Force grid view if table view is disabled
     if (!result.data.enableTableView) {
       setViewMode("grid");
@@ -379,6 +428,7 @@ const fetchUserPreferences = async () => {
 ## Organization Feature
 
 ### Overview
+
 The organization feature allows users to switch between their personal view and organization views. This functionality enables collaboration within organizations while maintaining a separation between personal and organizational data.
 
 ### Key Components
@@ -386,67 +436,77 @@ The organization feature allows users to switch between their personal view and 
 #### 1. Data Models
 
 **Organization Model** (`lib/models/organization.model.ts`)
-* Stores organization information (name, description)
-* Includes soft delete functionality with `isDeleted` flag
-* Created and maintained by organization admins
+
+- Stores organization information (name, description)
+- Includes soft delete functionality with `isDeleted` flag
+- Created and maintained by organization admins
 
 **UserOrganization Model** (`lib/models/userOrganization.model.ts`)
-* Defines the relationship between users and organizations
-* Stores user roles within organizations (`admin` or `member`)
-* Uses a compound index to ensure a user can only be added to an organization once
+
+- Defines the relationship between users and organizations
+- Stores user roles within organizations (`admin` or `member`)
+- Uses a compound index to ensure a user can only be added to an organization once
 
 #### 2. Services
 
 **OrganizationService** (`lib/services/organization.service.ts`)
-* Handles CRUD operations for organizations
-* Provides methods to:
-   * Get organizations for a user
-   * Create/update/delete organizations
-   * Only allows organization admins to perform update/delete operations
+
+- Handles CRUD operations for organizations
+- Provides methods to:
+  - Get organizations for a user
+  - Create/update/delete organizations
+  - Only allows organization admins to perform update/delete operations
 
 **UserOrganizationService**
-* Manages user-organization relationships
-* Handles adding users to organizations and checking user roles
+
+- Manages user-organization relationships
+- Handles adding users to organizations and checking user roles
 
 #### 3. Context Provider
 
 **ViewContext** (`lib/contexts/view-context.tsx`)
-* React context provider for organization data
-* Maintains state for:
-   * Current view ID (personal or organization)
-   * Organization list
-   * Current organization
-* Provides a method to switch between views
+
+- React context provider for organization data
+- Maintains state for:
+  - Current view ID (personal or organization)
+  - Organization list
+  - Current organization
+- Provides a method to switch between views
 
 #### 4. UI Components
 
 **OrganizationSwitcher** (`OrganizationSwitcher.tsx`)
-* Dropdown UI for switching between personal and organization views
-* Handles the view switching process
-* Displays truncated organization names for better UI
+
+- Dropdown UI for switching between personal and organization views
+- Handles the view switching process
+- Displays truncated organization names for better UI
 
 #### 5. Authentication & Session Management
 
 **Authentication Utilities** (`lib/utils/auth-utils.ts`)
-* Uses Clerk for authentication
-* Validates user authorization on each request
-* Manages organization view via cookies
-* Ensures users only access organizations they're members of
+
+- Uses Clerk for authentication
+- Validates user authorization on each request
+- Manages organization view via cookies
+- Ensures users only access organizations they're members of
 
 **Active Organization Cookie**
-* Name: `ecofire_active_org`
-* Stores the ID of the active organization or `null` for personal view
-* Validated on each request to ensure it remains valid
+
+- Name: `ecofire_active_org`
+- Stores the ID of the active organization or `null` for personal view
+- Validated on each request to ensure it remains valid
 
 #### 6. API Routes
 
 **Organizations API** (`app/api/organizations/route.ts`)
-* GET: Retrieves organizations the user belongs to
-* POST: Creates a new organization and adds the user as admin
+
+- GET: Retrieves organizations the user belongs to
+- POST: Creates a new organization and adds the user as admin
 
 **Active Organization API**
-* Manages the user's active organization view
-* Sets cookies to persist the selection
+
+- Manages the user's active organization view
+- Sets cookies to persist the selection
 
 ### Flow of Operation
 
@@ -454,26 +514,29 @@ The organization feature allows users to switch between their personal view and 
 2. The provider checks for an active organization in session
 3. Users can switch organizations via the `OrganizationSwitcher` component
 4. When switching, the application:
-   * Updates the active organization cookie
-   * Clears saved filters
-   * Reloads the page with the new organization context
+   - Updates the active organization cookie
+   - Clears saved filters
+   - Reloads the page with the new organization context
 5. All subsequent API requests use `validateAuth()` to determine the current view context
 6. The `userId` provided by `validateAuth()` is actually the `viewId`, which changes based on active organization
 
 ### Important Implementation Details
 
 **View Context vs. Actual User ID**
-* `currentViewId`: Can be either the user's ID (personal view) or an organization ID
-* `actualUserId`: Always the user's ID, regardless of current view
-* API routes use `validateAuth()` to distinguish between the two
+
+- `currentViewId`: Can be either the user's ID (personal view) or an organization ID
+- `actualUserId`: Always the user's ID, regardless of current view
+- API routes use `validateAuth()` to distinguish between the two
 
 **Cookie Validation**
-* Active organization cookies are validated on each request
-* If a user's access to an organization is revoked, they're automatically switched back to personal view
+
+- Active organization cookies are validated on each request
+- If a user's access to an organization is revoked, they're automatically switched back to personal view
 
 **Organization Switching**
-* Organization switching triggers a full page reload to refresh all data
-* Application clears saved filters when switching organizations
+
+- Organization switching triggers a full page reload to refresh all data
+- Application clears saved filters when switching organizations
 
 ## Sorting and Filtering
 
@@ -555,6 +618,7 @@ useEffect(() => {
 #### Sort Types
 
 Currently supported sort options:
+
 - `recommended` - Due date (ascending), then impact (descending)
 - `dueDate-asc` - Due date (ascending)
 - `dueDate-desc` - Due date (descending)
@@ -564,6 +628,7 @@ Currently supported sort options:
 #### Filter Types
 
 Currently supported filter options:
+
 - Hours required range
 - Focus level
 - Joy level
@@ -581,6 +646,7 @@ Currently supported filter options:
 4. Add icon and label in the `getOptionDetails` helper function
 
 Example:
+
 ```typescript
 // Add to SortOption type
 export type SortOption = "recommended" | ... | "newSortOption";
@@ -612,6 +678,7 @@ case "newSortOption":
 3. Add case in `matchesFilters` function in JobsPage
 
 Example:
+
 ```typescript
 // In matchesFilters
 case "newFilter":
@@ -630,10 +697,12 @@ case "newFilter":
 ### Common Issues and Solutions
 
 - **Problem**: Selected sort option resets when filters change
+
   - **Solution**: This is intentional; filters should always default to recommended sort
   - **Override**: If you want different behavior, modify the SortingComponent's useEffect dependency array
 
 - **Problem**: Sort not applying to newly filtered jobs
+
   - **Solution**: Ensure sorting is applied immediately after filtering
   - **Check**: Look at handleFilterChange to make sure sorting is applied after filtering
 
@@ -651,23 +720,26 @@ The onboarding tour is a guided walkthrough for new users implemented using Driv
 The tour system consists of three core components:
 
 1. **OnboardingContext** (`onboarding-context.tsx`)
-   * Manages tour state (active/inactive, completion status)
-   * Provides methods to start, end, and reset the tour
-   * Persists tour completion status in localStorage
+
+   - Manages tour state (active/inactive, completion status)
+   - Provides methods to start, end, and reset the tour
+   - Persists tour completion status in localStorage
 
 2. **TourController** (`tour-controller.tsx`)
-   * Controls when the tour is rendered
-   * Handles accessibility features like ESC key to exit
-   * Mounts/unmounts the DriverTour component
+
+   - Controls when the tour is rendered
+   - Handles accessibility features like ESC key to exit
+   - Mounts/unmounts the DriverTour component
 
 3. **DriverTour** (`driver-tour.tsx`)
-   * Implements the main tour using driver.js
-   * Defines tour steps for the main dashboard
-   * Handles redirection to the Google Calendar page
+
+   - Implements the main tour using driver.js
+   - Defines tour steps for the main dashboard
+   - Handles redirection to the Google Calendar page
 
 4. **Google Calendar Page** (`CalendarPage`)
-   * Detects URL parameters to continue the tour
-   * Implements its own tour steps for the Calendar features
+   - Detects URL parameters to continue the tour
+   - Implements its own tour steps for the Calendar features
 
 ### Multi-Page Tour Implementation
 
@@ -675,25 +747,27 @@ The tour spans multiple pages through URL parameters:
 
 1. The main tour (`DriverTour`) highlights elements on the dashboard
 2. When the user reaches the Calendar step and clicks "Go to Calendar":
-   * The tour is destroyed
-   * The user is redirected to `/backstage/gcal?tour=gcal&step=0`
+   - The tour is destroyed
+   - The user is redirected to `/backstage/gcal?tour=gcal&step=0`
 3. The Calendar page detects these parameters and starts its own tour
 4. A `tourStartedRef` prevents the tour from starting multiple times
 
 ### Tour Steps
 
 #### Main Dashboard Tour
-* Jobs & Tasks section
-* Organization View toggle
-* Jija assistant
-* Wellness Check
-* Google Calendar integration (with redirection)
+
+- Jobs & Tasks section
+- Organization View toggle
+- Jija assistant
+- Wellness Check
+- Google Calendar integration (with redirection)
 
 #### Google Calendar Tour
-* Authorize Google Calendar button
-* Get Calendars button
-* Add Selected Calendar button
-* Completion message
+
+- Authorize Google Calendar button
+- Get Calendars button
+- Add Selected Calendar button
+- Completion message
 
 ### How to Modify the Tour
 
@@ -704,11 +778,11 @@ The tour spans multiple pages through URL parameters:
 ```typescript
 const mainTourSteps = [
   {
-    element: '#element-id',  // CSS selector for the element
+    element: "#element-id", // CSS selector for the element
     popover: {
-      title: 'Step Title',
-      description: 'Step description text'
-    }
+      title: "Step Title",
+      description: "Step description text",
+    },
   },
   // Additional steps...
 ];
@@ -721,11 +795,11 @@ const mainTourSteps = [
 ```typescript
 const tourSteps = [
   {
-    element: '#element-id',
+    element: "#element-id",
     popover: {
-      title: 'Step Title',
-      description: 'Step description text'
-    }
+      title: "Step Title",
+      description: "Step description text",
+    },
   },
   // Additional steps...
 ];
@@ -734,25 +808,28 @@ const tourSteps = [
 #### Adding Additional Pages to the Tour
 
 1. Use the URL parameter approach to link pages:
-   * In the "last" step of your page, add an `onNextClick` handler
-   * Redirect to the new page with `window.location.href = '/new-page?tour=newpage&step=0'`
-   * Implement tour detection in the new page similar to the Google Calendar page
+   - In the "last" step of your page, add an `onNextClick` handler
+   - Redirect to the new page with `window.location.href = '/new-page?tour=newpage&step=0'`
+   - Implement tour detection in the new page similar to the Google Calendar page
 
 ### Troubleshooting
 
 #### Tour Not Starting on Google Calendar Page
-* Check that URL parameters (`tour=gcal&step=0`) are present
-* Verify that elements with correct IDs exist in the DOM
-* Check console logs for initialization errors
+
+- Check that URL parameters (`tour=gcal&step=0`) are present
+- Verify that elements with correct IDs exist in the DOM
+- Check console logs for initialization errors
 
 #### Tour Loops or Restarts
-* Make sure `tourStartedRef` is properly preventing multiple starts
-* Ensure URL parameters are being cleaned up after tour detection
+
+- Make sure `tourStartedRef` is properly preventing multiple starts
+- Ensure URL parameters are being cleaned up after tour detection
 
 #### Tour Elements Not Found
-* Verify IDs and CSS selectors in your tour steps
-* Add a delay to ensure DOM elements are fully loaded before starting tour
-* Check for dynamic elements that might not be ready when the tour initializes
+
+- Verify IDs and CSS selectors in your tour steps
+- Add a delay to ensure DOM elements are fully loaded before starting tour
+- Check for dynamic elements that might not be ready when the tour initializes
 
 ### Best Practices
 
@@ -765,48 +842,54 @@ const tourSteps = [
 ## Calendar Integration
 
 ### Overview
-The Calendar Integration feature lets users integrate their personal calendars in Prioriwise. Users authorize and provide access to their calendars in Google account. It also creates a Prioriwise calendar in their google account. 
+
+The Calendar Integration feature lets users integrate their personal calendars in Prioriwise. Users authorize and provide access to their calendars in Google account. It also creates a Prioriwise calendar in their google account.
 
 ### Key Components
-Google Calendar configuration in Google Cloud console. 
+
+Google Calendar configuration in Google Cloud console.
 ClientID, ClientSecret, Redirect Uri in the app must match the configuration in Step 1
 Google Calendar user auth, authorized calendarIds, prioriwise calendarId are stored in google_calendar_auth table
 Must take caution to restrict events to read only from User's non-prioriwise Calendars. Currently, there are no api routes available to create events in non-prioriwise Calendars
 
 ### User Workflow
-1. User is redirected to Google to Authorize prioriwise for access to his calendars -- must check  SELECT ALL when prompted by google
+
+1. User is redirected to Google to Authorize prioriwise for access to his calendars -- must check SELECT ALL when prompted by google
 2. After the authorization, user is redirected to Prioriwise website. The redirect URL must be same as the one that user has logged in to.
 3. After successful authorization and linkage, a user can request Prioriwise to pull its calendars and choose to integrate one or some of them with Prioriwise
 4. A new calendar -- Prioriwise -- can also be created in user's google calendar on certain actions
 
 ### Events
-Based on REPRIORITIZE_EVENT_TIME_IN_HOURS configuration setting, a user's events from the list of authorized calendars are pulled. 
+
+Based on REPRIORITIZE_EVENT_TIME_IN_HOURS configuration setting, a user's events from the list of authorized calendars are pulled.
 
 ### FAQ in case of Errors
+
 Check redirect URI, it MUST be same as the URL that a user logged in to
 Allow access to individual users on Google Cloud console
 Make sure redirect uri is added to the list of callbacks on Google console
 
-
-
 ## Search
 
 ### Overview
-Search lets a user finds jobs and tasks by a keyword in job's name/title, notes and  task's name/title, notes, and tags
+
+Search lets a user finds jobs and tasks by a keyword in job's name/title, notes and task's name/title, notes, and tags
 
 #### Key Rules
-Indices are created on Job and Task collection on title, notes, and tags. To enable search on other fields, add them to an index in models
-A Mongoose query that performs a full-text search on a Job and Task  collection  and returns results sorted by relevance score. 
 
+Indices are created on Job and Task collection on title, notes, and tags. To enable search on other fields, add them to an index in models
+A Mongoose query that performs a full-text search on a Job and Task collection and returns results sorted by relevance score.
 
 ## Next Step For Each Job
 
 ### Overview
-The feature displays or selects the  task in the series that is due next.
+
+The feature displays or selects the task in the series that is due next.
 
 #### Key Rules
+
 Each job has an array of tasks that belong to it
-Each job has a nextTaskId field that shows the next task 
+Each job has a nextTaskId field that shows the next task
 After a job is created, the first task is set as next task by default
 Marking a current task as complete, BE selects the first incomplete and active task in the tasks array as the next task
 Deleting a current task, BE selects the next incomplete and active task in the array as next task
@@ -821,15 +904,18 @@ A user can also select a next Task from the dropdown on Job Details view
 ## Unit Testing
 
 ### Overview
+
 We use Jest as our testing framework. Configuration is defined in jest.config.ts.
+
 - For server side tests, use jestEnvironment = node
 - For client side tests, use jestEnvironment = jsDom
 
 ### How to write unit tests
-Tests are written in  \_\_tests\_\_  folder.
-For Unit tests, all dependencies in a function are mocked for isolated testing. 
 
-#### Basic structure of Jest tests:
+Tests are written in \_\_tests\_\_ folder.
+For Unit tests, all dependencies in a function are mocked for isolated testing.
+
+#### Basic structure of Jest tests
 
 ```
 jest.mock('next/navigation', () => ({
@@ -853,39 +939,48 @@ describe('JobsPage', () => {
 1. **jest.mock**: Components usually use external libraries like Next.js Navigation, since you can’t control those libraries themselves, you mock them, or basically create fake outputs from them, so you can control what goes into your components.
 2. **describe**: The describe block contains all the tests for a certain component, to keep them organized
 3. Each describe block with contain:
-    1. beforeEach: this runs before every test. Here you would mock fetch the data again to start from a clean slate for each test
-    2. afterEach: this runs after each test. Here you would reset all the mock data that you created
-    
-    Basically you set up a clean room before each test, and clean up the mess after each test.
+
+   1. beforeEach: this runs before every test. Here you would mock fetch the data again to start from a clean slate for each test
+   2. afterEach: this runs after each test. Here you would reset all the mock data that you created
+
+   Basically you set up a clean room before each test, and clean up the mess after each test.
 
 #### Writing tests
 
 ```
 test('test name', () => {
-	// setup each test
-	render(<JobsPage/>);
-	
-	// do something with it
-	
-	// check if what you did with it worked or not
-	expect(screen.getByText('Jobs')).toBeInTheDocument();
+ // setup each test
+ render(<JobsPage/>);
+
+ // do something with it
+
+ // check if what you did with it worked or not
+ expect(screen.getByText('Jobs')).toBeInTheDocument();
 });
 ```
+
 You will have multiple tests within a describe block. The beauty of it is that if 1 test fails, it won’t affect the other tests. They are isolated.
+N.B. `it` is a synonym for `test`.
 
 ### Execute tests
-Run tests by running command-- 
+
+Run tests by running command--
 npx jest \<test-filename\>.
-For example: npx jest  \_\_tests__/api/jobs.test.ts
+For example: npx jest \_\_tests\_\_/api/jobs.test.ts
 
 #### To run individual tests (and find out coverage rate)
+
 Use command:
+
 ```
 npm test -- --coverage <test-file-name>.test.tsx
 ```
 
 #### To run batch tests
+
 Use command:
+
 ```
 npm test -- --coverage
 ```
+
