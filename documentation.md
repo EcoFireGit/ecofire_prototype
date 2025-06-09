@@ -17,6 +17,7 @@
 14. [Onboarding Tour](#onboarding-tour)
 15. [Calendar Integration](#calendar-integration)
 16. [Unit Testing](#unit-testing)
+17. [Landing Page](#Landing-Page)
 
 
 ## Project Overview
@@ -859,3 +860,15 @@ For Unit tests, all dependencies in a function are mocked.
 Run tests by running command-- 
 npx jest \<test-filename\>.
 For example: npx jest  \_\_tests__/api/jobs.test.ts
+
+
+## Landing Page
+A simple landing page based on the UI decided.
+
+### Features
+Password blocker to stop unwanted users
+Clerk Sign in
+
+### Password Login Overview
+A password is set and stored in the env local file, when the user loads the page 
+the password is stored in the local storage and is encrypted. If the correct password is entered then the user can sign in using their account.  
