@@ -44,7 +44,7 @@ export default function Chat() {
     "Good to see you! How can I support you today?",
     "Hi! Feel free to ask me anything at all.",
     "Need assistance? I'm just a message away!",
-    "Let's get started. What can I do for you?",
+    "Let’s get started. What can I do for you?",
     "Hello there! Got questions? I've got answers.",
     "Hi! What brings you here today?",
     "Welcome back! How can I be of service?"
@@ -260,15 +260,9 @@ export default function Chat() {
         setHasAutoLoadedLatestChat(true); // Prevent future auto-loads
       }
     }
-  }, [recentChats, selectedChatId, hasAutoLoadedLatestChat, jobTitle]); // Add jobTitle to dependencies
+  }, [recentChats, selectedChatId, hasAutoLoadedLatestChat]);
   
 
-  useEffect(() => {
-    // Choose a random welcome message on mount
-    const randomIndex = Math.floor(Math.random() * welcomeMessages.length);
-    setWelcomeText(welcomeMessages[randomIndex]);
-  }, []);
-  
 
   // Get a preview of the conversation (first user message and assistant response)
   const getChatPreview = (chat: ChatSession) => {

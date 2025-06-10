@@ -36,6 +36,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Link from "next/link";
 import { OrganizationSwitcher } from "./organization-switcher";
 import {
@@ -125,6 +131,8 @@ export function AppSidebar() {
 
   const effectiveState = isMobile ? "expanded" : state;
 
+  const [isWellnessModalOpen, setIsWellnessModalOpen] = useState(false);
+
   // Function to check if a menu item is active
   const isActive = (url: string) => {
     // Handle exact match for dashboard or startsWith for other routes
@@ -194,6 +202,10 @@ export function AppSidebar() {
     sessionStorage.setItem("wellnessMood", mood);
     sessionStorage.setItem("wellnessFilters", JSON.stringify(filters));
 
+    if (isMobile) {
+      setIsWellnessModalOpen(false);
+    }
+
     // Check if we're already on the jobs page
     const currentPath = window.location.pathname;
     if (currentPath === "/jobs") {
@@ -207,7 +219,7 @@ export function AppSidebar() {
       // Otherwise navigate to jobs page - filters will be applied on page load
       window.location.href = "/jobs";
     }
-  }, []);
+  }, [isMobile]);
 
   return (
     <Sidebar collapsible="icon">
@@ -335,75 +347,87 @@ export function AppSidebar() {
         <SidebarMenu>
           {/* Wellness Check Button */}
           <SidebarMenuItem>
-            <Popover>
-              <PopoverTrigger asChild>
-                <SidebarMenuButton
-                  size={"lg"}
-                  id="wellness-check"
-                  className="flex items-center"
-                >
-                  <Heart
-                    className={`text-purple-500 fill-purple-500 ${
-                      !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
-                    }`}
-                  />
-                  <span className={!isMobile && effectiveState === "collapsed" ? "hidden" : ""}>
-                    Wellness Check
-                  </span>
-                </SidebarMenuButton>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-64 p-3"
-                side="right"
-                align="start"
-                sideOffset={10}
+            {isMobile ? (
+              <SidebarMenuButton
+                size={"lg"}
+                id="wellness-check"
+                className="flex items-center"
+                onClick={() => setIsWellnessModalOpen(true)}
               >
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">
-                    How are you feeling right now?
-                  </h4>
-                  <p className="text-xs text-gray-500">
-                    Choose your mood to get Job suggestions
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    <button
-                      onClick={() => handleWellnessSelection("sad")}
-                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
-                    >
-                      <div className="text-2xl mb-1">😀</div>
-                      <div className="text-xs">Happy</div>
-                    </button>
-                    <button
-                      onClick={() => handleWellnessSelection("focused")}
-                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
-                    >
-                      <div className="text-2xl mb-1">🤓</div>
-                      <div className="text-xs">Focused</div>
-                    </button>
-                    <button
-                      onClick={() => handleWellnessSelection("distracted")}
-                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
-                    >
-                      <div className="text-2xl mb-1">😵‍💫</div>
-                      <div className="text-xs">Distracted</div>
-                    </button>
-                    <button
-                      onClick={() => handleWellnessSelection("tired")}
-                      className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
-                    >
-                      <div className="text-2xl mb-1">😴</div>
-                      <div className="text-xs">Tired</div>
-                    </button>
+                <Heart className="text-purple-500 fill-purple-500" />
+                <span>Wellness Check</span>
+              </SidebarMenuButton>
+            ) : (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <SidebarMenuButton
+                    size={"lg"}
+                    id="wellness-check"
+                    className="flex items-center"
+                  >
+                    <Heart
+                      className={`text-purple-500 fill-purple-500 ${
+                        !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
+                      }`}
+                    />
+                    <span className={!isMobile && effectiveState === "collapsed" ? "hidden" : ""}>
+                      Wellness Check
+                    </span>
+                  </SidebarMenuButton>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-64 p-3"
+                  side="right"
+                  align="start"
+                  sideOffset={10}
+                >
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">
+                      How are you feeling right now?
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Choose your mood to get Job suggestions
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <button
+                        onClick={() => handleWellnessSelection("sad")}
+                        className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                      >
+                        <div className="text-2xl mb-1">😀</div>
+                        <div className="text-xs">Happy</div>
+                      </button>
+                      <button
+                        onClick={() => handleWellnessSelection("focused")}
+                        className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                      >
+                        <div className="text-2xl mb-1">🤓</div>
+                        <div className="text-xs">Focused</div>
+                      </button>
+                      <button
+                        onClick={() => handleWellnessSelection("distracted")}
+                        className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                      >
+                        <div className="text-2xl mb-1">😵‍💫</div>
+                        <div className="text-xs">Distracted</div>
+                      </button>
+                      <button
+                        onClick={() => handleWellnessSelection("tired")}
+                        className="p-3 text-center hover:bg-gray-100 rounded-md transition-colors"
+                      >
+                        <div className="text-2xl mb-1">😴</div>
+                        <div className="text-xs">Tired</div>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+                </PopoverContent>
+              </Popover>
+            )}
           </SidebarMenuItem>
-          
+
           {/* Organization Switcher - show properly in all states */}
-            <SidebarMenuItem>
-              <OrganizationSwitcher />
-            </SidebarMenuItem>
+          <SidebarMenuItem>
+            <OrganizationSwitcher />
+          </SidebarMenuItem>
 
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -421,6 +445,58 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      {isMobile && (
+        <Dialog open={isWellnessModalOpen} onOpenChange={setIsWellnessModalOpen}>
+          <DialogContent className="sm:max-w-md rounded-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-purple-500 fill-purple-500" />
+                Wellness Check
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium mb-1">
+                  How are you feeling right now?
+                </h4>
+                <p className="text-xs text-gray-500">
+                  Choose your mood to get Job suggestions
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleWellnessSelection("sad")}
+                  className="p-4 text-center hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                >
+                  <div className="text-3xl mb-2">😀</div>
+                  <div className="text-sm font-medium">Happy</div>
+                </button>
+                <button
+                  onClick={() => handleWellnessSelection("focused")}
+                  className="p-4 text-center hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                >
+                  <div className="text-3xl mb-2">🤓</div>
+                  <div className="text-sm font-medium">Focused</div>
+                </button>
+                <button
+                  onClick={() => handleWellnessSelection("distracted")}
+                  className="p-4 text-center hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                >
+                  <div className="text-3xl mb-2">😵‍💫</div>
+                  <div className="text-sm font-medium">Distracted</div>
+                </button>
+                <button
+                  onClick={() => handleWellnessSelection("tired")}
+                  className="p-4 text-center hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                >
+                  <div className="text-3xl mb-2">😴</div>
+                  <div className="text-sm font-medium">Tired</div>
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Sidebar>
   );
 }
