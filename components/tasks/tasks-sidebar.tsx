@@ -100,7 +100,7 @@ function SortableTaskItem({
           {...attributes}
           {...listeners}
           className={`flex items-center justify-center h-full min-h-[80px] px-2 ${
-            task.isNextTask ? "opacity-20 cursor-not-allowed" : "cursor-grab"
+            task.isNextTask? "opacity-20 cursor-not-allowed" : "cursor-grab"
           }`}
         >
           <GripVertical className="h-5 w-5 text-gray-400" />
@@ -361,22 +361,45 @@ export function TasksSidebar({
       if (result.success) {
         // Use the function form of setState to ensure you're working with the latest state
         setTasks((prevTasks) => {
-          return prevTasks.map((task) => {
-            if (task.id === id) {
-              // Update completed status and remove isNextTask if it's being completed
+          const updatedTasks = prevTasks.map((task) => {
+            if (task.id === id){
               return {
                 ...task,
                 completed,
-                // If the task is being completed and it was the next task, remove that status
-                isNextTask: completed ? false : task.isNextTask,
+                isNextTask: completed? false : task.isNextTask,
               };
             }
             return task;
           });
-        });
+
+          return updatedTasks.sort((a,b) => {
+              if (a.isNextTask && !a.completed) return -1;
+              if (b.isNextTask && !b.completed) return 1;
+
+              if (!a.completed && b.completed) return -1;
+              if (a.completed && !b.completed) return 1;
+
+              return 0;
+          })
+
+          // return prevTasks.map((task) => {
+          //   if (task.id === id) {
+          //     // Update completed status and remove isNextTask if it's being completed
+          //     return {
+          //       ...task,
+          //       completed,
+          //       // If the task is being completed and it was the next task, remove that status
+          //       isNextTask: completed ? false : task.isNextTask,
+          //     };
+          //   }
+          //   return task;
+          });
 
         // Then trigger a refresh of the job progress
         refreshJobProgress(jobid);
+        setTimeout(() => {
+          saveTasksOrderSilently();
+        }, 100)
       } else {
         toast({
           title: "Error",
@@ -647,6 +670,7 @@ export function TasksSidebar({
     if (active && over && active.id !== over.id) {
       // Find the task that was being dragged
       const draggedTask = tasks.find((task) => task.id === active.id);
+      const targetTask = tasks.find((task) => task.id === over.id);
 
       // Don't allow the next task to be reordered
       if (draggedTask && draggedTask.isNextTask) {
@@ -658,6 +682,16 @@ export function TasksSidebar({
         setActiveId(null);
         return;
       }
+
+      if (draggedTask && targetTask && draggedTask.completed !== targetTask.completed) {
+      toast({
+        title: "Cannot reorder between completion statuses",
+        description: "Completed and incomplete tasks must stay in their respective sections",
+        variant: "destructive",
+      });
+      setActiveId(null);
+      return;
+    }
 
       setTasks((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
@@ -671,6 +705,58 @@ export function TasksSidebar({
 
     setActiveId(null);
   };
+
+
+/**
+ * Saves the current task order to the backend without showing user feedback.
+ * This function is used for automatic saves (e.g., after task completion status changes)
+ * where we don't want to show toast notifications or other UI feedback to the user.
+ * 
+ * @async
+ * @function saveTasksOrderSilently
+ * @returns {Promise<void>} A promise that resolves when the save operation completes
+ * 
+ * @description
+ * - Gets the current task IDs in their display order
+ * - Sends a PUT request to update the job's task order in the backend
+ * - Updates the local selectedJob object with the new task order
+ * - Triggers a job refresh if the onRefreshJobs callback is available
+ * - Logs errors to console but doesn't show user notifications
+ * 
+ * @example
+ * // Typically called after task completion status changes
+ * setTimeout(() => {
+ *   saveTasksOrderSilently();
+ * }, 100);
+ */
+const saveTasksOrderSilently = async () => {
+  if (!selectedJob) return;
+
+  try {
+    const taskIds = tasks.map((task) => task.id);
+    
+    const response = await fetch("/api/tasks/order", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        jobId: selectedJob.id,
+        taskIds: taskIds,
+      }),
+    });
+
+    const result = await response.json();
+    if (result.success && selectedJob) {
+      Object.assign(selectedJob, { ...selectedJob, tasks: taskIds });
+      if (typeof onRefreshJobs === "function") {
+        onRefreshJobs();
+      }
+    }
+  } catch (error) {
+    console.error("Error saving task order silently:", error);
+  }
+};
 
   // Save the new order of tasks
   const saveTasksOrder = async () => {
@@ -739,11 +825,32 @@ export function TasksSidebar({
     return null;
   }
 
+  /**
+ * Sorted array of tasks with automatic prioritization based on completion status.
+ * 
+ * @description
+ * Creates a new sorted array from the tasks state with the following priority order:
+ * 1. Next Task (if incomplete) - Always appears first
+ * 2. Other incomplete tasks - Appear in middle section
+ * 3. Completed tasks - Automatically moved to bottom
+ * 
+ * This ensures users always see their next priority task at the top and don't need
+ * to scroll through completed tasks to find incomplete work.
+ *  * @remarks
+ * - Uses spread operator to avoid mutating original tasks array
+ * - Comparison function returns -1/1/0 for before/after/equal positioning
+ * - Within same completion status, tasks maintain their relative order
+ * - Next task loses priority when marked as completed
+ * */
+
   // Sort tasks - only prioritize the next task, allowing drag and drop to manage the rest
   const sortedTasks = [...tasks].sort((a, b) => {
     // Next task always comes first
-    if (a.isNextTask) return -1;
-    if (b.isNextTask) return 1;
+    if (a.isNextTask && !a.completed) return -1;
+    if (b.isNextTask && !b.completed) return 1;
+
+    if (!a.completed && b.completed) return -1;
+    if (a.completed && !b.completed) return 1;
 
     // For all other tasks, keep their current order
     return 0;
