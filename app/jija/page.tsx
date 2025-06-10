@@ -44,7 +44,7 @@ export default function Chat() {
     "Good to see you! How can I support you today?",
     "Hi! Feel free to ask me anything at all.",
     "Need assistance? I'm just a message away!",
-    "Let’s get started. What can I do for you?",
+    "Let's get started. What can I do for you?",
     "Hello there! Got questions? I've got answers.",
     "Hi! What brings you here today?",
     "Welcome back! How can I be of service?"
@@ -247,10 +247,12 @@ export default function Chat() {
     // - We have recent chats
     // - No chat is currently selected
     // - We haven't already auto-loaded
+    // - There's no jobTitle parameter (NEW CONDITION)
     if (
       !selectedChatId &&
       recentChats.length > 0 &&
-      !hasAutoLoadedLatestChat
+      !hasAutoLoadedLatestChat &&
+      !jobTitle  // Don't auto-load if jobTitle is present
     ) {
       const latestChat = recentChats[0]; // Most recent chat is first
       if (latestChat && latestChat.chatId) {
@@ -258,7 +260,7 @@ export default function Chat() {
         setHasAutoLoadedLatestChat(true); // Prevent future auto-loads
       }
     }
-  }, [recentChats, selectedChatId, hasAutoLoadedLatestChat]);
+  }, [recentChats, selectedChatId, hasAutoLoadedLatestChat, jobTitle]); // Add jobTitle to dependencies
   
 
   useEffect(() => {
