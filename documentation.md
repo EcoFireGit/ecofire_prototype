@@ -207,6 +207,27 @@ Location: `components/onboarding/driver-tour.tsx`
 - Adds the user as admin
 - Required fields: name
 
+
+### PI-Job Mapping API
+
+#### GET /api/pi-job-mappings
+- Returns all pi-job mapping for authenticated user
+
+#### POST /api/pi-job-mappings
+- Creates new pi-job mapping
+
+#### GET /api/pi-job-mappings/[id]
+- Returns specified pi-job mapping
+
+#### PUT /api/pi-job-mappings/[id]
+- Updates specified pi-job mapping
+- Automatically triggers job impact value recalculation
+
+#### DELETE /api/pi-job-mappings/[id]
+- Deletes specified pi-job mapping
+- Automatically triggers job impact value recalculation
+
+
 ## Database Schema
 
 ### Job Model
@@ -237,6 +258,21 @@ interface PIs extends mongoose.Document {
   userId: string;
 }
 ```
+### PI-Job Mapping Model
+```typescript
+interface JobPiMapping extends mongoose.Document {
+  _id: string;
+  jobId: string;
+  piId: string;
+  jobName: string;
+  piName: string;
+  piImpactValue: number;
+  piTarget: number; // Added field
+  notes?: string;
+  userId: string;
+}
+```
+
 
 ### Organization Model
 ```typescript
@@ -827,7 +863,6 @@ The PI Table is used to store and display all PI(Performance Indicators) a user 
 
 ### Key Rules
 Each PI is related to a job to a certain outcome. It holds a starting value, a target value, and a deadline. 
-
 
 
 ## Search
