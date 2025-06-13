@@ -11,7 +11,8 @@ export class UserOrganizationService {
   async addUserToOrganization(
     userId: string, 
     organizationId: string, 
-    role: 'admin' | 'member' = 'member'
+    role: 'admin' | 'member' = 'member',
+    email?: string
   ) {
     await dbConnect();
     
@@ -31,6 +32,7 @@ export class UserOrganizationService {
     const userOrg = new UserOrganization({
       userId,
       organizationId,
+      email,
       role,
       joinedAt: new Date()
     });
