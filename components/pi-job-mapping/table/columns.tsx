@@ -32,23 +32,26 @@ export type MappingJP = {
 };
 
 // Function to convert from database model to table data
-export function convertJPMappingToTableData(JPMap: JobPiMapping[], pisList: PIs[], jobsList: Jobs[]): MappingJP[] {
+export function convertJPMappingToTableData(
+  JPMap: JobPiMapping[],
+  pisList: PIs[],
+  jobsList: Jobs[],
+): MappingJP[] {
+  return JPMap.map((JobPiMapping) => {
+    const pi = pisList.find((pi) => pi._id === JobPiMapping.piId);
+    const job = jobsList.find((job) => job._id === JobPiMapping.jobId);
 
-  return JPMap.map(JobPiMapping => {
-    const pi = pisList.find(pi => pi._id === JobPiMapping.piId);
-    const job = jobsList.find(job => job._id === JobPiMapping.jobId);
-    
     return {
       id: JobPiMapping._id,
       jobId: JobPiMapping.jobId,
-      piId: JobPiMapping.piId || '',
+      piId: JobPiMapping.piId,
       piImpactValue: JobPiMapping.piImpactValue || 0,
-      jobName: job?.title || 'Unknown Job',
-      piName: pi?.name || 'Unknown Output',
-      piTarget: JobPiMapping.piTarget || 0, // Added field
-      notes: JobPiMapping.notes || ''
-    }
-    });
+      jobName: job?.title || "Unknown Job",
+      piName: pi?.name || "Unknown Output",
+      piTarget: pi?.targetValue || 0, // Added field
+      notes: JobPiMapping.notes || "",
+    };
+  });
 }
 
 export const columns = (
