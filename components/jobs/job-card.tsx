@@ -77,7 +77,6 @@ export function JobCard({
     const handleOwnerUpdate = (e: CustomEvent<{ jobId: string }>) => {
       // Check if this is the job that needs to be updated
       if (e.detail.jobId === job.id) {
-        console.log(`Updating owner for job ${job.id}`);
         fetchJobData();
       }
     };
@@ -150,18 +149,18 @@ export function JobCard({
   const getBusinessFunctionColor = () => {
     const businessFunctionName = currentJob.businessFunctionName || "None";
     // Generate a hash code from the function name
-    const hashCode = businessFunctionName.split('').reduce((acc, char) => {
+    const hashCode = businessFunctionName.split("").reduce((acc, char) => {
       return char.charCodeAt(0) + ((acc << 5) - acc);
     }, 0);
-    
+
     // Map to HSL color space for better distribution of colors
     const h = Math.abs(hashCode % 360);
     const s = 85; // Keep saturation fixed for better readability
     const l = 88; // Higher lightness for background with dark text
-    
+
     return {
       backgroundColor: `hsl(${h},${s}%,${l}%)`,
-      color: `hsl(${h},${s}%,30%)`
+      color: `hsl(${h},${s}%,30%)`,
     };
   };
 
@@ -186,7 +185,7 @@ export function JobCard({
                 />
               </div>
             )}
-            <span 
+            <span
               className="px-2 py-1 text-xs font-medium rounded"
               style={getBusinessFunctionColor()}
             >

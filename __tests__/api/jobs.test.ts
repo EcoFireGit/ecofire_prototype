@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+
 import { validateAuth } from '../../lib/utils/auth-utils';
 import { JobService } from '../../lib/services/job.service';
 import { GET } from '../../app/api/jobs/route';

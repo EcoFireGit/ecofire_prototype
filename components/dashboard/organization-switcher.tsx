@@ -1,10 +1,13 @@
 'use client'
 import { useView } from '@/lib/contexts/view-context';
 import { useUser } from '@clerk/nextjs';
+import { useSidebar } from '@/components/ui/sidebar';
 import React, { useState } from 'react';
+import { Users } from 'lucide-react';
 
 export function OrganizationSwitcher() {
   const { user } = useUser();
+  const { state, isMobile } = useSidebar();
   const {
     currentViewId,
     isOrganization,
@@ -13,6 +16,8 @@ export function OrganizationSwitcher() {
     currentOrganization
   } = useView();
   const [isLoading, setIsLoading] = useState(false);
+
+  const isCollapsed = !isMobile && state === "collapsed";
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     try {
@@ -45,6 +50,10 @@ export function OrganizationSwitcher() {
     if (text.length <= maxLength) return text;
     return `${text.substring(0, maxLength)}...`;
   };
+
+  if (isCollapsed) {
+    return null;
+  }
 
   return (
     <div className="p-2" id='org-view-toggle'>

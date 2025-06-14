@@ -160,7 +160,6 @@ export default function RootLayout({
               </main>
             </SignedOut>
             <SignedIn>
-              <Navbar />
               <TaskProvider>{children}</TaskProvider>
             </SignedIn>
             <Toaster />

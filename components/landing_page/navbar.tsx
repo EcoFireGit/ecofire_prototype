@@ -3,13 +3,15 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { Search, Bell, HelpCircle, Clock } from "lucide-react";
+import { Search, Bell, HelpCircle, Clock, Menu } from "lucide-react";
 import { useState, useEffect } from "react";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Jobs } from "@/lib/models/job.model";
 import { Job, columns } from "@/components/jobs/table/columns";
 import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
+import { MobileMenuTrigger } from "../ui/MobileMenuTrigger";
+import { useSidebar } from "../ui/sidebar";
 
 import {
   Popover,
@@ -87,6 +89,26 @@ const formatTimeRemaining = (minutes: number): string => {
   }
 
   return `${hours} ${hours === 1 ? "hr" : "hrs"} ${remainingMinutes} ${remainingMinutes === 1 ? "min" : "mins"}`;
+};
+
+const MobileMenuButton = () => {
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  if (!isMobile) {
+    return null;
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="md:hidden mr-2"
+      onClick={() => setOpenMobile(true)}
+    >
+      <Menu className="h-6 w-6" />
+      <span className="sr-only">Open menu</span>
+    </Button>
+  );
 };
 
 const Navbar = () => {
@@ -570,39 +592,44 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
 
   return (
     <>
-      <div className="w-full px-4 py-3 flex justify-end items-center mt-5">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mr-2"
-              id="help-button"
-            >
-              <HelpCircle className="h-6 w-6" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-72 p-4"
-            side="bottom"
-            align="end"
-            sideOffset={10}
-          >
-            <div className="space-y-3">
-              <h4 className="font-medium text-base">Need help?</h4>
-              <p className="text-sm text-gray-500">
-                Get familiar with our interface by taking a guided tour of the
-                main features.
-              </p>
+      <div className="w-full px-4 py-3 flex justify-between items-center mt-5">
+        <div className="flex items-center">
+          <MobileMenuButton/>
+        </div>
+        <div className="flex items-center">
+          <Popover>
+            <PopoverTrigger asChild>
               <Button
-                className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
-                onClick={handleStartTourClick}
+                variant="ghost"
+                size="icon"
+                className="mr-2"
+                id="help-button"
               >
-                Start Guided Tour
+                <HelpCircle className="h-6 w-6" />
               </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-72 p-4"
+              side="bottom"
+              align="end"
+              sideOffset={10}
+            >
+              <div className="space-y-3">
+                <h4 className="font-medium text-base">Need help?</h4>
+                <p className="text-sm text-gray-500">
+                  Get familiar with our interface by taking a guided tour of the
+                  main features.
+                </p>
+                <Button
+                  className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
+                  onClick={handleStartTourClick}
+                >
+                  Start Guided Tour
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        
 
         <Link href="/search">
           <Button variant="ghost" size="icon" className="mr-2">
@@ -621,7 +648,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
             <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#f05523]" />
           )}
         </Button>
-
+          
     <JobDialog
           mode={editingJob ? "edit" : "create"}
           open={dialogOpen}
@@ -682,6 +709,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
           </div>
         </div>
       )}
+      </div>
     </>
   );
 };

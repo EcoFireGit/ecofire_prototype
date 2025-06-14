@@ -87,12 +87,12 @@ export default function JobsPage() {
     const businessFunctionName = searchParams.get("businessFunction");
     if (businessFunctionName && businessFunctions?.length) {
       const bf = businessFunctions.find(
-        (b) => b.name.toLowerCase() === businessFunctionName.toLowerCase()
+        (b) => b.name.toLowerCase() === businessFunctionName.toLowerCase(),
       );
       if (bf) {
-        setActiveFilters(prev => ({
+        setActiveFilters((prev) => ({
           ...prev,
-          businessFunctionId: bf.id
+          businessFunctionId: bf.id,
         }));
       }
     }
@@ -120,39 +120,39 @@ export default function JobsPage() {
     });
   };
 
- // Add this effect to fetch the user preferences
-useEffect(() => {
-  const fetchUserPreferences = async () => {
-    try {
-      const response = await fetch("/api/user/preferences");
-      const result = await response.json();
+  // Add this effect to fetch the user preferences
+  useEffect(() => {
+    const fetchUserPreferences = async () => {
+      try {
+        const response = await fetch("/api/user/preferences");
+        const result = await response.json();
 
-      if (result.success) {
-        setIsTableViewEnabled(result.data.enableTableView);
+        if (result.success) {
+          setIsTableViewEnabled(result.data.enableTableView);
 
-        // If table view is not enabled, ensure we're using grid view
-        if (!result.data.enableTableView) {
-          setViewMode("grid");
-        } else {
-          // If it is enabled, we can use the stored preference
-          const savedViewMode = localStorage.getItem("jobViewMode") as
-            | "grid"
-            | "table";
-          if (
-            savedViewMode &&
-            (savedViewMode === "grid" || savedViewMode === "table")
-          ) {
-            setViewMode(savedViewMode);
+          // If table view is not enabled, ensure we're using grid view
+          if (!result.data.enableTableView) {
+            setViewMode("grid");
+          } else {
+            // If it is enabled, we can use the stored preference
+            const savedViewMode = localStorage.getItem("jobViewMode") as
+              | "grid"
+              | "table";
+            if (
+              savedViewMode &&
+              (savedViewMode === "grid" || savedViewMode === "table")
+            ) {
+              setViewMode(savedViewMode);
+            }
           }
         }
+      } catch (error) {
+        console.error("Failed to fetch user preferences:", error);
       }
-    } catch (error) {
-      console.error("Failed to fetch user preferences:", error);
-    }
-  };
+    };
 
-  fetchUserPreferences();
-}, []); // Empty dependency array is correct here as we only want to run this once
+    fetchUserPreferences();
+  }, []); // Empty dependency array is correct here as we only want to run this once
   // Fetch business functions
   const fetchBusinessFunctions = async () => {
     try {
@@ -664,11 +664,6 @@ useEffect(() => {
     if (!loading && activeJobs.length > 0) {
       // Check if we have activeFilters already set (from initialFilters or previous state)
       if (Object.keys(activeFilters).length > 0) {
-        console.log(
-          "Reapplying filters on page navigation/load:",
-          activeFilters,
-        );
-
         // Filter active jobs
         const filteredActive = activeJobs.filter((job) => {
           return matchesFilters(job, activeFilters);
@@ -1154,4 +1149,3 @@ useEffect(() => {
     </div>
   );
 }
-

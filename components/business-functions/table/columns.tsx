@@ -88,20 +88,28 @@ export const columns = (
       const businessFunction = row.original;
       
       return (
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-end" onClick={e => e.stopPropagation()}>
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => onEdit(businessFunction.id, businessFunction.name)}
+            onClick={e => {
+              e.stopPropagation(); // Prevent row click
+              onEdit(businessFunction.id, businessFunction.name);
+            }}
           >
             <Pencil className="h-4 w-4" />
           </Button>
 
           <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={e => e.stopPropagation()}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+              
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>

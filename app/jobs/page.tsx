@@ -5,7 +5,7 @@ import JobsPage from "@/components/jobs/job-feed-view";
 import { useEffect, useState, useRef } from "react";
 import { WelcomeModal, TourController } from "@/components/onboarding_tour";
 import { OnboardingProvider } from "@/components/onboarding_tour/onboarding-context";
-import { useSearchParams, usePathname } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 // Import the event name (or define it here if you prefer)
 const TOUR_START_EVENT = "directTourStart";
@@ -75,10 +75,31 @@ export default function FeedPage() {
     setShowOnboardingTour(false);
   };
   
+  const router = useRouter();
+
+
+  // Read tab param from URL, fallback to 'job'
+  const tabParam = searchParams.get('tab') || 'job';
+  const [activeTab, setActiveTab] = useState(tabParam);
+
+  // Keep state in sync with URL
+  useEffect(() => {
+    setActiveTab(tabParam);
+  }, [tabParam]);
+
+  // When tab changes, update URL param
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', value);
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+
   return (
     <OnboardingProvider>
       <TourController />
-      <Tabs defaultValue="job" className="w-auto ml-5">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-auto ml-5">
         <TabsList id="jobs-tasks-section">
           <TabsTrigger value="job">Job Feed</TabsTrigger>
           <TabsTrigger value="task">Task Feed</TabsTrigger>
