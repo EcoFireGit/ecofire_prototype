@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Search, Bell, HelpCircle, Clock, Menu } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, SetStateAction } from "react";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Jobs } from "@/lib/models/job.model";
@@ -12,6 +12,8 @@ import { Job, columns } from "@/components/jobs/table/columns";
 import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
 import { MobileMenuTrigger } from "../ui/MobileMenuTrigger";
 import { useSidebar } from "../ui/sidebar";
+import { useRef } from "react";
+
 
 import {
   Popover,
@@ -112,6 +114,15 @@ const MobileMenuButton = () => {
 };
 
 const Navbar = () => {
+
+
+    const [showSearch, setShowSearch] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
+
+  
+    
+
   const router = useRouter();
   const pathname = usePathname();
   const [hasNotification, setHasNotification] = useState(false);
@@ -345,6 +356,33 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
       setTaskDetails(taskDetailsMap);
     } catch (error) {
       console.error("Error creating task owner mapping:", error);
+    }
+  };
+
+  
+  useEffect(() => {
+    if (showSearch && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  const handleSearchButtonClick = () => {
+    setShowSearch(true);
+  };
+
+  const handleInputChange = (e: { target: { value: SetStateAction<string>; }; }) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleInputKeyDown = (e: { key: string; }) => {
+    if (e.key === "Enter" && searchQuery.trim() !== "") {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+      setShowSearch(false);
+      setSearchQuery("");
+    }
+    if (e.key === "Escape") {
+      setShowSearch(false);
+      setSearchQuery("");
     }
   };
 
@@ -597,6 +635,60 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
           <MobileMenuButton/>
         </div>
         <div className="flex items-center">
+  {!showSearch ? (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="mr-2"
+      onClick={handleSearchButtonClick}
+      aria-label="Open search"
+    >
+      <Search className="h-6 w-6" />
+    </Button>
+  ) : (
+    <div className="relative flex items-center">
+      <input
+        ref={inputRef}
+        type="text"
+        value={searchQuery}
+        onChange={handleInputChange}
+        onKeyDown={handleInputKeyDown}
+        placeholder="Search..."
+        className="
+          h-10 w-56 md:w-72 rounded-md border border-gray-300 pl-4 pr-10
+          focus:border-[#f05523] focus:ring-2 focus:ring-[#f05523]/30
+          transition-colors duration-200 text-sm shadow-sm
+          placeholder-gray-400
+          bg-white dark:bg-gray-900 dark:border-gray-700 dark:placeholder-gray-500
+        "
+        autoFocus
+      />
+      {searchQuery && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-2"
+          onClick={() => setSearchQuery("")}
+          aria-label="Clear search"
+          tabIndex={-1}
+        >
+          <span className="sr-only">Clear search</span>
+          {/* Use an X icon from lucide-react or your icon set */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </Button>
+      )}
+    </div>
+      )}
+
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -631,11 +723,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
           </Popover>
         
 
-        <Link href="/search">
-          <Button variant="ghost" size="icon" className="mr-2">
-            <Search className="h-6 w-6" />
-          </Button>
-        </Link>
+        
 
         <Button
           variant="ghost"
