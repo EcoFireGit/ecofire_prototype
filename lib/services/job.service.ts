@@ -53,18 +53,33 @@ export class JobService {
   }
   
 
-  async getAllJobs(userId: string): Promise<Jobs[]> {
-    try {
-      await dbConnect();
-      const jobs = await Job.find({ userId, $or: [
+async getAllJobs(userId: string): Promise<Jobs[]> {
+  try {
+    await dbConnect();
+    const jobs = await Job.find({ 
+      userId, 
+      $or: [
         { isDeleted: { $eq: false } },
         { isDeleted: { $exists: false } }
-      ] }).lean();
-      return JSON.parse(JSON.stringify(jobs));
-    } catch (error) {
-      throw new Error('Error fetching jobs from database');
-    }
+      ] 
+    }).lean();
+    
+    const fallbackDate = new Date('2025-06-16T00:00:00.000Z');
+    const jobsWithCreatedDate = jobs.map(job => {
+      const hasCreatedDate = job.createdDate !== undefined && job.createdDate !== null;
+      
+      return {
+        ...job,
+        createdDate: hasCreatedDate ? job.createdDate : fallbackDate
+      };
+    });
+    
+    return JSON.parse(JSON.stringify(jobsWithCreatedDate));
+  } catch (error) {
+    console.error('Error in getAllJobs:', error);
+    throw new Error('Error fetching jobs from database');
   }
+}
 
   async getJobById(id: string, userId: string): Promise<Jobs | null> {
     try {
@@ -76,19 +91,20 @@ export class JobService {
     }
   }
 
-  async createJob(jobData: Partial<Jobs>, userId: string): Promise<Jobs> {
-    try {
-      await dbConnect();
-      const job = new Job({
-        ...jobData,
-        userId
-      });
-      const savedJob = await job.save();
-      return JSON.parse(JSON.stringify(savedJob));
-    } catch (error) {
-      throw new Error('Error creating job in database');
+    async createJob(jobData: Partial<Jobs>, userId: string): Promise<Jobs> {
+      try {
+        await dbConnect();
+        const job = new Job({
+          ...jobData,
+          userId,
+          createdDate: new Date()
+        });
+        const savedJob = await job.save();
+        return JSON.parse(JSON.stringify(savedJob));
+      } catch (error) {
+        throw new Error('Error creating job in database');
+      }
     }
-  }
 
   async updateJob(id: string, userId: string, updateData: Partial<Jobs>): Promise<Jobs | null> {
     try {
