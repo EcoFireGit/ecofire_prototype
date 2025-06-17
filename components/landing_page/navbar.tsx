@@ -36,6 +36,7 @@ function convertJobsToTableData(
       businessFunctionId: job.businessFunctionId || undefined,
       businessFunctionName: businessFunction?.name || undefined,
       dueDate: job.dueDate ? new Date(job.dueDate).toISOString() : undefined,
+      createdDate: new Date(job.createdDate!).toISOString(),
       isDone: job.isDone || false,
       nextTaskId: job.nextTaskId || undefined,
       tasks: job.tasks || [],
