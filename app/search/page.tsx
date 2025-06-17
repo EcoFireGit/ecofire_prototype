@@ -53,9 +53,7 @@ const SearchPage = () => {
       }
     };
     fetchResults();
-  }, [query, needsRefresh]); // also refetch if needsRefresh changes
-
-  // ...other handlers unchanged...
+  }, [query, needsRefresh]);
 
   const handleOpenSidebar = (item: any) => {
     setCurrentItem(item);
@@ -86,7 +84,7 @@ const SearchPage = () => {
       const result = await response.json();
       if (result.success) {
         toast({ title: "Success", description: "Task updated successfully" });
-        setNeedsRefresh(n => !n); // trigger refetch
+        setNeedsRefresh(n => !n);
       } else {
         toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
       }
@@ -108,7 +106,7 @@ const SearchPage = () => {
       const result = await response.json();
       if (result.success) {
         toast({ title: "Success", description: "Job updated successfully" });
-        setNeedsRefresh(n => !n); // trigger refetch
+        setNeedsRefresh(n => !n);
       } else {
         toast({ title: "Error", description: "Failed to update job", variant: "destructive" });
       }
@@ -146,7 +144,7 @@ const SearchPage = () => {
 
   const handleSidebarChange = (open: boolean) => {
     if (!open && needsRefresh) {
-      setNeedsRefresh(n => !n); // trigger refetch
+      setNeedsRefresh(n => !n);
     }
     setSidebarOpen(open);
   };
@@ -155,8 +153,16 @@ const SearchPage = () => {
     <div className="p-4">
       <div className="container mx-auto py-10">
         <div className="flex justify-center items-center mb-6">
-          <h1 className="text-2xl font-bold text-center">Search</h1>
+          <h1 className="text-2xl font-bold text-center">
+            {query.trim()
+              ? <>
+                  <span className="font-medium">searching:</span>{" "}
+                  <span className="italic">{query}</span>
+                </>
+              : "Search"}
+          </h1>
         </div>
+
         {error && <div className="error text-red-500 mb-4">{error}</div>}
 
         {selectedResults.size > 0 && (
@@ -177,19 +183,19 @@ const SearchPage = () => {
             <p className="text-center py-8 text-gray-500">Searching...</p>
           ) : results.length > 0 ? (
             <div className="flex justify-center">
-  <div className="flex flex-col space-y-4 ml-48">
-              {results.map((result, index) => (
-                <SearchResultCard
-                  key={result.id || result._id || index}
-                  result={result}
-                  index={index}
-                  onOpenTasksSidebar={handleOpenSidebar}
-                  onEdit={handleEditItem}
-                  onDelete={handleDeleteItem}
-                  isSelected={selectedResults.has(result.id || result._id)}
-                  taskOwnerMap={taskOwnerMap}
-                />
-              ))}
+              <div className="flex flex-col space-y-4 ml-48">
+                {results.map((result, index) => (
+                  <SearchResultCard
+                    key={result.id || result._id || index}
+                    result={result}
+                    index={index}
+                    onOpenTasksSidebar={handleOpenSidebar}
+                    onEdit={handleEditItem}
+                    onDelete={handleDeleteItem}
+                    isSelected={selectedResults.has(result.id || result._id)}
+                    taskOwnerMap={taskOwnerMap}
+                  />
+                ))}
               </div>
             </div>
           ) : (

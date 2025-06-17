@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Search, Bell, HelpCircle, Clock, Menu } from "lucide-react";
-import { useState, useEffect, SetStateAction } from "react";
+import { useState, useEffect, SetStateAction, useRef } from "react";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Jobs } from "@/lib/models/job.model";
@@ -12,8 +12,6 @@ import { Job, columns } from "@/components/jobs/table/columns";
 import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
 import { MobileMenuTrigger } from "../ui/MobileMenuTrigger";
 import { useSidebar } from "../ui/sidebar";
-import { useRef } from "react";
-
 
 import {
   Popover,
@@ -26,7 +24,6 @@ function convertJobsToTableData(
   businessFunctions: BusinessFunctionForDropdown[],
 ): Job[] {
   return jobs.map((job) => {
-    // Find the business function name if it exists
     const businessFunction = job.businessFunctionId
       ? businessFunctions.find((bf) => bf.id === job.businessFunctionId)
       : undefined;
@@ -42,16 +39,12 @@ function convertJobsToTableData(
       nextTaskId: job.nextTaskId || undefined,
       tasks: job.tasks || [],
       impact: job.impact || 0,
-      // Owner removed as it's now derived from the next task
     };
   });
 }
 
-
-// Create a direct custom event to handle same-page tour starts
 const TOUR_START_EVENT = "directTourStart";
 
-// Interface for notification data
 interface NotificationData {
   _id: {
     $oid: string;
@@ -76,30 +69,23 @@ interface NotificationData {
   };
 }
 
- 
-// Function to format minutes into hours and minutes
 const formatTimeRemaining = (minutes: number): string => {
   if (minutes < 60) {
     return `${minutes} ${minutes === 1 ? "min" : "mins"}`;
   }
-
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-
   if (remainingMinutes === 0) {
     return `${hours} ${hours === 1 ? "hr" : "hrs"}`;
   }
-
   return `${hours} ${hours === 1 ? "hr" : "hrs"} ${remainingMinutes} ${remainingMinutes === 1 ? "min" : "mins"}`;
 };
 
 const MobileMenuButton = () => {
   const { isMobile, setOpenMobile } = useSidebar();
-
   if (!isMobile) {
     return null;
   }
-
   return (
     <Button
       variant="ghost"
@@ -114,17 +100,40 @@ const MobileMenuButton = () => {
 };
 
 const Navbar = () => {
-
-
-    const [showSearch, setShowSearch] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const inputRef = useRef<HTMLInputElement>(null);
-
-  
-    
-
   const router = useRouter();
   const pathname = usePathname();
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Only show last searched item if currently on the /search page
+  const initialSearchValue =
+    typeof window !== "undefined" && pathname?.startsWith("/search")
+      ? (() => {
+          if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("q") || "";
+          }
+          return "";
+        })()
+      : "";
+
+  const [searchQuery, setSearchQuery] = useState(initialSearchValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (pathname?.startsWith("/search")) {
+      const params = new URLSearchParams(window.location.search);
+      setSearchQuery(params.get("q") || "");
+    } else {
+      setSearchQuery("");
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    if (showSearch && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showSearch]);
+
   const [hasNotification, setHasNotification] = useState(false);
   const [notification, setNotification] = useState<NotificationData | null>(
     null,
@@ -132,30 +141,29 @@ const Navbar = () => {
   const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
   const [appointmentVisible, setAppointmentVisible] = useState(false);
   const [eventTitle, setEventTitle] = useState<string>("");
-  
+
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [creatingJob, setCreatingJob] = useState(false); //State to track job creation
+  const [creatingJob, setCreatingJob] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | undefined>(undefined);
- const [businessFunctions, setBusinessFunctions] = useState<
+  const [businessFunctions, setBusinessFunctions] = useState<
     BusinessFunctionForDropdown[]
   >([]);
-const [loading, setLoading] = useState(true);
-const [owners, setOwners] = useState<{ _id: string; name: string }[]>([]);
-const [tags, setTags] = useState<{ _id: string; name: string }[]>([]);
-const [taskOwnerMap, setTaskOwnerMap] = useState<Record<string, string>>({});
-const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
-const [error, setError] = useState<string | null>(null);
-const [activeJobs, setActiveJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [owners, setOwners] = useState<{ _id: string; name: string }[]>([]);
+  const [tags, setTags] = useState<{ _id: string; name: string }[]>([]);
+  const [taskOwnerMap, setTaskOwnerMap] = useState<Record<string, string>>({});
+  const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [activeJobs, setActiveJobs] = useState<Job[]>([]);
   const [filteredActiveJobs, setFilteredActiveJobs] = useState<Job[]>([]);
   const [sortedActiveJobs, setSortedActiveJobs] = useState<Job[]>([]);
   const [completedJobs, setCompletedJobs] = useState<Job[]>([]);
   const [filteredCompletedJobs, setFilteredCompletedJobs] = useState<Job[]>([]);
   const [sortedCompletedJobs, setSortedCompletedJobs] = useState<Job[]>([]);
 
-
   const handleCreate = async (jobData: Partial<Job>) => {
-    setCreatingJob(true); // Set creating job state to true
+    setCreatingJob(true);
     try {
       const response = await fetch("/api/jobs", {
         method: "POST",
@@ -164,9 +172,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
         },
         body: JSON.stringify({
           ...jobData,
-          // Ensure we're sending businessFunctionId, not businessFunctionName
           businessFunctionId: jobData.businessFunctionId,
-          // No need to send owner as it's derived from the next task
         }),
       });
 
@@ -177,9 +183,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
           title: "Success",
           description: "Job successfully created",
         });
-        await fetchJobs(); // Refresh jobs and wait for it to complete
-
-        // Now we can close the dialog after jobs have been refreshed
+        await fetchJobs();
         setDialogOpen(false);
         router.push('/jobs');
       } else {
@@ -192,21 +196,17 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
         variant: "destructive",
       });
     } finally {
-      setCreatingJob(false); // Reset creating job state
+      setCreatingJob(false);
     }
   };
-
 
   const handleDialogOpenChange = (open: boolean) => {
     setDialogOpen(open);
     if (!open) {
-      // If dialog is closing, reset editing job
       setEditingJob(undefined);
     }
   };
 
-
-  // Function to first fetch api/gcal to create notifications in the backend and then fetch notifications
   const fetchNotifications = async () => {
     try {
       const gcalResponse = await fetch("/api/gcal");
@@ -223,9 +223,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
         if (data.success && data.data) {
           const notificationData = data.data as NotificationData;
 
-          // Check if there's a notification
           if (notificationData && notificationData.upcomingEvent) {
-            // Calculate time remaining
             const eventTime = new Date(
               notificationData.upcomingEvent.start.dateTime,
             );
@@ -233,22 +231,18 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
             const diffMs = eventTime.getTime() - currentTime.getTime();
             const diffMinutes = Math.floor(diffMs / 60000);
 
-            // Only set notification if event hasn't passed
             if (diffMinutes > 0) {
               setNotification(notificationData);
               setHasNotification(true);
               setMinutesRemaining(diffMinutes);
-              // Store the event title
               setEventTitle(notificationData.upcomingEvent.summary);
             } else {
-              // Event has passed, clear notification
               setNotification(null);
               setHasNotification(false);
               setMinutesRemaining(null);
               setEventTitle("");
             }
           } else {
-            // No notification data
             setNotification(null);
             setHasNotification(false);
             setMinutesRemaining(null);
@@ -292,22 +286,18 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
     if (!taskIds.length) return;
 
     try {
-      // First, fetch all owners for this user
       const ownersResponse = await fetch("/api/owners");
       const ownersResult = await ownersResponse.json();
 
       let ownerMap: Record<string, string> = {};
 
-      // Check the structure of the owners response
       if (Array.isArray(ownersResult)) {
-        // Case 1: API returns direct array of owners
         ownersResult.forEach((owner) => {
           if (owner._id && owner.name) {
             ownerMap[owner._id] = owner.name;
           }
         });
       } else if (ownersResult.data && Array.isArray(ownersResult.data)) {
-        // Case 2: API returns { data: [...owners] }
         ownersResult.data.forEach((owner: any) => {
           if (owner._id && owner.name) {
             ownerMap[owner._id] = owner.name;
@@ -315,7 +305,6 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
         });
       }
 
-      // Now fetch the tasks with the owner IDs we want to map
       const queryParams = new URLSearchParams();
       taskIds.forEach((id) => queryParams.append("ids", id));
 
@@ -331,19 +320,12 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
 
       const tasks = tasksResult.data || tasksResult;
 
-      // Map task IDs to owner names
       const taskOwnerMapping: Record<string, string> = {};
-
-      // Also store the detailed task information for filtering
       const taskDetailsMap: Record<string, any> = {};
 
       tasks.forEach((task: any) => {
-        // Store task details for filtering
         taskDetailsMap[task.id || task._id] = task;
-
-        // In your system, task.owner should be the owner ID
         if (task.owner && typeof task.owner === "string") {
-          // Look up the owner name from our previously built map
           taskOwnerMapping[task.id || task._id] =
             ownerMap[task.owner] || "Not assigned";
         } else {
@@ -351,7 +333,6 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
         }
       });
 
-      // Update the state with our new mapping
       setTaskOwnerMap(taskOwnerMapping);
       setTaskDetails(taskDetailsMap);
     } catch (error) {
@@ -359,55 +340,23 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
     }
   };
 
-  
-  useEffect(() => {
-    if (showSearch && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [showSearch]);
-
-  const handleSearchButtonClick = () => {
-    setShowSearch(true);
-  };
-
-  const handleInputChange = (e: { target: { value: SetStateAction<string>; }; }) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleInputKeyDown = (e: { key: string; }) => {
-    if (e.key === "Enter" && searchQuery.trim() !== "") {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setShowSearch(false);
-      setSearchQuery("");
-    }
-    if (e.key === "Escape") {
-      setShowSearch(false);
-      setSearchQuery("");
-    }
-  };
-
   const sortByRecommended = (jobs: Job[]): Job[] => {
     return [...jobs].sort((a, b) => {
-      // First compare due dates (null dates go to the end)
       const dateA = a.dueDate
         ? new Date(a.dueDate).getTime()
         : Number.MAX_SAFE_INTEGER;
       const dateB = b.dueDate
         ? new Date(b.dueDate).getTime()
         : Number.MAX_SAFE_INTEGER;
-
       if (dateA !== dateB) {
-        return dateA - dateB; // Ascending by date
+        return dateA - dateB;
       }
-
-      // If dates are the same (or both null), sort by impact descending
       const impactA = a.impact || 0;
       const impactB = b.impact || 0;
-      return impactB - impactA; // Descending by impact
+      return impactB - impactA;
     });
   };
 
-  // Add a fetchTags function
   const fetchTags = async () => {
     try {
       const response = await fetch("/api/task-tags");
@@ -432,9 +381,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
         },
         body: JSON.stringify({
           ...jobData,
-          // Ensure we're sending businessFunctionId, not businessFunctionName
           businessFunctionId: jobData.businessFunctionId,
-          // No need to send owner as it's derived from the next task
         }),
       });
 
@@ -445,11 +392,8 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
           title: "Success",
           description: "Job updated successfully",
         });
-        // First close the dialog
         setDialogOpen(false);
-        // Then clear the editing job state
         setEditingJob(undefined);
-        // Finally fetch updated jobs
         fetchJobs();
       } else {
         throw new Error(result.error);
@@ -466,8 +410,6 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
   const fetchJobs = async () => {
     try {
       setLoading(true);
-
-      // First fetch business functions
       const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
 
@@ -477,41 +419,30 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
           id: bf._id,
           name: bf.name,
         }));
-        // Update state for later use
         setBusinessFunctions(currentBusinessFunctions);
       }
-
-      // Also fetch owners for filters
       await fetchOwners();
-      // Fetch tags for filters
       await fetchTags();
 
-      // Then fetch jobs
       const jobsResponse = await fetch("/api/jobs");
       const jobsResult = await jobsResponse.json();
 
       if (jobsResult.success) {
-        // Collect all next task IDs to fetch their owners
         const taskIds = jobsResult.data
           .filter((job: any) => job.nextTaskId)
           .map((job: any) => job.nextTaskId);
 
-        // Fetch task owners if any tasks exist
         if (taskIds.length > 0) {
           await fetchTaskOwners(taskIds);
         }
 
-        // Use the business functions we just fetched
         const allJobs = convertJobsToTableData(
           jobsResult.data,
           currentBusinessFunctions,
         );
-
-        // Separate active and completed jobs
         const activeJobs = allJobs.filter((job) => !job.isDone);
         const completedJobs = allJobs.filter((job) => job.isDone);
 
-        // Apply sorting to the initial jobs
         const sortedActiveJobs = sortByRecommended(activeJobs);
         const sortedCompletedJobs = sortByRecommended(completedJobs);
 
@@ -532,35 +463,20 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
     }
   };
 
-  // Set up polling for notifications every 60 seconds
   useEffect(() => {
-    // Fetch on initial load
     fetchNotifications();
-
-    // Set up interval
     const intervalId = setInterval(() => {
       fetchNotifications();
-    }, 60*60*1000); // fetch notification every 1 hour 
-
-    // Cleanup interval on component unmount
+    }, 60 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, []);
 
-  // Handle create job button click
-  const handleCreateJobClick = (e: { preventDefault: () => void }) => {
-    // If already on jobs page, prevent default navigation and use custom event
-
-      setDialogOpen(true);
-      // Create and dispatch a custom event that the JobsPage can listen for
-      // const event = new CustomEvent("openJobDialog");
-      // window.dispatchEvent(event);
-   
+  const handleCreateJobClick = () => {
+    setDialogOpen(true);
   };
 
-  // Handle notification click
   const handleNotificationClick = async () => {
     if (hasNotification && notification) {
-      // Mark notification as read by calling the API
       const notificationId = notification._id;
 
       if (notificationId) {
@@ -578,20 +494,15 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
 
       setHasNotification(false);
 
-      // Show the appointment notification directly
       if (minutesRemaining) {
         setAppointmentVisible(true);
       }
     }
   };
 
-  // Handle reprioritize button click
   const handleReprioritize = () => {
     setAppointmentVisible(false);
-
-    // Navigate to jobs page with filters if not already there
     if (pathname === "/jobs") {
-      // If on jobs page, apply filter directly
       if (minutesRemaining) {
         window.dispatchEvent(
           new CustomEvent("applyTimeFilter", {
@@ -600,7 +511,6 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
         );
       }
     } else {
-      // Store time for filter and navigate to jobs page
       if (minutesRemaining) {
         sessionStorage.setItem("appointmentTime", minutesRemaining.toString());
       }
@@ -608,86 +518,118 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
     }
   };
 
-  // Handle start tour button click
   const handleStartTourClick = () => {
     if (pathname === "/jobs") {
-      // If already on jobs page, use a direct event for immediate response
-
-      // 1. Add tour parameter to URL for consistency/bookmarking
       const timestamp = Date.now();
       const newUrl = `/jobs?tour=true&t=${timestamp}`;
       window.history.pushState({}, "", newUrl);
-
-      // 2. Dispatch a direct custom event for immediate handling
       const directEvent = new CustomEvent(TOUR_START_EVENT);
       window.dispatchEvent(directEvent);
     } else {
-      // Navigate to jobs page with tour query param
       router.push("/jobs?tour=true");
     }
   };
 
+  const handleInputChange = (e: { target: { value: SetStateAction<string>; }; }) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleSearchButtonClick = () => {
+    setShowSearch(true);
+    if (pathname?.startsWith("/search")) {
+      const params = new URLSearchParams(window.location.search);
+      setSearchQuery(params.get("q") || "");
+    } else {
+      setSearchQuery("");
+    }
+  };
+
+  const executeSearch = () => {
+    if (searchQuery.trim() !== "") {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+      setShowSearch(false);
+    }
+  };
+
+  const handleInputKeyDown = (e: { key: string }) => {
+    if (e.key === "Enter") {
+      executeSearch();
+    }
+    if (e.key === "Escape") {
+      setShowSearch(false);
+    }
+  };
 
   return (
     <>
       <div className="w-full px-4 py-3 flex justify-between items-center mt-5">
         <div className="flex items-center">
-          <MobileMenuButton/>
+          <MobileMenuButton />
         </div>
         <div className="flex items-center">
-  {!showSearch ? (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="mr-2"
-      onClick={handleSearchButtonClick}
-      aria-label="Open search"
-    >
-      <Search className="h-6 w-6" />
-    </Button>
-  ) : (
-    <div className="relative flex items-center">
-      <input
-        ref={inputRef}
-        type="text"
-        value={searchQuery}
-        onChange={handleInputChange}
-        onKeyDown={handleInputKeyDown}
-        placeholder="Search..."
-        className="
-          h-10 w-56 md:w-72 rounded-md border border-gray-300 pl-4 pr-10
-          focus:border-[#f05523] focus:ring-2 focus:ring-[#f05523]/30
-          transition-colors duration-200 text-sm shadow-sm
-          placeholder-gray-400
-          bg-white dark:bg-gray-900 dark:border-gray-700 dark:placeholder-gray-500
-        "
-        autoFocus
-      />
-      {searchQuery && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-2"
-          onClick={() => setSearchQuery("")}
-          aria-label="Clear search"
-          tabIndex={-1}
-        >
-          <span className="sr-only">Clear search</span>
-          {/* Use an X icon from lucide-react or your icon set */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </Button>
-      )}
-    </div>
-      )}
+          {!showSearch ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-2"
+              onClick={handleSearchButtonClick}
+              aria-label="Open search"
+            >
+              <Search className="h-6 w-6" />
+            </Button>
+          ) : (
+            <div className="relative flex items-center">
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchQuery}
+                onChange={handleInputChange}
+                onKeyDown={handleInputKeyDown}
+                placeholder="Search..."
+                className="
+                  h-10 w-56 md:w-72 rounded-md border border-gray-300 pl-4 pr-10
+                  focus:border-[#f05523] focus:ring-2 focus:ring-[#f05523]/30
+                  transition-colors duration-200 text-sm shadow-sm
+                  placeholder-gray-400
+                  bg-white dark:bg-gray-900 dark:border-gray-700 dark:placeholder-gray-500
+                "
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2"
+                onClick={executeSearch}
+                aria-label="Search"
+                tabIndex={-1}
+              >
+                <Search className="h-5 w-5 text-gray-400" />
+                <span className="sr-only">Submit search</span>
+              </Button>
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-10"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                  tabIndex={-1}
+                >
+                  <span className="sr-only">Clear search</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </Button>
+              )}
+            </div>
+          )}
 
           <Popover>
             <PopoverTrigger asChild>
@@ -721,88 +663,79 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
               </div>
             </PopoverContent>
           </Popover>
-        
 
-        
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mr-4 relative"
-          onClick={handleNotificationClick}
-        >
-          <Bell className="h-6 w-6" />
-          {hasNotification && (
-            <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#f05523]" />
-          )}
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-4 relative"
+            onClick={handleNotificationClick}
+          >
+            <Bell className="h-6 w-6" />
+            {hasNotification && (
+              <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#f05523]" />
+            )}
+          </Button>
           
-    <JobDialog
-          mode={editingJob ? "edit" : "create"}
-          open={dialogOpen}
-          onOpenChange={handleDialogOpenChange}
-          onSubmit={editingJob ? handleEdit : handleCreate}
-          initialData={editingJob}
-        />
+          <JobDialog
+            mode={editingJob ? "edit" : "create"}
+            open={dialogOpen}
+            onOpenChange={handleDialogOpenChange}
+            onSubmit={editingJob ? handleEdit : handleCreate}
+            initialData={editingJob}
+          />
 
-          <Button type ="submit" onClick ={handleCreateJobClick} className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
+          <Button type="submit" onClick={handleCreateJobClick} className="mr-4 bg-[#f05523] hover:bg-[#f05523]/90 text-white">
             Create a Job
           </Button>
-        <UserButton />
-      </div>
+          <UserButton />
+        </div>
 
-      {/* Appointment Notification Dialog */}
-      {appointmentVisible && minutesRemaining && (
-        <div className="fixed bottom-6 left-[17rem] z-50 bg-white rounded-lg shadow-lg p-4 max-w-md border border-blue-300 animate-in slide-in-from-bottom-10 duration-300">
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-100 p-2 rounded-full">
-              <Clock className="h-5 w-5 text-blue-600" />
-            </div>
-
-            <div className="flex-1">
-              <p className="text-sm font-medium mb-1">Hey! 👋</p>
-              <h4 className="font-medium text-base mb-1">
-                Google calendar sync
-              </h4>
-              <p className="text-sm mb-1">
-                You have a "<span className="font-medium">{eventTitle}</span>" event in{" "}
-                <span className="text-green-600 font-medium">
-                  {formatTimeRemaining(minutesRemaining)}
-                </span>
-                .
-              </p>
-              <p className="text-sm text-gray-600 mb-3">
-                Do you want to reprioritize your tasks?
-              </p>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#f05523] text-[#f05523] hover:bg-[#f05523]/10"
-                  onClick={handleReprioritize}
-                >
-                  Reprioritize
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setAppointmentVisible(false)}
-                >
-                  Cancel
-                </Button>
+        {appointmentVisible && minutesRemaining && (
+          <div className="fixed bottom-6 left-[17rem] z-50 bg-white rounded-lg shadow-lg p-4 max-w-md border border-blue-300 animate-in slide-in-from-bottom-10 duration-300">
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-100 p-2 rounded-full">
+                <Clock className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium mb-1">Hey! 👋</p>
+                <h4 className="font-medium text-base mb-1">
+                  Google calendar sync
+                </h4>
+                <p className="text-sm mb-1">
+                  You have a "<span className="font-medium">{eventTitle}</span>" event in{" "}
+                  <span className="text-green-600 font-medium">
+                    {formatTimeRemaining(minutesRemaining)}
+                  </span>
+                  .
+                </p>
+                <p className="text-sm text-gray-600 mb-3">
+                  Do you want to reprioritize your tasks?
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-[#f05523] text-[#f05523] hover:bg-[#f05523]/10"
+                    onClick={handleReprioritize}
+                  >
+                    Reprioritize
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAppointmentVisible(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </>
   );
 };
 
-// Export both the component and the event name
 export default Navbar;
 export { TOUR_START_EVENT };
-
