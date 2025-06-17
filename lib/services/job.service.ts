@@ -64,7 +64,7 @@ async getAllJobs(userId: string): Promise<Jobs[]> {
       ] 
     }).lean();
     
-    const fallbackDate = new Date('2025-06-16T00:00:00.000Z');
+    const fallbackDate = new Date('2025-05-11T00:00:00.000Z');
     const jobsWithCreatedDate = jobs.map(job => {
       const hasCreatedDate = job.createdDate !== undefined && job.createdDate !== null;
       
