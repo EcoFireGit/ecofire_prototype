@@ -421,7 +421,7 @@ export default function JobsPage() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-
+      console.log("ENTERED JOBS!!!!!");
       // First fetch business functions
       const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
@@ -440,11 +440,11 @@ export default function JobsPage() {
       await fetchOwners();
       // Fetch tags for filters
       await fetchTags();
-
+      console.log("TEST JOBS!!!!!");
       // Then fetch jobs
       const jobsResponse = await fetch("/api/jobs");
       const jobsResult = await jobsResponse.json();
-
+      console.log("FETCHED JOBS!!!!!");
       if (jobsResult.success) {
         // Collect all next task IDs to fetch their owners
         const taskIds = jobsResult.data
@@ -721,15 +721,22 @@ export default function JobsPage() {
 
       const result = await response.json();
 
+     
+
       if (result.success) {
         toast({
           title: "Success",
           description: "Job successfully created",
         });
-        await fetchJobs(); // Refresh jobs and wait for it to complete
-
+        // Refresh jobs and wait for it to complete
+        
+         fetchJobs();
         // Now we can close the dialog after jobs have been refreshed
         setDialogOpen(false);
+       
+         
+  
+
       } else {
         throw new Error(result.error);
       }
