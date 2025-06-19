@@ -82,6 +82,37 @@ export default function JobsPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
+  useEffect(() => {
+    // Event handler to open the dialog
+    const handleOpenDialog = () => {
+      setEditingJob(undefined);
+      setDialogOpen(true);
+    };
+
+    // Event handler for editing a job from TasksSidebar
+    const handleEditJob = (event: any) => {
+      if (event.detail && event.detail.job) {
+        setEditingJob(event.detail.job);
+        setDialogOpen(true);
+      }
+    };
+
+    // Listen for refreshJobsList event to fetch new jobs after creation
+    const handleRefreshJobsList = () => {
+      fetchJobs();
+    };
+
+    window.addEventListener("openJobDialog", handleOpenDialog);
+    window.addEventListener("open-job-edit", handleEditJob);
+    window.addEventListener("refreshJobsList", handleRefreshJobsList);
+
+    return () => {
+      window.removeEventListener("openJobDialog", handleOpenDialog);
+      window.removeEventListener("open-job-edit", handleEditJob);
+      window.removeEventListener("refreshJobsList", handleRefreshJobsList);
+    };
+  }, []);
+
   // New: Check for businessFunction in URL params for initial filtering
   useEffect(() => {
     const businessFunctionName = searchParams.get("businessFunction");
@@ -722,15 +753,16 @@ export default function JobsPage() {
       const result = await response.json();
 
      
-
+      console.log("Before toast" + dialogOpen);
       if (result.success) {
         toast({
           title: "Success",
           description: "Job successfully created",
         });
         // Refresh jobs and wait for it to complete
-        
+        console.log("after toast" + dialogOpen);
          fetchJobs();
+         console.log("ENTERED HANDLECREATE" + dialogOpen);
         // Now we can close the dialog after jobs have been refreshed
         setDialogOpen(false);
        

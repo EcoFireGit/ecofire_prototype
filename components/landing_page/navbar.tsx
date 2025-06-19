@@ -167,7 +167,7 @@ const [activeJobs, setActiveJobs] = useState<Job[]>([]);
           description: "Job successfully created",
         });
         await fetchJobs(); // Refresh jobs and wait for it to complete
-
+        window.dispatchEvent(new Event("refreshJobsList"));
         // Now we can close the dialog after jobs have been refreshed
         setDialogOpen(false);
         router.push('/jobs');
