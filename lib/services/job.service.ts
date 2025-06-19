@@ -51,11 +51,54 @@ export class JobService {
     return null;
 
   }
+
+/**
+* Migrates jobs that don't have a createdDate field by setting them to a fallback date.
+* This function ensures backward compatibility for jobs created before the createdDate
+* field was implemented, preventing them from showing current timestamps inappropriately.
+* 
+* @description
+* - Connects to the database using dbConnect()
+* - Sets fallback date to Mother's Day 2025 (2025-05-11) as a meaningful reference point
+* - Finds all jobs for the specified user that either:
+*   - Don't have a createdDate field (field doesn't exist)
+*   - Have a null createdDate value
+* - Updates all matching jobs with the fallback date
+* - Logs errors to console and re-throws them for upstream handling
+* - Runs automatically before fetching jobs to ensure data consistency
+* 
+* @example
+* // Called automatically in getAllJobs before returning job data
+* await this.migrateJobsCreatedDate(userId);
+*/
+
+  async migrateJobsCreatedDate(userId: string): Promise<void> {
+  try {
+    await dbConnect();
+    const fallbackDate = new Date('2025-05-11T00:00:00.000Z'); // Mother's Day
+    await Job.updateMany(
+      { 
+        userId, 
+        $or: [
+          { createdDate: { $exists: false } },
+          { createdDate: null }
+        ]
+      },
+      { 
+        $set: { createdDate: fallbackDate } 
+      }
+    );
+  } catch (error) {
+    console.error('Error migrating job createdDate:', error);
+    throw error;
+  }
+}
   
 
 async getAllJobs(userId: string): Promise<Jobs[]> {
   try {
     await dbConnect();
+    await this.migrateJobsCreatedDate(userId);
     const jobs = await Job.find({ 
       userId, 
       $or: [
@@ -64,17 +107,8 @@ async getAllJobs(userId: string): Promise<Jobs[]> {
       ] 
     }).lean();
     
-    const fallbackDate = new Date('2025-05-11T00:00:00.000Z');
-    const jobsWithCreatedDate = jobs.map(job => {
-      const hasCreatedDate = job.createdDate !== undefined && job.createdDate !== null;
-      
-      return {
-        ...job,
-        createdDate: hasCreatedDate ? job.createdDate : fallbackDate
-      };
-    });
     
-    return JSON.parse(JSON.stringify(jobsWithCreatedDate));
+    return JSON.parse(JSON.stringify(jobs));
   } catch (error) {
     console.error('Error in getAllJobs:', error);
     throw new Error('Error fetching jobs from database');
