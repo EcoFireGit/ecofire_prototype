@@ -7,13 +7,13 @@ export interface Jobs extends mongoose.Document {
   businessFunctionId: string;   
   userId: string;
   dueDate?: Date;
+  createdDate?: Date;
   isDone: boolean;
   impact?: number;
   nextTaskId?: string; // Field to track the next task
   tasks?: string[]; // Array of task IDs associated with this job
   // owner field removed as it's now derived from the next task's owner
   isDeleted: boolean; // Soft delete flag
-
 }
 
 enum level {
@@ -44,6 +44,11 @@ const JobSchema = new mongoose.Schema<Jobs>({
   dueDate: {
     type: Date,
     required: false,
+  },
+  createdDate: {
+    type: Date,
+    default: Date.now,
+    required: false
   },
   isDone: {
     type: Boolean,

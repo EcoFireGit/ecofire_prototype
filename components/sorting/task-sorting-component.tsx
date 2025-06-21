@@ -28,16 +28,37 @@ interface TaskSortingComponentProps {
   jobs: Record<string, any>;
 }
 
+const TASK_SORT_OPTION_KEY = "taskSortOption";
+
 const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
   onSortChange,
   tasks,
   jobs,
 }) => {
-  const [sortOption, setSortOption] = useState<TaskSortOption>("recommended");
+  // Persist sort option in localStorage
+  const [sortOption, setSortOption] = useState<TaskSortOption>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(TASK_SORT_OPTION_KEY) as TaskSortOption | null;
+      return saved || "recommended";
+    }
+    return "recommended";
+  });
 
   useEffect(() => {
+    localStorage.setItem(TASK_SORT_OPTION_KEY, sortOption);
     sortTasks(sortOption);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortOption, tasks]);
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      const saved = localStorage.getItem(TASK_SORT_OPTION_KEY) as TaskSortOption | null;
+      const defaultOption = saved || "recommended";
+      setSortOption(defaultOption);
+      sortTasks(defaultOption);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
 
   const sortTasks = (option: TaskSortOption) => {
     // Make a copy of the tasks array to avoid mutating the original
@@ -158,7 +179,6 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
   return (
     <div className="flex items-center">
       <div className="flex items-center gap-2">
-       
         <span className="text-sm text-muted-foreground mr-2">Sort by:</span>
         <Select
           value={sortOption}
