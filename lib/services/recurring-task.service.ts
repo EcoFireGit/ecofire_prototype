@@ -1,10 +1,10 @@
 // lib/services/recurring-task.service.ts
-import Task from "../models/task.model";
-import Job from "../models/job.model";
-import { Task as TaskInterface, RecurrencePattern, RecurrenceEndType, CustomRecurrenceUnit } from "../models/task.model";
-import dbConnect from "../mongodb";
-import { JobService } from "./job.service";
-import { TaskService } from "./task.service";
+import Task from "@/lib/models/task.model";
+import Job from "@/lib/models/job.model";
+import { Task as TaskInterface, RecurrencePattern, RecurrenceEndType, CustomRecurrenceUnit } from "@/lib/models/task.model";
+import dbConnect from "@/lib/mongodb";
+import { JobService } from "@/lib/services/job.service";
+import { TaskService } from "@/lib/services/task.service";
 
 export class RecurringTaskService {
   private jobService = new JobService();
@@ -18,22 +18,22 @@ export class RecurringTaskService {
       await dbConnect();
       console.log(`[${new Date().toISOString()}] Starting recurring task processing...`);
 
-      // Get tomorrow's date at midnight UTC
-      const tomorrow = new Date();
-      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-      tomorrow.setUTCHours(0, 0, 0, 0);
-
-      // Find all recurring tasks that should be created tomorrow
-      const tasksToProcess = await this.getRecurringTasksForDate(tomorrow);
+      // Get current date and time for processing
+      const now = new Date();
       
-      console.log(`Found ${tasksToProcess.length} recurring tasks to process for ${tomorrow.toISOString()}`);
+      // Process tasks that are due today or overdue
+      const tasksToProcess = await this.getRecurringTasksDueToday(now);
+      
+      console.log(`Found ${tasksToProcess.length} recurring tasks to process as of ${now.toISOString()}`);
 
       let successCount = 0;
       let errorCount = 0;
 
       for (const task of tasksToProcess) {
         try {
-          await this.createRecurringTaskInstance(task, tomorrow);
+          // Use the task's scheduled date, not a fixed date
+          const scheduledDate = new Date(task.nextRecurringDate!);
+          await this.createRecurringTaskInstance(task, scheduledDate);
           successCount++;
         } catch (error) {
           console.error(`Error creating recurring task instance for task ${task._id}:`, error);
@@ -46,6 +46,53 @@ export class RecurringTaskService {
       console.error("Error in processRecurringTasks:", error);
       throw error;
     }
+  }
+
+  /**
+   * Get all recurring tasks that are due today (including future times today) or overdue
+   */
+  private async getRecurringTasksDueToday(currentTime: Date): Promise<TaskInterface[]> {
+    // Get end of today
+    const endOfToday = new Date(currentTime);
+    endOfToday.setUTCHours(23, 59, 59, 999);
+    
+    // Find tasks where nextRecurringDate is today or in the past
+    const tasks = await Task.find({
+      isRecurring: true,
+      isDeleted: false,
+      nextRecurringDate: {
+        $lte: endOfToday  // Due today or overdue
+      }
+    }).lean();
+
+    console.log(`Found ${tasks.length} tasks due today or overdue (up to ${endOfToday.toISOString()})`);
+    tasks.forEach((task: any) => {
+      console.log(`- ${task.title}: ${task.nextRecurringDate}`);
+    });
+
+    return JSON.parse(JSON.stringify(tasks));
+  }
+
+  /**
+   * DEPRECATED: Get all recurring tasks that are due now (including overdue tasks)
+   * Keeping for reference but not used in main processing
+   */
+  private async getRecurringTasksDueNow(currentTime: Date): Promise<TaskInterface[]> {
+    // Find tasks where nextRecurringDate is now or in the past
+    const tasks = await Task.find({
+      isRecurring: true,
+      isDeleted: false,
+      nextRecurringDate: {
+        $lte: currentTime  // Due now or overdue
+      }
+    }).lean();
+
+    console.log(`Found ${tasks.length} tasks due now or overdue`);
+    tasks.forEach((task: any) => {
+      console.log(`- ${task.title}: ${task.nextRecurringDate}`);
+    });
+
+    return JSON.parse(JSON.stringify(tasks));
   }
 
   /**

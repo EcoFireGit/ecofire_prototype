@@ -17,7 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Task, FocusLevel, JoyLevel } from "./types";
+import { Switch } from "@/components/ui/switch";
+import { 
+  Task, 
+  FocusLevel, 
+  JoyLevel, 
+  RecurrencePattern, 
+  RecurrenceEndType, 
+  CustomRecurrenceUnit 
+} from "./types";
 import { TagInput } from "@/components/tasks/tag-input";
 import { saveTags } from "@/lib/services/task-tags.service";
 import { JobDialog } from "@/components/jobs/job-dialog";
@@ -62,12 +70,8 @@ export function TaskDialog({
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
   const [date, setDate] = useState<string | undefined>(undefined);
-  const [requiredHours, setRequiredHours] = useState<number | undefined>(
-    undefined,
-  );
-  const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(
-    undefined,
-  );
+  const [requiredHours, setRequiredHours] = useState<number | undefined>(undefined);
+  const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(undefined);
   const [joyLevel, setJoyLevel] = useState<JoyLevel | undefined>(undefined);
   const [notes, setNotes] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,7 +90,29 @@ export function TaskDialog({
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
 
+  // Recurring task fields
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern | undefined>(undefined);
+  const [customRecurrenceInterval, setCustomRecurrenceInterval] = useState<number | undefined>(undefined);
+  const [customRecurrenceUnit, setCustomRecurrenceUnit] = useState<CustomRecurrenceUnit | undefined>(undefined);
+  const [recurrenceEndType, setRecurrenceEndType] = useState<RecurrenceEndType>(RecurrenceEndType.Never);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<string | undefined>(undefined);
+  const [recurrenceMaxOccurrences, setRecurrenceMaxOccurrences] = useState<number | undefined>(undefined);
+
   const { toast } = useToast();
+
+  // Helper function to convert Date to YYYY-MM-DD string
+  const dateToInputString = (date: string | Date | undefined): string | undefined => {
+    if (!date) return undefined;
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return undefined;
+      return dateObj.toISOString().split("T")[0];
+    } catch (error) {
+      console.error("Error converting date:", error);
+      return undefined;
+    }
+  };
 
   // Initialize jobId from props
   useEffect(() => {
@@ -132,20 +158,46 @@ export function TaskDialog({
         // If no jobId prop, reset to undefined
         setJobId(undefined);
       }
+      
+      // Reset recurring fields
+      setIsRecurring(false);
+      setRecurrencePattern(undefined);
+      setCustomRecurrenceInterval(undefined);
+      setCustomRecurrenceUnit(undefined);
+      setRecurrenceEndType(RecurrenceEndType.Never);
+      setRecurrenceEndDate(undefined);
+      setRecurrenceMaxOccurrences(undefined);
     } else if (initialData) {
       setTitle(initialData.title);
       setOwner(initialData.owner);
-      if (initialData.date) {
-        setDate(new Date(initialData.date).toISOString().split("T")[0]);
-      } else {
-        setDate(undefined);
-      }
+      setDate(dateToInputString(initialData.date));
       setRequiredHours(initialData.requiredHours);
       setFocusLevel(initialData.focusLevel);
       setJoyLevel(initialData.joyLevel);
       setNotes(initialData.notes);
       setTags(initialData.tags || []);
       setJobId(initialData.jobId);
+      
+      // Set recurring fields from initial data
+      const isRecurringValue = Boolean(initialData.isRecurring);
+      setIsRecurring(isRecurringValue);
+      
+      if (isRecurringValue) {
+        setRecurrencePattern(initialData.recurrencePattern);
+        setCustomRecurrenceInterval(initialData.customRecurrenceInterval);
+        setCustomRecurrenceUnit(initialData.customRecurrenceUnit);
+        setRecurrenceEndType(initialData.recurrenceEndType || RecurrenceEndType.Never);
+        setRecurrenceEndDate(dateToInputString(initialData.recurrenceEndDate));
+        setRecurrenceMaxOccurrences(initialData.recurrenceMaxOccurrences);
+      } else {
+        // If not recurring, reset recurring fields
+        setRecurrencePattern(undefined);
+        setCustomRecurrenceInterval(undefined);
+        setCustomRecurrenceUnit(undefined);
+        setRecurrenceEndType(RecurrenceEndType.Never);
+        setRecurrenceEndDate(undefined);
+        setRecurrenceMaxOccurrences(undefined);
+      }
     }
   }, [mode, initialData, open, propJobId]);
 
@@ -269,6 +321,23 @@ export function TaskDialog({
       if (notes) task.notes = notes;
       if (tags.length > 0) task.tags = tags;
 
+      // Add recurring fields
+      task.isRecurring = isRecurring;
+      if (isRecurring) {
+        task.recurrencePattern = recurrencePattern;
+        if (recurrencePattern === RecurrencePattern.Custom) {
+          task.customRecurrenceInterval = customRecurrenceInterval;
+          task.customRecurrenceUnit = customRecurrenceUnit;
+        }
+        task.recurrenceEndType = recurrenceEndType;
+        if (recurrenceEndType === RecurrenceEndType.OnDate && recurrenceEndDate) {
+          task.recurrenceEndDate = `${recurrenceEndDate}T00:00:00.000Z`;
+        }
+        if (recurrenceEndType === RecurrenceEndType.AfterOccurrences) {
+          task.recurrenceMaxOccurrences = recurrenceMaxOccurrences;
+        }
+      }
+
       // For task creation with a job ID specified via props, handle it here
       // to avoid double task creation
       if (mode === "create" && propJobId) {
@@ -334,6 +403,15 @@ export function TaskDialog({
         if (!propJobId) {
           setJobId(undefined);
         }
+        
+        // Reset recurring fields
+        setIsRecurring(false);
+        setRecurrencePattern(undefined);
+        setCustomRecurrenceInterval(undefined);
+        setCustomRecurrenceUnit(undefined);
+        setRecurrenceEndType(RecurrenceEndType.Never);
+        setRecurrenceEndDate(undefined);
+        setRecurrenceMaxOccurrences(undefined);
       }
     } catch (error) {
       console.error("Error submitting task:", error);
@@ -350,7 +428,7 @@ export function TaskDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
               <DialogTitle>
@@ -545,6 +623,142 @@ export function TaskDialog({
                 />
               </div>
 
+              {/* Recurring Task Toggle */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="recurring" className="text-right">Make Recurring</Label>
+                <div className="col-span-3">
+                  <Switch
+                    id="recurring"
+                    checked={isRecurring}
+                    onCheckedChange={setIsRecurring}
+                  />
+                </div>
+              </div>
+
+              {/* Recurring Options - only show when isRecurring is true */}
+              {isRecurring && (
+                <>
+                  {/* Recurrence Pattern */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="recurrencePattern" className="text-right">Repeat</Label>
+                    <div className="col-span-3">
+                      <Select
+                        value={recurrencePattern || "none"}
+                        onValueChange={(value) =>
+                          value === "none" ? setRecurrencePattern(undefined) : setRecurrencePattern(value as RecurrencePattern)
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select repeat pattern" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value={RecurrencePattern.Daily}>Daily</SelectItem>
+                          <SelectItem value={RecurrencePattern.Weekly}>Weekly</SelectItem>
+                          <SelectItem value={RecurrencePattern.Biweekly}>Biweekly</SelectItem>
+                          <SelectItem value={RecurrencePattern.Monthly}>Monthly</SelectItem>
+                          <SelectItem value={RecurrencePattern.Annually}>Annually</SelectItem>
+                          <SelectItem value={RecurrencePattern.Custom}>Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Custom Recurrence Options - only show when Custom is selected */}
+                  {recurrencePattern === RecurrencePattern.Custom && (
+                    <>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="customInterval" className="text-right">Every</Label>
+                        <div className="col-span-3 flex gap-2">
+                          <Input
+                            id="customInterval"
+                            type="number"
+                            min="1"
+                            value={customRecurrenceInterval || ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setCustomRecurrenceInterval(value === "" ? undefined : parseInt(value));
+                            }}
+                            className="w-20"
+                            placeholder="1"
+                          />
+                          <Select
+                            value={customRecurrenceUnit || "none"}
+                            onValueChange={(value) =>
+                              value === "none" ? setCustomRecurrenceUnit(undefined) : setCustomRecurrenceUnit(value as CustomRecurrenceUnit)
+                            }
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Select unit</SelectItem>
+                              <SelectItem value={CustomRecurrenceUnit.Days}>Days</SelectItem>
+                              <SelectItem value={CustomRecurrenceUnit.Weeks}>Weeks</SelectItem>
+                              <SelectItem value={CustomRecurrenceUnit.Months}>Months</SelectItem>
+                              <SelectItem value={CustomRecurrenceUnit.Years}>Years</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* End Condition */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="endCondition" className="text-right">End</Label>
+                    <div className="col-span-3">
+                      <Select
+                        value={recurrenceEndType}
+                        onValueChange={(value) => setRecurrenceEndType(value as RecurrenceEndType)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={RecurrenceEndType.Never}>Never</SelectItem>
+                          <SelectItem value={RecurrenceEndType.OnDate}>On Date</SelectItem>
+                          <SelectItem value={RecurrenceEndType.AfterOccurrences}>After # Occurrences</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* End Date - only show when "On Date" is selected */}
+                  {recurrenceEndType === RecurrenceEndType.OnDate && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="endDate" className="text-right">End Date</Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={recurrenceEndDate || ""}
+                        onChange={(e) => setRecurrenceEndDate(e.target.value || undefined)}
+                        className="col-span-3"
+                      />
+                    </div>
+                  )}
+
+                  {/* Max Occurrences - only show when "After # Occurrences" is selected */}
+                  {recurrenceEndType === RecurrenceEndType.AfterOccurrences && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="maxOccurrences" className="text-right">Occurrences</Label>
+                      <Input
+                        id="maxOccurrences"
+                        type="number"
+                        min="1"
+                        value={recurrenceMaxOccurrences || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setRecurrenceMaxOccurrences(value === "" ? undefined : parseInt(value));
+                        }}
+                        className="col-span-3"
+                        placeholder="Number of times to repeat"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* Hours */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="requiredHours" className="text-right">
@@ -687,4 +901,3 @@ export function TaskDialog({
     </>
   );
 }
-
