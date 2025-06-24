@@ -46,6 +46,9 @@ function convertJobsToTableData(
 
 const TOUR_START_EVENT = "directTourStart";
 
+// NEW: Custom event name for opening the sidebar for a job
+const OPEN_TASKS_SIDEBAR_EVENT = "openTasksSidebarForJob";
+
 interface NotificationData {
   _id: {
     $oid: string;
@@ -163,6 +166,7 @@ const Navbar = () => {
   const [filteredCompletedJobs, setFilteredCompletedJobs] = useState<Job[]>([]);
   const [sortedCompletedJobs, setSortedCompletedJobs] = useState<Job[]>([]);
 
+  // --- MODIFIED handleCreate ---
   const handleCreate = async (jobData: Partial<Job>) => {
     setCreatingJob(true);
     try {
@@ -184,11 +188,12 @@ const Navbar = () => {
           title: "Success",
           description: "Job successfully created",
         });
-        await fetchJobs(); // Refresh jobs and wait for it to complete
+        await fetchJobs();
         window.dispatchEvent(new Event("refreshJobsList"));
-        // Now we can close the dialog after jobs have been refreshed
+        // If on /jobs page, open the tasks sidebar for the new job
+       
         setDialogOpen(false);
-        router.push('/jobs');
+        router.push(`/jobs?openTaskSidebarFor=${result.data._id}`);
       } else {
         throw new Error(result.error);
       }
@@ -741,4 +746,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
-export { TOUR_START_EVENT };
+export { TOUR_START_EVENT, OPEN_TASKS_SIDEBAR_EVENT };

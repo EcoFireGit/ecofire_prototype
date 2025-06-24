@@ -19,6 +19,8 @@ import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
 import { QBOCircles } from "@/components/qbo/qbo-circles";
 import { JobSkeletonGroup } from "@/components/jobs/job-skeleton";
+import { OPEN_TASKS_SIDEBAR_EVENT } from "@/components/landing_page/navbar";
+
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -83,7 +85,7 @@ export default function JobsPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
-  useEffect(() => {
+ useEffect(() => {
     // Event handler to open the dialog
     const handleOpenDialog = () => {
       setEditingJob(undefined);
@@ -724,7 +726,24 @@ export default function JobsPage() {
       }
     }
   }, [loading, activeJobs, completedJobs, activeFilters]);
-
+  
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobIdToOpen = params.get("openTaskSidebarFor");
+    if (jobIdToOpen) {
+      // Find the job in active or completed jobs
+      const job =
+        activeJobs.find((j) => j.id === jobIdToOpen) ||
+        completedJobs.find((j) => j.id === jobIdToOpen);
+      if (job) {
+        handleOpenTasksSidebar(job);
+        // Remove the param so it doesn't reopen on further updates
+        params.delete("openTaskSidebarFor");
+        window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
+      }
+    }
+  }, [activeJobs, completedJobs]);
   // Handler for sort changes
   const handleActiveSortChange = (sortedJobs: Job[]) => {
     setSortedActiveJobs(sortedJobs);
