@@ -17,6 +17,7 @@
 14. [Onboarding Tour](#onboarding-tour)
 15. [Calendar Integration](#calendar-integration)
 16. [Unit Testing](#unit-testing)
+17. [Landing Page](#Landing-Page)
 
 
 ## Project Overview
@@ -118,6 +119,17 @@ Location: `components/jobs/table/jobs-table.tsx`
   - Custom column rendering
   - Responsive design
 
+Location: `components/pis/table/pi-table.tsx`
+- Purpose: Reuseable table component with row selection
+- Features:
+  - Responsive Design
+
+Location: `components/gcal/table/gcal-table.tsx`
+- Purpose: Reusable table component with live data population
+- Features:
+  - Live data update from users google calendar
+  - Responsive design
+
 ### OrganizationSwitcher Component
 Location: `components/organizations/OrganizationSwitcher.tsx`
 - Purpose: Provides UI for switching between personal and organization views
@@ -195,6 +207,27 @@ Location: `components/onboarding/driver-tour.tsx`
 - Adds the user as admin
 - Required fields: name
 
+
+### PI-Job Mapping API
+
+#### GET /api/pi-job-mappings
+- Returns all pi-job mapping for authenticated user
+
+#### POST /api/pi-job-mappings
+- Creates new pi-job mapping
+
+#### GET /api/pi-job-mappings/[id]
+- Returns specified pi-job mapping
+
+#### PUT /api/pi-job-mappings/[id]
+- Updates specified pi-job mapping
+- Automatically triggers job impact value recalculation
+
+#### DELETE /api/pi-job-mappings/[id]
+- Deletes specified pi-job mapping
+- Automatically triggers job impact value recalculation
+
+
 ## Database Schema
 
 ### Job Model
@@ -211,6 +244,35 @@ interface Jobs extends mongoose.Document {
   isDone: boolean;
 }
 ```
+
+### PI Model
+```typescript
+interface PIs extends mongoose.Document {
+  _id: string;
+  name: string;
+  unit: string;
+  beginningValue: number;
+  targetValue: number;
+  deadline: Date;
+  notes?: string;
+  userId: string;
+}
+```
+### PI-Job Mapping Model
+```typescript
+interface JobPiMapping extends mongoose.Document {
+  _id: string;
+  jobId: string;
+  piId: string;
+  jobName: string;
+  piName: string;
+  piImpactValue: number;
+  piTarget: number; // Added field
+  notes?: string;
+  userId: string;
+}
+```
+
 
 ### Organization Model
 ```typescript
@@ -771,7 +833,14 @@ The Calendar Integration feature lets users integrate their personal calendars i
 Google Calendar configuration in Google Cloud console. 
 ClientID, ClientSecret, Redirect Uri in the app must match the configuration in Step 1
 Google Calendar user auth, authorized calendarIds, prioriwise calendarId are stored in google_calendar_auth table
+Events are only pulled from selected calendar. Can be updated at any time. 
 Must take caution to restrict events to read only from User's non-prioriwise Calendars. Currently, there are no api routes available to create events in non-prioriwise Calendars
+
+### Calendar Button Functions
+* Authorize Google Calendar - Allows the user to link their Google account with prioriwise
+* Get Calendars - pulls all of the users google calendars into the table and displays them (we are not storing any of the calendars yet)
+* Create Prioriwise Calendar - Allows the user to add a prioriwise calendar(if one exists they cannot create another one)
+* Add Selected Calendar - Selected calendars are stored in the database and events are only pulled from these calendars
 
 ### User Workflow
 1. User is redirected to Google to Authorize prioriwise for access to his calendars -- must check  SELECT ALL when prompted by google
@@ -787,6 +856,13 @@ Check redirect URI, it MUST be same as the URL that a user logged in to
 Allow access to individual users on Google Cloud console
 Make sure redirect uri is added to the list of callbacks on Google console
 
+## PI Table
+
+### Overview
+The PI Table is used to store and display all PI(Performance Indicators) a user creates. The PI table is located in the backstage. 
+
+### Key Rules
+Each PI is related to a job to a certain outcome. It holds a starting value, a target value, and a deadline. 
 
 
 ## Search
@@ -891,3 +967,16 @@ Use command:
 ```
 npm test -- --coverage
 ```
+
+
+## Landing Page
+A simple landing page based on the UI decided.
+
+### Features
+* Password blocker to stop unwanted users
+* Clerk Sign in
+
+### Password Login Overview
+A password is set and stored in the `.env.local`, when the user loads the page 
+the password is stored in the local storage and is encrypted. If the correct password is entered then the user can sign in using their account.
+
