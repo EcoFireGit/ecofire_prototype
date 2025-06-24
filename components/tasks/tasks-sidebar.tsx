@@ -219,22 +219,49 @@ export function TasksSidebar({
       const response = await fetch(`/api/tasks?jobId=${selectedJob.id}`);
       const result = await response.json();
 
-      if (result.success) {
+      console.log("=== fetchTasks: Raw API Response ===");
+      console.log("API Response:", result);
+      console.log("Raw task data:", result.data);
+      console.log("=== End fetchTasks API debug ===");
+
+if (result.success) {
         // Map from MongoDB _id to id for frontend consistency
-        let formattedTasks = result.data.map((task: any) => ({
-          id: task._id,
-          title: task.title,
-          owner: task.owner,
-          date: task.date,
-          requiredHours: task.requiredHours,
-          focusLevel: task.focusLevel,
-          joyLevel: task.joyLevel,
-          notes: task.notes,
-          tags: task.tags || [],
-          jobId: task.jobId,
-          completed: task.completed,
-          isNextTask: task._id === selectedJob.nextTaskId,
-        }));
+        let formattedTasks = result.data.map((task: any) => {
+          console.log("=== Processing individual task ===");
+          console.log("Original task from API:", task);
+          
+          const formattedTask = {
+            id: task._id,
+            title: task.title,
+            owner: task.owner,
+            date: task.date,
+            requiredHours: task.requiredHours,
+            focusLevel: task.focusLevel,
+            joyLevel: task.joyLevel,
+            notes: task.notes,
+            tags: task.tags || [],
+            jobId: task.jobId,
+            completed: task.completed,
+            isNextTask: task._id === selectedJob.nextTaskId,
+            // ADD RECURRING FIELDS TO THE MAPPING
+            isRecurring: task.isRecurring,
+            recurrencePattern: task.recurrencePattern,
+            customRecurrenceInterval: task.customRecurrenceInterval,
+            customRecurrenceUnit: task.customRecurrenceUnit,
+            recurrenceEndType: task.recurrenceEndType,
+            recurrenceEndDate: task.recurrenceEndDate,
+            recurrenceMaxOccurrences: task.recurrenceMaxOccurrences,
+            recurrenceCurrentCount: task.recurrenceCurrentCount,
+            parentRecurringTaskId: task.parentRecurringTaskId,
+            nextRecurringDate: task.nextRecurringDate,
+          };
+          
+          console.log("Formatted task:", formattedTask);
+          console.log("=== End individual task processing ===");
+          
+          return formattedTask;
+        });
+        
 
         // On initial load, sort tasks based on job.tasks array
         if (
@@ -275,6 +302,9 @@ export function TasksSidebar({
 
           initialSortDoneRef.current = true;
         }
+        console.log("=== Final formatted tasks before setState ===");
+        console.log("Final tasks:", formattedTasks);
+        console.log("=== End final tasks debug ===");
 
         setTasks(formattedTasks);
       } else {
@@ -303,6 +333,11 @@ export function TasksSidebar({
   };
 
   const handleEditTask = (task: Task) => {
+    console.log("=== TasksSidebar: handleEditTask called ===");
+    console.log("Task being passed to TaskDialog:", task);
+    console.log("Task JSON:", JSON.stringify(task, null, 2));
+    console.log("=== End handleEditTask debug ===");
+
     setDialogMode("edit");
     setCurrentTask(task);
     setTaskDialogOpen(true);
@@ -528,9 +563,9 @@ export function TasksSidebar({
 
         const result = await response.json();
 
-        if (result.success) {
+if (result.success) {
           // Map from MongoDB _id to id for frontend consistency
-          const newTask: Task = {
+          const updatedTask: Task = {
             id: result.data._id,
             title: result.data.title,
             owner: result.data.owner,
@@ -542,12 +577,23 @@ export function TasksSidebar({
             tags: result.data.tags || [],
             jobId: result.data.jobId,
             completed: result.data.completed,
-            isNextTask: false,
+            isNextTask: result.data._id === nextTaskId,
+            // ADD RECURRING FIELDS TO THE UPDATE MAPPING TOO!
+            isRecurring: result.data.isRecurring,
+            recurrencePattern: result.data.recurrencePattern,
+            customRecurrenceInterval: result.data.customRecurrenceInterval,
+            customRecurrenceUnit: result.data.customRecurrenceUnit,
+            recurrenceEndType: result.data.recurrenceEndType,
+            recurrenceEndDate: result.data.recurrenceEndDate,
+            recurrenceMaxOccurrences: result.data.recurrenceMaxOccurrences,
+            recurrenceCurrentCount: result.data.recurrenceCurrentCount,
+            parentRecurringTaskId: result.data.parentRecurringTaskId,
+            nextRecurringDate: result.data.nextRecurringDate,
           };
 
           // Add task ID to job's tasks array
           if (selectedJob) {
-            await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
+            await updateJobTasks([...tasks.map((t) => t.id), updatedTask.id]);
 
             // Trigger a refresh of the job progress since we added a new task
             const event = new CustomEvent("job-progress-update", {
@@ -556,7 +602,7 @@ export function TasksSidebar({
             window.dispatchEvent(event);
           }
 
-          setTasks([...tasks, newTask]);
+          setTasks([...tasks, updatedTask]);
           toast({
             title: "Success",
             description: "Task created successfully",

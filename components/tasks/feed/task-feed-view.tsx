@@ -698,6 +698,17 @@ export default function TaskFeedView() {
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: false,
+            // ADD RECURRING FIELDS
+            isRecurring: result.data.isRecurring,
+            recurrencePattern: result.data.recurrencePattern,
+            customRecurrenceInterval: result.data.customRecurrenceInterval,
+            customRecurrenceUnit: result.data.customRecurrenceUnit,
+            recurrenceEndType: result.data.recurrenceEndType,
+            recurrenceEndDate: result.data.recurrenceEndDate,
+            recurrenceMaxOccurrences: result.data.recurrenceMaxOccurrences,
+            recurrenceCurrentCount: result.data.recurrenceCurrentCount,
+            parentRecurringTaskId: result.data.parentRecurringTaskId,
+            nextRecurringDate: result.data.nextRecurringDate,
           };
 
           // Add task ID to job's tasks array if jobId exists
@@ -785,6 +796,17 @@ export default function TaskFeedView() {
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: false,
+            // ADD RECURRING FIELDS
+            isRecurring: result.data.isRecurring,
+            recurrencePattern: result.data.recurrencePattern,
+            customRecurrenceInterval: result.data.customRecurrenceInterval,
+            customRecurrenceUnit: result.data.customRecurrenceUnit,
+            recurrenceEndType: result.data.recurrenceEndType,
+            recurrenceEndDate: result.data.recurrenceEndDate,
+            recurrenceMaxOccurrences: result.data.recurrenceMaxOccurrences,
+            recurrenceCurrentCount: result.data.recurrenceCurrentCount,
+            parentRecurringTaskId: result.data.parentRecurringTaskId,
+            nextRecurringDate: result.data.nextRecurringDate,
           };
 
           // If the task completion status changed, trigger a progress update

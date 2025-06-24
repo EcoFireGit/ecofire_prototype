@@ -304,20 +304,31 @@ export function TasksSidebar({
 
       if (result.success) {
         // Map from MongoDB _id to id for frontend consistency
-        const formattedTasks = result.data.map((task: any) => ({
-          id: task._id,
-          title: task.title,
-          owner: task.owner,
-          date: task.date,
-          requiredHours: task.requiredHours,
-          focusLevel: task.focusLevel,
-          joyLevel: task.joyLevel,
-          notes: task.notes,
-          tags: task.tags || [],
-          jobId: task.jobId,
-          completed: task.completed,
-          isNextTask: task._id === selectedItem.nextTaskId,
-        }));
+      const formattedTasks = result.data.map((task: any) => ({
+        id: task._id,
+        title: task.title,
+        owner: task.owner,
+        date: task.date,
+        requiredHours: task.requiredHours,
+        focusLevel: task.focusLevel,
+        joyLevel: task.joyLevel,
+        notes: task.notes,
+        tags: task.tags || [],
+        jobId: task.jobId,
+        completed: task.completed,
+        isNextTask: task._id === selectedItem.nextTaskId,
+        // ADD RECURRING FIELDS
+        isRecurring: task.isRecurring,
+        recurrencePattern: task.recurrencePattern,
+        customRecurrenceInterval: task.customRecurrenceInterval,
+        customRecurrenceUnit: task.customRecurrenceUnit,
+        recurrenceEndType: task.recurrenceEndType,
+        recurrenceEndDate: task.recurrenceEndDate,
+        recurrenceMaxOccurrences: task.recurrenceMaxOccurrences,
+        recurrenceCurrentCount: task.recurrenceCurrentCount,
+        parentRecurringTaskId: task.parentRecurringTaskId,
+        nextRecurringDate: task.nextRecurringDate,
+      }));
 
         setTasks(formattedTasks);
         console.log("Formatted tasks:", formattedTasks);
@@ -530,20 +541,31 @@ export function TasksSidebar({
 
         if (result.success) {
           // Map from MongoDB _id to id for frontend consistency
-          const newTask: Task = {
-            id: result.data._id,
-            title: result.data.title,
-            owner: result.data.owner,
-            date: result.data.date,
-            requiredHours: result.data.requiredHours,
-            focusLevel: result.data.focusLevel,
-            joyLevel: result.data.joyLevel,
-            notes: result.data.notes,
-            tags: result.data.tags || [],
-            jobId: result.data.jobId,
-            completed: result.data.completed,
-            isNextTask: false,
-          };
+        const newTask: Task = {
+          id: result.data._id,
+          title: result.data.title,
+          owner: result.data.owner,
+          date: result.data.date,
+          requiredHours: result.data.requiredHours,
+          focusLevel: result.data.focusLevel,
+          joyLevel: result.data.joyLevel,
+          notes: result.data.notes,
+          tags: result.data.tags || [],
+          jobId: result.data.jobId,
+          completed: result.data.completed,
+          isNextTask: false,
+          // ADD RECURRING FIELDS
+          isRecurring: result.data.isRecurring,
+          recurrencePattern: result.data.recurrencePattern,
+          customRecurrenceInterval: result.data.customRecurrenceInterval,
+          customRecurrenceUnit: result.data.customRecurrenceUnit,
+          recurrenceEndType: result.data.recurrenceEndType,
+          recurrenceEndDate: result.data.recurrenceEndDate,
+          recurrenceMaxOccurrences: result.data.recurrenceMaxOccurrences,
+          recurrenceCurrentCount: result.data.recurrenceCurrentCount,
+          parentRecurringTaskId: result.data.parentRecurringTaskId,
+          nextRecurringDate: result.data.nextRecurringDate,
+        };
 
           // Add task ID to job's tasks array
           await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
@@ -595,6 +617,17 @@ export function TasksSidebar({
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: currentTask.isNextTask,
+            // ADD RECURRING FIELDS
+            isRecurring: result.data.isRecurring,
+            recurrencePattern: result.data.recurrencePattern,
+            customRecurrenceInterval: result.data.customRecurrenceInterval,
+            customRecurrenceUnit: result.data.customRecurrenceUnit,
+            recurrenceEndType: result.data.recurrenceEndType,
+            recurrenceEndDate: result.data.recurrenceEndDate,
+            recurrenceMaxOccurrences: result.data.recurrenceMaxOccurrences,
+            recurrenceCurrentCount: result.data.recurrenceCurrentCount,
+            parentRecurringTaskId: result.data.parentRecurringTaskId,
+            nextRecurringDate: result.data.nextRecurringDate,
           };
 
           // If the task completion status changed, trigger a progress update

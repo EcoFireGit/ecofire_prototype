@@ -1,9 +1,13 @@
+// lib/services/task.service.ts (Enhanced version - replace your existing one)
 import Task from "../models/task.model";
 import { Task as TaskInterface } from "../models/task.model";
 import dbConnect from "../mongodb";
-import Job from "../models/job.model"; // Import the Job model
+import Job from "../models/job.model";
+import { RecurringTaskService } from "./recurring-task.service";
 
 export class TaskService {
+  // Remove the constructor and recurring service dependency to avoid circular imports
+  
   async getTasksByJobId(
     jobId: string,
     userId: string
@@ -46,7 +50,18 @@ export class TaskService {
         userId,
       });
       const savedTask = await task.save();
-      return JSON.parse(JSON.stringify(savedTask));
+      const result = JSON.parse(JSON.stringify(savedTask));
+
+      // If this is a recurring task, set up the recurrence schedule
+      // The first instance is the task itself, we just need to calculate the next occurrence
+      if (taskData.isRecurring) {
+        // Import here to avoid circular dependency
+        const { RecurringTaskService } = await import('./recurring-task.service');
+        const recurringTaskService = new RecurringTaskService();
+        await recurringTaskService.setupRecurringTask(result._id);
+      }
+
+      return result;
     } catch (error) {
       throw new Error("Error creating task in database");
     }
@@ -69,7 +84,27 @@ export class TaskService {
         { new: true, runValidators: true }
       ).lean();
 
-      return updatedTask ? JSON.parse(JSON.stringify(updatedTask)) : null;
+      if (!updatedTask) {
+        return null;
+      }
+
+      // If recurrence settings were updated, recalculate the next occurrence
+      const taskData = updatedTask as any;
+      if (taskData.isRecurring && (
+        updateData.recurrencePattern || 
+        updateData.customRecurrenceInterval || 
+        updateData.customRecurrenceUnit ||
+        updateData.recurrenceEndType ||
+        updateData.recurrenceEndDate ||
+        updateData.recurrenceMaxOccurrences
+      )) {
+        // Import here to avoid circular dependency
+        const { RecurringTaskService } = await import('./recurring-task.service');
+        const recurringTaskService = new RecurringTaskService();
+        await recurringTaskService.setupRecurringTask(id);
+      }
+
+      return JSON.parse(JSON.stringify(updatedTask));
     } catch (error) {
       throw new Error("Error updating task in database");
     }
@@ -83,7 +118,7 @@ export class TaskService {
         { $set: { isDeleted: true } },
         { new: true, runValidators: true }
       );
-      return JSON.parse(JSON.stringify(result)) ;
+      return JSON.parse(JSON.stringify(result));
     } catch (error) {
       throw new Error("Error deleting task from database");
     }
@@ -93,9 +128,9 @@ export class TaskService {
     try {
       await dbConnect();
       const result = await Task.updateMany(
-        { jobId: jobId, userId: userId }, // Criteria for finding tasks
+        { jobId: jobId, userId: userId },
         {
-          $set: { isDeleted: true }, // Fields to update
+          $set: { isDeleted: true },
         },
         { new: true, runValidators: true }
       ).lean();
@@ -123,7 +158,6 @@ export class TaskService {
   async getNextTasks(userId: string): Promise<TaskInterface[]> {
     try {
       await dbConnect();
-      // Find all tasks for this user that are marked as next tasks
       const tasks = await Task.find({
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
@@ -144,7 +178,6 @@ export class TaskService {
     }
   }
 
-  //method to update the tasks order in a job
   async updateTasksOrder(
     jobId: string,
     userId: string,
@@ -153,7 +186,6 @@ export class TaskService {
     try {
       await dbConnect();
       
-      // Find the job
       const job = await Job.findOne({
         _id: jobId,
         userId,
@@ -164,7 +196,6 @@ export class TaskService {
         throw new Error("Job not found");
       }
       
-      // Update the job with the new tasks order
       job.tasks = taskIds;
       await job.save();
       
@@ -172,6 +203,40 @@ export class TaskService {
     } catch (error) {
       console.error("Error updating tasks order:", error);
       throw new Error("Error updating tasks order in database");
+    }
+  }
+
+  /**
+   * Get all recurring tasks for a user
+   */
+  async getRecurringTasks(userId: string): Promise<TaskInterface[]> {
+    try {
+      await dbConnect();
+      const tasks = await Task.find({
+        userId,
+        isRecurring: true,
+        isDeleted: false,
+      }).lean();
+      return JSON.parse(JSON.stringify(tasks));
+    } catch (error) {
+      throw new Error("Error fetching recurring tasks from database");
+    }
+  }
+
+  /**
+   * Get all instances of a recurring task
+   */
+  async getRecurringTaskInstances(parentRecurringTaskId: string, userId: string): Promise<TaskInterface[]> {
+    try {
+      await dbConnect();
+      const tasks = await Task.find({
+        userId,
+        parentRecurringTaskId,
+        isDeleted: false,
+      }).lean();
+      return JSON.parse(JSON.stringify(tasks));
+    } catch (error) {
+      throw new Error("Error fetching recurring task instances from database");
     }
   }
 }
