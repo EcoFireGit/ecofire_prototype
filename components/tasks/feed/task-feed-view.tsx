@@ -812,7 +812,7 @@ export default function TaskFeedView() {
           setTasks(updateTaskState(tasks));
           setFilteredTasks(updateTaskState(filteredTasks));
           setSortedTasks(updateTaskState(sortedTasks));
-
+          await fetchData();
           toast({
             title: "Success",
             description: "Task updated successfully",

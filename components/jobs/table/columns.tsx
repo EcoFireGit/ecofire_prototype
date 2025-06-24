@@ -22,6 +22,7 @@ export type Job = {
   businessFunctionId?: string;
   businessFunctionName?: string;
   dueDate?: string;
+  createdDate: string;
   isDone: boolean;
   nextTaskId?: string;  // Added field to track the next task
   tasks?: string[];     // Added field to store task IDs
@@ -120,6 +121,27 @@ export const columns = (
         month: "short",
         day: "numeric",
       });
+    },
+  },
+  {
+    accessorKey: "createdDate",
+    header: "Created",
+    enableSorting: true,
+    cell: ({ row }) => {
+      const createdDate = row.getValue("createdDate") as string;
+      const date = new Date(createdDate);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    },
+    sortingFn: (rowA, rowB) => {
+      const dateA = rowA.getValue("createdDate") as string;
+      const dateB = rowB.getValue("createdDate") as string;
+      return new Date(dateA).getTime() - new Date(dateB).getTime();
     },
   },
   {

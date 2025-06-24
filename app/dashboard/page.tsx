@@ -327,11 +327,18 @@ export default function Dashboard() {
                       let formattedDate = "No due date";
                       if (job.dueDate) {
                         const date = new Date(job.dueDate);
-                        formattedDate = date.toLocaleDateString("en-US", {
-                          month: "numeric",
-                          day: "numeric",
-                          year: "2-digit",
-                        });
+                        const utcDateString = date.toISOString().split("T")[0];
+                        const displayDate = new Date(
+                          utcDateString + "T00:00:00",
+                        );
+                        formattedDate = displayDate.toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "numeric",
+                            day: "numeric",
+                            year: "2-digit",
+                          },
+                        );
                       }
 
                       // Generate a consistent color for a business function
