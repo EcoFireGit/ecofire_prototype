@@ -33,6 +33,7 @@ function convertJobsToTableData(
 
     return {
       id: job._id,
+      jobNumber: job.jobNumber,
       title: job.title,
       notes: job.notes || undefined,
       businessFunctionId: job.businessFunctionId || undefined,

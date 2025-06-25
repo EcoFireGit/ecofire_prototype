@@ -913,7 +913,12 @@ const saveTasksOrderSilently = async () => {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>{selectedJob.title}</span>
+                  <div className="flex items-center gap-2">
+                    <span>{selectedJob.title}</span>
+                    <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      #{selectedJob.jobNumber}
+                    </span>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
