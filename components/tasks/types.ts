@@ -23,6 +23,9 @@ export enum FocusLevel {
     completed: boolean;
     tags?: string[];
     isNextTask: boolean;
+    createdDate?: Date;
+    endDate?: Date | null;
+    timeElapsed?: string | null;
   };
 
   

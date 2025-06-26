@@ -234,6 +234,9 @@ export function TasksSidebar({
           jobId: task.jobId,
           completed: task.completed,
           isNextTask: task._id === selectedJob.nextTaskId,
+          createdDate: task.createdDate,
+          endDate: task.endDate,
+          timeElapsed: task.timeElapsed,
         }));
 
         // On initial load, sort tasks based on job.tasks array
@@ -367,6 +370,9 @@ export function TasksSidebar({
                 ...task,
                 completed,
                 isNextTask: completed? false : task.isNextTask,
+                createdDate: result.data.createdDate || task.createdDate,
+                endDate: result.data.endDate,
+                timeElapsed: result.data.timeElapsed,
               };
             }
             return task;
@@ -543,6 +549,9 @@ export function TasksSidebar({
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: false,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
           };
 
           // Add task ID to job's tasks array
@@ -597,6 +606,10 @@ export function TasksSidebar({
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: result.data._id === nextTaskId,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
+
           };
 
           // If the task completion status changed, trigger a progress update
