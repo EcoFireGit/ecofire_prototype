@@ -165,62 +165,61 @@ export function JobCard({
   };
 
   return (
-    <div
-      style={{ width: "100%", minHeight: "180px" }}
-      className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
-        isSelected ? "ring-2 ring-primary" : ""
-      }`}
-      onClick={() => onOpenTasksSidebar(currentJob)}
-    >
-      <div className="p-4 cursor-pointer">
-        {/* Top section with checkbox, function name, and owner */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            {!hideCheckbox && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
-                  aria-label="Select job"
-                />
-              </div>
-            )}
-            <span
-              className="px-2 py-1 text-xs font-medium rounded"
-              style={getBusinessFunctionColor()}
-            >
-              {currentJob.businessFunctionName || "No function"}
-            </span>
-          </div>
-          <span className="text-sm font-medium">{getOwnerName()}</span>
+  <div
+    style={{ width: "100%", minHeight: "180px" }}
+    className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
+      isSelected ? "ring-2 ring-primary" : ""
+    }`}
+    onClick={() => onOpenTasksSidebar(currentJob)}
+  >
+    <div className="p-4 cursor-pointer">
+      {/* Top section with checkbox, function name, and owner */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          {!hideCheckbox && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
+                aria-label="Select job"
+              />
+            </div>
+          )}
+          <span
+            className="px-2 py-1 text-xs font-medium rounded"
+            style={getBusinessFunctionColor()}
+          >
+            {currentJob.businessFunctionName || "No function"}
+          </span>
         </div>
-
-        {/* Job title with job number */}
-        <div className="mb-6 pl-6">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold">{currentJob.title}</h3>
-            <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              #{currentJob.jobNumber}
-            </span>
-          </div>
-        </div>
-
-        {/* Bottom section with task count and due date */}
-        <div className="flex items-center justify-between pl-6">
-          <div className="space-y-1">
-            <p className="text-sm text-gray-500">{getTaskCount()}</p>
-            <p className="text-sm text-gray-500">
-              Due date: {formatDate(currentJob.dueDate)}
-            </p>
-          </div>
-        </div>
+        <span className="text-sm font-medium">{getOwnerName()}</span>
       </div>
 
-      {/* Action buttons */}
-      <div
-        className="flex justify-end p-2 border-t"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Job title without job number */}
+      <div className="mb-6 pl-6">
+        <h3 className="text-base font-semibold">{currentJob.title}</h3>
+      </div>
+
+      {/* Bottom section with task count and due date */}
+      <div className="flex items-center justify-between pl-6">
+        <div className="space-y-1">
+          <p className="text-sm text-gray-500">{getTaskCount()}</p>
+          <p className="text-sm text-gray-500">
+            Due date: {formatDate(currentJob.dueDate)}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Bottom section with job number and action buttons */}
+    <div
+      className="flex justify-between items-center p-2 border-t"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded ml-2">
+        #{currentJob.jobNumber}
+      </span>
+      <div className="flex">
         <Button
           variant="ghost"
           size="icon"
@@ -271,13 +270,14 @@ export function JobCard({
           </AlertDialogContent>
         </AlertDialog>
       </div>
-
-      <DuplicateJobDialog
-        open={isDuplicateDialogOpen}
-        onOpenChange={setIsDuplicateDialogOpen}
-        sourceJob={currentJob}
-        onSubmit={() => {}} // The actual duplication logic is handled inside DuplicateJobDialog
-      />
     </div>
-  );
+
+    <DuplicateJobDialog
+      open={isDuplicateDialogOpen}
+      onOpenChange={setIsDuplicateDialogOpen}
+      sourceJob={currentJob}
+      onSubmit={() => {}} // The actual duplication logic is handled inside DuplicateJobDialog
+    />
+  </div>
+);
 }
