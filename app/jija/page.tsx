@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard, Archive } from "lucide-react";
+import { Clipboard, Archive, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextareaAutosize from 'react-textarea-autosize';
 
@@ -33,6 +33,16 @@ interface ProcessedMessage {
   html?: string;
 }
 
+// Utility to shuffle an array in place
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function Chat() {
   const welcomeMessages = [
     "Welcome! How can I help you today?",
@@ -49,17 +59,13 @@ export default function Chat() {
     "Hi! What brings you here today?",
     "Welcome back! How can I be of service?"
   ];
-  
-  
 
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [processedMessages, setProcessedMessages] = useState<
-    ProcessedMessage[]
-  >([]);
+  const [processedMessages, setProcessedMessages] = useState<ProcessedMessage[]>([]);
   const [showArchive, setShowArchive] = useState(false);
   const archiveRef = useRef<HTMLDivElement>(null);
   const LIMIT = 3;
@@ -69,6 +75,7 @@ export default function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [hasAutoLoadedLatestChat, setHasAutoLoadedLatestChat] = useState(false);
   const [welcomeText, setWelcomeText] = useState("");
+  const [recommendedPrompts, setRecommendedPrompts] = useState<string[]>([]);
 
   const {
     error,
@@ -84,16 +91,79 @@ export default function Chat() {
   } = useChat({
     id: selectedChatId || undefined,
     onFinish(message, { usage, finishReason }) {
-      console.log("Usage", usage);
-      console.log("FinishReason", finishReason);
-      // Reset pagination and fetch fresh chats
       setPage(0);
       fetchRecentChats(0);
     },
   });
 
-  
+  // Set initial welcome text
+  useEffect(() => {
+    setWelcomeText(
+      welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]
+    );
+  }, []);
 
+  // Generate and shuffle recommended prompts based on chat content.
+  // Triggered when a chat is loaded or closed (selectedChatId changes).
+  useEffect(() => {
+    const getPromptsForChat = () => {
+      // If user is searching for a job
+      if (jobTitle) {
+        return [
+          `What are the most important skills for a "${jobTitle}"?`,
+          `Can you help me prepare for a "${jobTitle}" interview?`,
+          `Show me recent trends in the "${jobTitle}" field.`,
+          `What are good certifications for a "${jobTitle}"?`,
+          `Suggest some projects to build as a "${jobTitle}".`,
+        ];
+      } else if (selectedChatId && processedMessages.length > 0) {
+        // Use the last user and assistant messages for context
+        const lastUserMsg = [...processedMessages].reverse().find(m => m.role === "user")?.content;
+        const lastAssistantMsg = [...processedMessages].reverse().find(m => m.role === "assistant")?.content;
+        return [
+          lastUserMsg ? `Can you expand on: "${lastUserMsg.slice(0, 40)}..."?` : "Can you elaborate on my last question?",
+          "What should I ask next based on this conversation?",
+          lastAssistantMsg ? `Summarize your last answer: "${lastAssistantMsg.slice(0, 40)}..."` : "Summarize the main points from our conversation.",
+          "Give me a list of follow-up questions.",
+          "What should be my next action based on this chat?"
+        ];
+      } else if (recentChats.length > 0) {
+        // Suggest follow-up based on last chat
+        const lastChat = recentChats[0];
+        const lastUserMsg = lastChat.messages.find(m => m.role === "user")?.content;
+        return [
+          lastUserMsg ? `Can you expand on: "${lastUserMsg.slice(0, 40)}..."?` : "Can you elaborate on my last question?",
+          "What should I ask next based on my previous chat?",
+          "Summarize the main points from my last conversation.",
+          "What did I talk about in my last session?",
+          "How can I continue from my last chat?"
+        ];
+      } else if (userId) {
+        // General personalized prompts
+        return [
+          "What are the best productivity tips for me?",
+          "How can I improve my technical skills?",
+          "Suggest some learning resources for my career growth.",
+          "How do I set effective goals?",
+          "What are some good daily habits?"
+        ];
+      } else {
+        // Generic fallback
+        return [
+          "What can you help me with today?",
+          "Give me tips to get started.",
+          "How does this assistant work?",
+          "Show me some example questions.",
+          "What topics can I ask you about?"
+        ];
+      }
+    };
+
+    // Pick 3 shuffled prompts
+    const prompts = getPromptsForChat();
+    setRecommendedPrompts(shuffleArray(prompts).slice(0, 3));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChatId, processedMessages.length, recentChats.length, jobTitle, userId]);
 
   // Set prefilled input when jobTitle is present
   useEffect(() => {
@@ -116,14 +186,8 @@ export default function Chat() {
         setShowArchive(false);
       }
     }
-
-    // Add event listener
     document.addEventListener('mousedown', handleClickOutside);
-    
-    // Clean up
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [archiveRef]);
 
   useEffect(() => {
@@ -131,18 +195,14 @@ export default function Chat() {
       if (messages.length) {
         const processed = await Promise.all(
           messages.map(async (msg) => {
-            // Filter messages to only include user and assistant roles
             if (msg.role === "user" || msg.role === "assistant") {
               if (msg.role === "assistant") {
                 try {
                   const response = await fetch("/api/markdown", {
                     method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ markdown: msg.content }),
                   });
-
                   if (response.ok) {
                     const { html } = await response.json();
                     return { ...msg, html };
@@ -156,7 +216,6 @@ export default function Chat() {
             return null;
           }),
         );
-        // Filter out null values resulted from invalid roles
         setProcessedMessages(
           processed.filter((msg) => msg !== null) as ProcessedMessage[],
         );
@@ -169,24 +228,18 @@ export default function Chat() {
 
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
-
     try {
       const skip = pageToFetch * LIMIT;
       const response = await fetch(
         `/api/recent-chats?limit=${LIMIT}&skip=${skip}`,
       );
-
       if (response.ok) {
         const data = (await response.json()) as ChatResponse;
-
         if (pageToFetch === 0) {
-          // First page - replace current chats
           setRecentChats(data.chats);
         } else {
-          // Additional pages - append to current chats
           setRecentChats((prev) => [...prev, ...data.chats]);
         }
-
         setHasMoreChats(data.hasMore);
       }
     } catch (error) {
@@ -196,7 +249,6 @@ export default function Chat() {
 
   const loadMoreChats = async () => {
     if (isLoadingMore || !hasMoreChats) return;
-
     setIsLoadingMore(true);
     const nextPage = page + 1;
     setPage(nextPage);
@@ -206,17 +258,12 @@ export default function Chat() {
 
   const loadChatSession = async (chatId: string) => {
     try {
-      // Clear the current state first for better UX
       setSelectedChatId(chatId);
       setInput("");
-
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
-
-        // Set the chat messages to continue the conversation
         if (data && data.messages && data.messages.length > 0) {
-          // Create messages in the format expected by useChat
           const formattedMessages = data.messages.map(
             (msg: any, index: number) => ({
               id: `msg-${index}`,
@@ -224,8 +271,6 @@ export default function Chat() {
               content: msg.content,
             }),
           );
-
-          // Use a slight delay to ensure UI updates properly
           setTimeout(() => {
             setMessages(formattedMessages);
           }, 10);
@@ -238,40 +283,29 @@ export default function Chat() {
     }
   };
 
-  useEffect(() => {
-    fetchRecentChats();
-  }, [userId]);
+  useEffect(() => { fetchRecentChats(); }, [userId]);
 
   useEffect(() => {
-    // Only auto-load if:
-    // - We have recent chats
-    // - No chat is currently selected
-    // - We haven't already auto-loaded
-    // - There's no jobTitle parameter (NEW CONDITION)
     if (
       !selectedChatId &&
       recentChats.length > 0 &&
       !hasAutoLoadedLatestChat &&
-      !jobTitle  // Don't auto-load if jobTitle is present
+      !jobTitle
     ) {
-      const latestChat = recentChats[0]; // Most recent chat is first
+      const latestChat = recentChats[0];
       if (latestChat && latestChat.chatId) {
         loadChatSession(latestChat.chatId);
-        setHasAutoLoadedLatestChat(true); // Prevent future auto-loads
+        setHasAutoLoadedLatestChat(true);
       }
     }
   }, [recentChats, selectedChatId, hasAutoLoadedLatestChat]);
-  
 
-
-  // Get a preview of the conversation (first user message and assistant response)
   const getChatPreview = (chat: ChatSession) => {
     const userMessage =
       chat.messages.find((m) => m.role === "user")?.content || "No message";
     const aiResponse =
       chat.messages.find((m) => m.role === "assistant")?.content ||
       "No response";
-
     return {
       userMessage:
         userMessage.length > 60
@@ -293,9 +327,7 @@ export default function Chat() {
       {/* Header - Fixed at the top */}
       <div className="flex justify-between items-center mb-6 w-full">
         <h1 className="text-2xl font-bold">Jija Assistant</h1>
-        
         <div className="flex items-center gap-2">
-          {/* Close Conversation Button - Only visible when a chat is selected */}
           {selectedChatId && (
             <Button
               onClick={() => {
@@ -309,8 +341,6 @@ export default function Chat() {
               <span>Close Conversation</span>
             </Button>
           )}
-          
-          {/* Archive Button */}
           {recentChats.length > 0 && (
             <div className="relative" ref={archiveRef}>
               <Button
@@ -321,8 +351,6 @@ export default function Chat() {
                 <Archive size={18} />
                 <span>Recent Conversations</span>
               </Button>
-              
-              {/* Archive Dropdown */}
               {showArchive && (
                 <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="p-2">
@@ -358,8 +386,6 @@ export default function Chat() {
                         </div>
                       );
                     })}
-                    
-                    {/* Load More Button */}
                     {hasMoreChats && (
                       <div className="p-2 text-center">
                         <button
@@ -381,7 +407,6 @@ export default function Chat() {
           )}
         </div>
       </div>
-
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
         {/* Chat Messages */}
@@ -407,7 +432,6 @@ export default function Chat() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(m.content);
-                      // Optional: Add a visual indication that content was copied
                       const button = document.getElementById(`copy-btn-${m.id}`);
                       if (button) {
                         button.classList.add("text-green-500");
@@ -437,7 +461,6 @@ export default function Chat() {
             </div>
           ))}
         </div>
-
         {(status === "submitted" || status === "streaming") && (
           <div className="mt-4 text-gray-500">
             {status === "submitted" && <div>Loading...</div>}
@@ -450,7 +473,6 @@ export default function Chat() {
             </button>
           </div>
         )}
-
         {error && (
           <div className="mt-4">
             <div className="text-red-500">An error occurred.</div>
@@ -463,17 +485,35 @@ export default function Chat() {
             </button>
           </div>
         )}
-
         <div className="fixed bottom-0 w-full max-w-4xl mb-8">
 
-            
-        {/* Welcome Text */}
-            {selectedChatId === null && (
-        <div className="mb-2 text-lg text-gray-700 font-semibold text-center">
-          {welcomeText}
-        </div>
-      )}
+          {selectedChatId === null && (
+            <div className="mb-2 text-lg text-gray-700 font-semibold text-center">
+              {welcomeText}
+            </div>
+          )}
 
+          {/* Recommended prompts */}
+          {recommendedPrompts.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+              {recommendedPrompts.map((prompt, idx) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  className="flex items-center gap-1 px-3 py-1 rounded-full border border-gray-300 bg-gray-100 hover:bg-blue-100 hover:text-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  onClick={() => {
+                    setInput(prompt);
+                    if (textareaRef.current) {
+                      textareaRef.current.focus();
+                    }
+                  }}
+                >
+                  <Sparkles size={16} className="text-blue-500" />
+                  <span className="text-sm">{prompt}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="relative flex items-center">
             <TextareaAutosize
