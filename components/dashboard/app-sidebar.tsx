@@ -59,33 +59,15 @@ const items = [
     icon: Home,
   },
   {
-    title: "Quick Guide",
-    url: "https://coda.io/@urvashi-batra/prioriwise-getting-started-guide",
-    target: "_blank",
-    rel: "noopener noreferrer",
-    icon: Inbox,
-  },
-  {
     title: "Jobs",
     url: "/jobs",
     icon: Calendar,
-  },
-  {
-    title: "Business Functions",
-    url: "/business-functions",
-    icon: BriefcaseBusinessIcon,
   },
   {
     title: "Jija",
     url: "/jija",
     icon: PawPrint,
     id: "jija",
-  },
-  {
-    title: "Calendar",
-    url: "/backstage/gcal",
-    icon: Calendar,
-    id: "gcal-integration",
   },
 ];
 
@@ -261,7 +243,7 @@ export function AppSidebar() {
                       asChild
                       className="flex items-center"
                     >
-                      <Link href={item.url} target={item.target} rel={item.rel}>
+                      <Link href={item.url}>
                         <IconComponent
                           className={`${active ? "text-[#F05523]" : ""} ${
                             !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""

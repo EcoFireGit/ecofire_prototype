@@ -2,7 +2,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SettingsPage from "@/components/dashboard/basicSetting";
 import AdvancedSettingPage from "@/components/dashboard/advancedSetting";
-
+import CalendarPage from "@/components/dashboard/calendarPage";
 import { useEffect, useState, useRef } from "react";
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -54,10 +54,14 @@ export default function FeedPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-auto ml-5">
         <TabsList id="jobs-tasks-section">
           <TabsTrigger value="basicsetting">Basic Settings</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="advancedsetting">Advanced Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="basicsetting">
           <SettingsPage/>
+        </TabsContent>
+        <TabsContent value="calendar">
+        <CalendarPage/>
         </TabsContent>
         <TabsContent value="advancedsetting">
         <AdvancedSettingPage/>
