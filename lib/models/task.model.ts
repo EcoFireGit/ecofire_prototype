@@ -7,7 +7,17 @@ export enum FocusLevel {
 export enum JoyLevel {
   High = "High",
   Medium = "Medium",
-  Low = "Low"
+  Low = "Low",
+}
+
+export enum RecurrenceTime {
+  Daily = "Daily",
+  Weekly = "Weekly",
+  Biweekly = "Biweekly",
+  Monthly = "Monthly",
+  Quarterly = "Quarterly",
+  Yearly = "Yearly"
+
 }
 export interface Task extends mongoose.Document {
   _id: string;
@@ -23,7 +33,9 @@ export interface Task extends mongoose.Document {
   userId: string;
   completed: boolean;
   isDeleted: boolean; // Soft delete flag
-
+  isRecurring: boolean;
+  repeats: string;
+  lastScheduled: Date;
   // nextTask: boolean; // New property to mark task as next
 }
 const TaskSchema = new mongoose.Schema<Task>({
@@ -88,6 +100,20 @@ const TaskSchema = new mongoose.Schema<Task>({
   //   default: false,
   //   required: true
   // }
+  isRecurring: {
+    type: Boolean,
+    default: false,
+    required: true
+  },
+  repeats: {
+    type: String,
+    enum: Object.values(RecurrenceTime),
+    required: false,
+  },
+  lastScheduled: {
+    type: Date,
+    required: false,
+  },
 });
 
 // Create a compound index to ensure only one task per job is marked as next

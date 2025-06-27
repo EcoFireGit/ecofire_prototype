@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Task, FocusLevel, JoyLevel } from "./types";
+import { Task, FocusLevel, JoyLevel, RecurrenceTime } from "./types";
 import { TagInput } from "@/components/tasks/tag-input";
 import { saveTags } from "@/lib/services/task-tags.service";
 
@@ -63,6 +63,9 @@ export function TaskDialog({
   const [isCreatingOwner, setIsCreatingOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState("");
 
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [repeats, setRepeats] = useState<RecurrenceTime | undefined>(undefined);
+
   useEffect(() => {
     const fetchOwners = async () => {
       setIsLoadingOwners(true);
@@ -95,6 +98,8 @@ export function TaskDialog({
       setJoyLevel(undefined);
       setNotes(undefined);
       setTags([]);
+      setIsRecurring(false);
+      setRepeats(undefined);
     } else if (initialData) {
       setTitle(initialData.title);
       setOwner(initialData.owner);
@@ -108,6 +113,8 @@ export function TaskDialog({
       setJoyLevel(initialData.joyLevel);
       setNotes(initialData.notes);
       setTags(initialData.tags || []);
+      setIsRecurring(initialData.isRecurring || false);
+      setRepeats(initialData.repeats as RecurrenceTime | undefined);
     }
   }, [mode, initialData, open]);
 
@@ -124,6 +131,11 @@ export function TaskDialog({
       if (joyLevel) task.joyLevel = joyLevel;
       if (notes) task.notes = notes;
       if (tags.length > 0) task.tags = tags;
+      
+      task.isRecurring = isRecurring;
+      if (isRecurring && repeats) {
+        task.repeats = repeats;
+      }
 
       await onSubmit(task);
       if (tags.length > 0) await saveTags(tags);
@@ -138,6 +150,8 @@ export function TaskDialog({
         setJoyLevel(undefined);
         setNotes(undefined);
         setTags([]);
+        setIsRecurring(false);
+        setRepeats(undefined);
       }
     } catch (error) {
       console.error("Error submitting task:", error);
@@ -156,7 +170,6 @@ export function TaskDialog({
             </DialogTitle>
           </DialogHeader>
 
-        
           <div className="grid gap-4 py-4">
             {/* Title */}
             <div className="grid grid-cols-4 items-center gap-4">
@@ -285,6 +298,48 @@ export function TaskDialog({
                 className="col-span-3"
               />
             </div>
+
+            {/* Make Recurring */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="recurring" className="text-right">Make Recurring</Label>
+              <div className="col-span-3">
+                <input
+                  id="recurring"
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </div>
+            </div>
+
+            {/* Recurring Pattern - Only show when recurring is enabled */}
+            {isRecurring && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="repeats" className="text-right">Repeats</Label>
+                <div className="col-span-3">
+                  <Select
+                    value={repeats || "none"}
+                    onValueChange={(value) => 
+                      value === "none" ? setRepeats(undefined) : setRepeats(value as RecurrenceTime)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select recurring pattern" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value={RecurrenceTime.Daily}>{RecurrenceTime.Daily}</SelectItem>
+                      <SelectItem value={RecurrenceTime.Weekly}>{RecurrenceTime.Weekly}</SelectItem>
+                      <SelectItem value={RecurrenceTime.Biweekly}>{RecurrenceTime.Biweekly}</SelectItem>
+                      <SelectItem value={RecurrenceTime.Monthly}>{RecurrenceTime.Monthly}</SelectItem>
+                      <SelectItem value={RecurrenceTime.Quarterly}>{RecurrenceTime.Quarterly}</SelectItem>
+                      <SelectItem value={RecurrenceTime.Yearly}>{RecurrenceTime.Yearly}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
 
             {/* Focus */}
             <div className="grid grid-cols-4 items-center gap-4">
