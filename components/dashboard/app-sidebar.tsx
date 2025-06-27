@@ -76,20 +76,10 @@ const items = [
     icon: BriefcaseBusinessIcon,
   },
   {
-    title: "Business Info",
-    url: "/business-info",
-    icon: BarChart2,
-  },
-  {
     title: "Jija",
     url: "/jija",
     icon: PawPrint,
     id: "jija",
-  },
-  {
-    title: "Organizations",
-    url: "/organizations",
-    icon: Users,
   },
   {
     title: "Calendar",
