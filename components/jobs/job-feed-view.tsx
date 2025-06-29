@@ -19,6 +19,8 @@ import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
 import { QBOCircles } from "@/components/qbo/qbo-circles";
 import { JobSkeletonGroup } from "@/components/jobs/job-skeleton";
+import { OPEN_TASKS_SIDEBAR_EVENT } from "@/components/landing_page/navbar";
+
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -83,6 +85,37 @@ export default function JobsPage() {
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
+
+ useEffect(() => {
+    // Event handler to open the dialog
+    const handleOpenDialog = () => {
+      setEditingJob(undefined);
+      setDialogOpen(true);
+    };
+
+    // Event handler for editing a job from TasksSidebar
+    const handleEditJob = (event: any) => {
+      if (event.detail && event.detail.job) {
+        setEditingJob(event.detail.job);
+        setDialogOpen(true);
+      }
+    };
+
+    // Listen for refreshJobsList event to fetch new jobs after creation
+    const handleRefreshJobsList = () => {
+      fetchJobs();
+    };
+
+    window.addEventListener("openJobDialog", handleOpenDialog);
+    window.addEventListener("open-job-edit", handleEditJob);
+    window.addEventListener("refreshJobsList", handleRefreshJobsList);
+
+    return () => {
+      window.removeEventListener("openJobDialog", handleOpenDialog);
+      window.removeEventListener("open-job-edit", handleEditJob);
+      window.removeEventListener("refreshJobsList", handleRefreshJobsList);
+    };
+  }, []);
 
   // New: Check for businessFunction in URL params for initial filtering
   useEffect(() => {
@@ -423,7 +456,7 @@ export default function JobsPage() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-
+    
       // First fetch business functions
       const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
@@ -442,11 +475,11 @@ export default function JobsPage() {
       await fetchOwners();
       // Fetch tags for filters
       await fetchTags();
-
+      
       // Then fetch jobs
       const jobsResponse = await fetch("/api/jobs");
       const jobsResult = await jobsResponse.json();
-
+      
       if (jobsResult.success) {
         // Collect all next task IDs to fetch their owners
         const taskIds = jobsResult.data
@@ -694,7 +727,24 @@ export default function JobsPage() {
       }
     }
   }, [loading, activeJobs, completedJobs, activeFilters]);
-
+  
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobIdToOpen = params.get("openTaskSidebarFor");
+    if (jobIdToOpen) {
+      // Find the job in active or completed jobs
+      const job =
+        activeJobs.find((j) => j.id === jobIdToOpen) ||
+        completedJobs.find((j) => j.id === jobIdToOpen);
+      if (job) {
+        handleOpenTasksSidebar(job);
+        // Remove the param so it doesn't reopen on further updates
+        params.delete("openTaskSidebarFor");
+        window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
+      }
+    }
+  }, [activeJobs, completedJobs]);
   // Handler for sort changes
   const handleActiveSortChange = (sortedJobs: Job[]) => {
     setSortedActiveJobs(sortedJobs);
@@ -723,15 +773,23 @@ export default function JobsPage() {
 
       const result = await response.json();
 
+     
+
       if (result.success) {
         toast({
           title: "Success",
           description: "Job successfully created",
         });
-        await fetchJobs(); // Refresh jobs and wait for it to complete
-
+        // Refresh jobs and wait for it to complete
+       
+         fetchJobs();
+        
         // Now we can close the dialog after jobs have been refreshed
         setDialogOpen(false);
+       
+         
+  
+
       } else {
         throw new Error(result.error);
       }

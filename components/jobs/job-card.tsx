@@ -195,10 +195,15 @@ export function JobCard({
         <span className="text-sm font-medium">{getOwnerName()}</span>
       </div>
 
-      {/* Job title without job number */}
-      <div className="mb-6 pl-6">
-        <h3 className="text-base font-semibold">{currentJob.title}</h3>
-      </div>
+        {/* Job title with job number */}
+        <div className="mb-6 pl-6">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold">{currentJob.title}</h3>
+            <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              #{currentJob.jobNumber}
+            </span>
+          </div>
+        </div>
 
       {/* Bottom section with task count and due date */}
       <div className="flex items-center justify-between pl-6">
