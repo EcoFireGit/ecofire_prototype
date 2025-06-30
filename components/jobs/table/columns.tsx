@@ -17,6 +17,7 @@ import { TasksButton } from "@/components/tasks/tasks-button";
 
 export type Job = {
   id: string;
+  jobNumber: number;
   title: string;
   notes?: string;
   businessFunctionId?: string;
@@ -58,6 +59,20 @@ export const columns = (
     ),
     enableSorting: false,
     enableHiding: false,
+  },
+  {
+    accessorKey: "jobNumber",
+    header: "Job No.",
+    cell: ({ row }) => {
+      const jobNumber = row.getValue("jobNumber") as number;
+      return (
+        <span className="font-mono text-sm text-gray-600">
+          #{jobNumber}
+        </span>
+      );
+    },
+    enableSorting: true,
+    size: 60,
   },
   {
     accessorKey: "title",
