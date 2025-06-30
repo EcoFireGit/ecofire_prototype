@@ -17,6 +17,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Job } from "@/components/jobs/table/columns";
 
@@ -199,9 +206,6 @@ export function JobCard({
         <div className="mb-6 pl-6">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold">{currentJob.title}</h3>
-            <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              #{currentJob.jobNumber}
-            </span>
           </div>
         </div>
 
@@ -221,9 +225,24 @@ export function JobCard({
       className="flex justify-between items-center p-2 border-t"
       onClick={(e) => e.stopPropagation()}
     >
-      <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded ml-2">
-        #{currentJob.jobNumber}
-      </span>
+      <div className="flex items-center gap-1 ml-2">
+        <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
+          #{currentJob.jobNumber}
+        </span>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="h-4 w-4 rounded-full hover:bg-gray-400 flex items-center justify-center transition-colors">
+                <Info className="h-2.5 w-2.5 text-gray-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>This is the Job number</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
       <div className="flex">
         <Button
           variant="ghost"
