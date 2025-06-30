@@ -242,7 +242,6 @@ export function JobCard({
           </Tooltip>
         </TooltipProvider>
       </div>
-
       <div className="flex">
         <Button
           variant="ghost"
