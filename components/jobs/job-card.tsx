@@ -221,7 +221,7 @@ export function JobCard({
       <div className="flex items-center gap-1 ml-2">
       <span 
         className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded ml-2"
-        title="This is the Job number"
+        title="Job number"
       >
         #{currentJob.jobNumber}
       </span>
