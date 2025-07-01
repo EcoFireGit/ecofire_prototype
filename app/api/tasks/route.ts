@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     }
 
     const tasks = await taskService.getTasksByJobId(jobId, userId!);
-   
+      
     return NextResponse.json({
       success: true,
       count: tasks.length,
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       );
     }
     
-    const task = await taskService.createTask(taskData, userId!);
+    const task = await taskService.createTask(taskData, userId!);   
     return NextResponse.json({
       success: true,
       data: task

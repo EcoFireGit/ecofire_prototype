@@ -1,3 +1,5 @@
+// components/tasks/tasks-dialog.tsx
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -17,9 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Task, FocusLevel, JoyLevel } from "./types";
+import { Task, FocusLevel, JoyLevel, RecurrenceInterval } from "./types";
 import { TagInput } from "@/components/tasks/tag-input";
 import { saveTags } from "@/lib/services/task-tags.service";
+import { JobDialog } from "@/components/jobs/job-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 // Define Owner interface to match MongoDB document
 interface Owner {
@@ -27,14 +32,23 @@ interface Owner {
   name: string;
   userId: string;
 }
+interface TaskResponse {
+  success: boolean;
+  data?: {
+    _id: string;
+    [key: string]: any;
+  };
+  error?: string;
+}
 
 interface TaskDialogProps {
   mode: "create" | "edit";
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (task: Partial<Task>) => void;
+  onSubmit: (task: Partial<Task>) => Promise<void>;
   initialData?: Task;
-  jobId: string;
+  jobs?: any;
+  jobId?: string;
 }
 
 export function TaskDialog({
@@ -43,7 +57,8 @@ export function TaskDialog({
   onOpenChange,
   onSubmit,
   initialData,
-  jobId,
+  jobs,
+  jobId: propJobId,
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
@@ -55,6 +70,9 @@ export function TaskDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
 
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval>(RecurrenceInterval.Daily);
+
   const [owners, setOwners] = useState<Owner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
   const [ownerError, setOwnerError] = useState<string | null>(null);
@@ -62,6 +80,18 @@ export function TaskDialog({
   // New owner creation
   const [isCreatingOwner, setIsCreatingOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState("");
+
+  const [jobId, setJobId] = useState<string | undefined>(undefined);
+  const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
+  const [jobError, setJobError] = useState<string | null>(null);
+
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (propJobId) {
+      setJobId(propJobId);
+    }
+  }, [propJobId]);
 
   useEffect(() => {
     const fetchOwners = async () => {
@@ -95,6 +125,11 @@ export function TaskDialog({
       setJoyLevel(undefined);
       setNotes(undefined);
       setTags([]);
+      setIsRecurring(false);
+      setRecurrenceInterval(RecurrenceInterval.Daily);
+      if (!propJobId) {
+        setJobId(undefined);
+      }
     } else if (initialData) {
       setTitle(initialData.title);
       setOwner(initialData.owner);
@@ -108,269 +143,514 @@ export function TaskDialog({
       setJoyLevel(initialData.joyLevel);
       setNotes(initialData.notes);
       setTags(initialData.tags || []);
+      setJobId(initialData.jobId);
+      setIsRecurring(initialData.isRecurring || false);
+      setRecurrenceInterval(initialData.recurrenceInterval || RecurrenceInterval.Daily);
     }
-  }, [mode, initialData, open]);
+  }, [mode, initialData, open, propJobId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const [jobsList, setJobsList] = useState<Record<string, any>>(jobs || {});
 
+  useEffect(() => {
+    if (jobs) {
+      setJobsList(jobs);
+    }
+  }, [jobs]);
+
+  const handleNewJobSubmit = async (jobData: any) => {
     try {
-      const task: Partial<Task> = { title, jobId };
-      if (owner) task.owner = owner;
-      if (date) task.date = `${date}T00:00:00.000Z`;
-      if (requiredHours !== undefined) task.requiredHours = requiredHours;
-      if (focusLevel) task.focusLevel = focusLevel;
-      if (joyLevel) task.joyLevel = joyLevel;
-      if (notes) task.notes = notes;
-      if (tags.length > 0) task.tags = tags;
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jobData),
+      });
 
-      await onSubmit(task);
-      if (tags.length > 0) await saveTags(tags);
-      onOpenChange(false);
+      if (!response.ok) throw new Error("Failed to create job");
+      const createdJob = await response.json();
 
-      if (mode === "create") {
-        setTitle("");
-        setOwner(undefined);
-        setDate(undefined);
-        setRequiredHours(undefined);
-        setFocusLevel(undefined);
-        setJoyLevel(undefined);
-        setNotes(undefined);
-        setTags([]);
-      }
+      const newJobId = createdJob.data?._id || createdJob._id || createdJob.id;
+
+      setJobId(newJobId);
+
+      setJobsList((prevJobs) => ({
+        ...prevJobs,
+        [newJobId]: {
+          _id: newJobId,
+          title: jobData.title || createdJob.data?.title || "New Job",
+          ...createdJob.data,
+        },
+      }));
+
+      setIsJobDialogOpen(false);
+
+      toast({
+        title: "Success",
+        description: "Job created successfully",
+      });
     } catch (error) {
-      console.error("Error submitting task:", error);
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error creating job:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create job",
+        variant: "destructive",
+      });
     }
   };
 
+  const updateJobTasks = async (
+    jobId: string,
+    taskId: string,
+  ): Promise<void> => {
+    try {
+      const jobResponse = await fetch(`/api/jobs/${jobId}`);
+      if (!jobResponse.ok) {
+        throw new Error(`Failed to fetch job: ${jobResponse.status}`);
+      }
+
+      const jobData = await jobResponse.json();
+      const currentTasks = jobData.data?.tasks || [];
+
+      const updatedTasks = [...currentTasks, taskId];
+
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tasks: updatedTasks }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update job tasks: ${response.status}`);
+      }
+
+      const event = new CustomEvent("job-progress-update", {
+        detail: { jobId: jobId },
+      });
+      window.dispatchEvent(event);
+    } catch (error) {
+      console.error("Error updating job tasks:", error);
+      throw error;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!jobId || jobId === "none") {
+    setJobError("Please assign a job to this task.");
+    return;
+  } else {
+    setJobError(null);
+  }
+
+  // Add validation for recurring tasks requiring a date
+  if (isRecurring && !date) {
+    toast({
+      title: "Validation Error",
+      description: "A do-date is required for recurring tasks.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const task: Partial<Task> = { title };
+    if (jobId) task.jobId = jobId;
+
+    if (owner) task.owner = owner;
+    if (date) task.date = `${date}T00:00:00.000Z`;
+    if (requiredHours !== undefined) task.requiredHours = requiredHours;
+    if (focusLevel) task.focusLevel = focusLevel;
+    if (joyLevel) task.joyLevel = joyLevel;
+    if (notes) task.notes = notes;
+    if (tags.length > 0) task.tags = tags;
+
+    task.isRecurring = isRecurring;
+    if (isRecurring) {
+      task.recurrenceInterval = recurrenceInterval;
+    }
+
+    if (mode === "create" && propJobId) {
+      try {
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(task),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create task");
+        }
+
+        const result: TaskResponse = await response.json();
+
+        if (result.success && result.data?._id) {
+          await updateJobTasks(jobId!, result.data._id);
+          const refreshEvent = new CustomEvent("refresh-tasks", {
+            detail: { jobId: jobId }
+          });
+          window.dispatchEvent(refreshEvent);
+
+          console.log("✅ Task created successfully via direct API call");
+        }
+      } catch (error) {
+        console.error("Error in task creation:", error);
+        throw error;
+      }
+    } else {
+      await onSubmit(task);
+    }
+    if (tags.length > 0) await saveTags(tags);
+
+    onOpenChange(false);
+
+    toast({
+      title: "Success",
+      description:
+        mode === "create"
+          ? "Task created successfully"
+          : "Task updated successfully",
+    });
+
+    if (mode === "create") {
+      setTitle("");
+      setOwner(undefined);
+      setDate(undefined);
+      setRequiredHours(undefined);
+      setFocusLevel(undefined);
+      setJoyLevel(undefined);
+      setNotes(undefined);
+      setTags([]);
+      setIsRecurring(false);
+      setRecurrenceInterval(RecurrenceInterval.Daily);
+      if (!propJobId) {
+        setJobId(undefined);
+      }
+    }
+  } catch (error) {
+    console.error("Error submitting task:", error);
+    toast({
+      title: "Error",
+      description: "Failed to submit task",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>
-              {mode === "create" ? "Add Task" : "Edit Task"}
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>
+                {mode === "create" ? "Add Task" : "Edit Task"}
+              </DialogTitle>
+            </DialogHeader>
 
-        
-          <div className="grid gap-4 py-4">
-            {/* Title */}
-            <div className="grid grid-cols-4 items-center gap-4">
+
+            <div className="grid gap-4 py-4">
+              {/* Title */}
+              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="title" className="text-right">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="col-span-3"
-                required
-              />
-            </div>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="col-span-3"
+                  required
+                />
+              </div>
 
-            {/* Owner */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="owner" className="text-right">Owner</Label>
-              <div className="col-span-3 space-y-2">
-                {!isCreatingOwner ? (
-                  <>
+              {/* Job Selection - only show if no jobId was provided via props
+              {!propJobId && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="job" className="text-right">
+                    Job <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="col-span-3 space-y-2">
                     <Select
-                      value={owner || "none"}
+                      value={jobId || "none"}
+                      required
                       onValueChange={(value) => {
+                        setJobError(null);
                         if (value === "create") {
-                          setIsCreatingOwner(true);
+                          setIsJobDialogOpen(true);
                         } else {
-                          setOwner(value === "none" ? undefined : value);
+                          setJobId(value === "none" ? undefined : value);
                         }
                       }}
-                      disabled={isLoadingOwners}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder={isLoadingOwners ? "Loading owners..." : "Select an owner"} />
+                        <SelectValue placeholder="Select a job" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {owners.map((ownerItem) => (
-                          <SelectItem key={ownerItem._id} value={ownerItem._id}>
-                            {ownerItem.name}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="create">+ Add New Owner</SelectItem>
+                        {Object.entries(jobsList).map(
+                          ([id, job]: [string, any]) => (
+                            <SelectItem key={id} value={id}>
+                              {job.title}
+                            </SelectItem>
+                          ),
+                        )}
+                        <SelectItem value="create">+ Create New Job</SelectItem>
                       </SelectContent>
                     </Select>
-                    {ownerError && (
-                      <p className="text-sm text-red-500 mt-1">{ownerError}</p>
+                    {jobError && (
+                      <p className="text-sm text-red-500 mt-1">{jobError}</p>
                     )}
-                  </>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <Input
-                      placeholder="New owner name"
-                      value={newOwnerName}
-                      onChange={(e) => setNewOwnerName(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={async () => {
-                          if (!newOwnerName.trim()) return;
-                          try {
-                            const response = await fetch("/api/owners", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ name: newOwnerName }),
-                            });
+                  </div>
+                </div>
+              )} */}
+
+              {/* Owner */}
+              <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="owner" className="text-right">Owner</Label>
+                <div className="col-span-3 space-y-2">
+                  {!isCreatingOwner ? (
+                    <>
+                      <Select
+                        value={owner || "none"}
+                        onValueChange={(value) => {
+                          if (value === "create") {
+                            setIsCreatingOwner(true);
+                          } else {
+                            setOwner(value === "none" ? undefined : value);
+                          }
+                        }}
+                        disabled={isLoadingOwners}
+                      >
+                        <SelectTrigger className="w-full">
+                        <SelectValue placeholder={isLoadingOwners ? "Loading owners..." : "Select an owner"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {owners.map((ownerItem) => (
+                          <SelectItem key={ownerItem._id} value={ownerItem._id}>
+                              {ownerItem.name}
+                            </SelectItem>
+                          ))}
+                        <SelectItem value="create">+ Add New Owner</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {ownerError && (
+                      <p className="text-sm text-red-500 mt-1">{ownerError}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Input
+                        placeholder="New owner name"
+                        value={newOwnerName}
+                        onChange={(e) => setNewOwnerName(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={async () => {
+                            if (!newOwnerName.trim()) return;
+                            try {
+                              const response = await fetch("/api/owners", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name: newOwnerName }),
+                              });
 
                             if (!response.ok) throw new Error("Failed to create owner");
 
-                            const createdOwner = await response.json();
-                            setOwners((prev) => [...prev, createdOwner]);
-                            setOwner(createdOwner._id);
-                            setNewOwnerName("");
-                            setIsCreatingOwner(false);
-                          } catch (error) {
-                            console.error("Error creating owner:", error);
+                              const createdOwner = await response.json();
+                              setOwners((prev) => [...prev, createdOwner]);
+                              setOwner(createdOwner._id);
+                              setNewOwnerName("");
+                              setIsCreatingOwner(false);
+                            } catch (error) {
+                              console.error("Error creating owner:", error);
                             setOwnerError("Failed to create owner. Try again.");
-                          }
-                        }}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setIsCreatingOwner(false);
-                          setNewOwnerName("");
-                          setOwnerError(null);
-                        }}
-                      >
-                        Cancel
-                      </Button>
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setIsCreatingOwner(false);
+                            setNewOwnerName("");
+                            setOwnerError(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Date */}
-            <div className="grid grid-cols-4 items-center gap-4">
+              {/* Date */}
+              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="date" className="text-right">Do Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date || ""}
-                onChange={(e) => setDate(e.target.value || undefined)}
-                className="col-span-3"
-              />
-            </div>
+                <Input
+                  id="date"
+                  type="date"
+                  value={date || ""}
+                  onChange={(e) => setDate(e.target.value || undefined)}
+                  className="col-span-3"
+                  required={isRecurring}
+                />
+              </div>
 
-            {/* Hours */}
-            <div className="grid grid-cols-4 items-center gap-4">
+              {/* Hours */}
+              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="requiredHours" className="text-right">Hours Required</Label>
-              <Input
-                id="requiredHours"
-                type="number"
-                min="0"
-                step="any"
-                value={requiredHours === undefined ? "" : requiredHours}
-                onChange={(e) => {
-                  const value = e.target.value;
+                <Input
+                  id="requiredHours"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={requiredHours === undefined ? "" : requiredHours}
+                  onChange={(e) => {
+                    const value = e.target.value;
                   setRequiredHours(value === "" ? undefined : parseFloat(value));
-                }}
-                className="col-span-3"
-              />
-            </div>
+                  }}
+                  className="col-span-3"
+                />
+              </div>
 
-            {/* Focus */}
-            <div className="grid grid-cols-4 items-center gap-4">
+              {/* RECURRING SECTION */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="isRecurring" className="text-right">
+                  Recurring
+                </Label>
+                <div className="col-span-3 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="isRecurring"
+                      checked={isRecurring}
+                      onCheckedChange={setIsRecurring}
+                    />
+                    <Label htmlFor="isRecurring" className="text-sm">
+                      Make this task recurring
+                    </Label>
+                  </div>
+                  
+                  {isRecurring && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Repeat every:</Label>
+                      <Select
+                        value={recurrenceInterval}
+                        onValueChange={(value) => setRecurrenceInterval(value as RecurrenceInterval)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select interval" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={RecurrenceInterval.Daily}>Daily</SelectItem>
+                          <SelectItem value={RecurrenceInterval.Weekly}>Weekly</SelectItem>
+                          <SelectItem value={RecurrenceInterval.Biweekly}>Biweekly</SelectItem>
+                          <SelectItem value={RecurrenceInterval.Monthly}>Monthly</SelectItem>
+                          <SelectItem value={RecurrenceInterval.Quarterly}>Quarterly</SelectItem>
+                          <SelectItem value={RecurrenceInterval.Annually}>Annually</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Focus */}
+              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="focusLevel" className="text-right">Focus Level</Label>
-              <div className="col-span-3">
-                <Select
-                  value={focusLevel || "none"}
-                  onValueChange={(value) =>
+                <div className="col-span-3">
+                  <Select
+                    value={focusLevel || "none"}
+                    onValueChange={(value) =>
                     value === "none" ? setFocusLevel(undefined) : setFocusLevel(value as FocusLevel)
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select focus level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select focus level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
                     <SelectItem value={FocusLevel.High}>{FocusLevel.High}</SelectItem>
                     <SelectItem value={FocusLevel.Medium}>{FocusLevel.Medium}</SelectItem>
                     <SelectItem value={FocusLevel.Low}>{FocusLevel.Low}</SelectItem>
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-            {/* Joy */}
-            <div className="grid grid-cols-4 items-center gap-4">
+              {/* Joy */}
+              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="joyLevel" className="text-right">Joy Level</Label>
-              <div className="col-span-3">
-                <Select
-                  value={joyLevel || "none"}
-                  onValueChange={(value) =>
+                <div className="col-span-3">
+                  <Select
+                    value={joyLevel || "none"}
+                    onValueChange={(value) =>
                     value === "none" ? setJoyLevel(undefined) : setJoyLevel(value as JoyLevel)
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select joy level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select joy level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
                     <SelectItem value={JoyLevel.High}>{JoyLevel.High}</SelectItem>
                     <SelectItem value={JoyLevel.Medium}>{JoyLevel.Medium}</SelectItem>
                     <SelectItem value={JoyLevel.Low}>{JoyLevel.Low}</SelectItem>
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-            {/* Tags */}
-            <div className="grid grid-cols-4 items-center gap-4">
+              {/* Tags */}
+              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tags" className="text-right">Tags</Label>
-              <div className="col-span-3">
-                <TagInput
-                  value={tags}
-                  onChange={setTags}
-                  placeholder="Add tags (press Enter after each tag)"
+                <div className="col-span-3">
+                  <TagInput
+                    value={tags}
+                    onChange={setTags}
+                    placeholder="Add tags (press Enter after each tag)"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Press Enter or comma after each tag, or click Add
+                  </p>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="notes" className="text-right">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={notes || ""}
+                  onChange={(e) => setNotes(e.target.value || undefined)}
+                  className="col-span-3 min-h-[100px]"
+                  placeholder="Add any notes for this task..."
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Press Enter or comma after each tag, or click Add
-                </p>
               </div>
             </div>
 
-            {/* Notes */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="notes" className="text-right">Notes</Label>
-              <Textarea
-                id="notes"
-                value={notes || ""}
-                onChange={(e) => setNotes(e.target.value || undefined)}
-                className="col-span-3 min-h-[100px]"
-                placeholder="Add any notes for this task..."
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting
-                ? "Saving..."
-                : mode === "create"
-                ? "Add Task"
-                : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            <DialogFooter>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "Saving..."
+                  : mode === "create"
+                    ? "Add Task"
+                    : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
   );
 }

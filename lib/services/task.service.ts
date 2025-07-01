@@ -1,3 +1,5 @@
+// lib/services/task.service.ts
+
 import Task from "../models/task.model";
 import { Task as TaskInterface } from "../models/task.model";
 import dbConnect from "../mongodb";
@@ -35,45 +37,173 @@ export class TaskService {
     }
   }
 
-  async createTask(
-    taskData: Partial<TaskInterface>,
-    userId: string
-  ): Promise<TaskInterface> {
-    try {
-      await dbConnect();
-      const task = new Task({
-        ...taskData,
-        userId,
-      });
-      const savedTask = await task.save();
-      return JSON.parse(JSON.stringify(savedTask));
-    } catch (error) {
-      throw new Error("Error creating task in database");
-    }
-  }
+async createTask(
+  taskData: Partial<TaskInterface>,
+  userId: string
+): Promise<TaskInterface> {
+  try {
+    await dbConnect();
+    
+    const taskWithDefaults = {
+      ...taskData,
+      userId,
+      isRecurring: taskData.isRecurring === true ? true : false,
+      recurrenceInterval: taskData.isRecurring ? taskData.recurrenceInterval : undefined,
+    };
 
-  async updateTask(
-    id: string,
-    userId: string,
-    updateData: Partial<TaskInterface>
-  ): Promise<TaskInterface | null> {
-    try {
-      await dbConnect();
+    const task = new Task();
+    task.title = taskWithDefaults.title!;
+    task.userId = taskWithDefaults.userId;
+    task.jobId = taskWithDefaults.jobId!;
+    task.isRecurring = taskWithDefaults.isRecurring;
+    task.recurrenceInterval = taskWithDefaults.recurrenceInterval;
+    task.owner = taskWithDefaults.owner;
+    task.date = taskWithDefaults.date;
+    task.requiredHours = taskWithDefaults.requiredHours;
+    task.focusLevel = taskWithDefaults.focusLevel;
+    task.joyLevel = taskWithDefaults.joyLevel;
+    task.notes = taskWithDefaults.notes;
+    task.tags = taskWithDefaults.tags;
+    task.completed = taskWithDefaults.completed || false;
+    task.isDeleted = false;
+    
+    const savedTask = await task.save();   
+    return JSON.parse(JSON.stringify(savedTask));
+  } catch (error) {
+    console.error("Error creating task:", error);
+    throw new Error("Error creating task in database");
+  }
+}
+
+async createNewRecurringTaskInstance(
+  originalTask: TaskInterface,
+  userId: string
+): Promise<TaskInterface | null> {
+  try {
+    await dbConnect();
+    
+    if (!originalTask || !originalTask.isRecurring) {
+      return null;
+    }
+    
+    const existingActiveInstance = await this.checkForExistingActiveInstance(
+      originalTask.title,
+      originalTask.jobId,
+      userId
+    );
+    
+    if (existingActiveInstance) {
+      return null;
+    }
+    
+let baseDate;
+if (originalTask.date) {
+  baseDate = new Date(originalTask.date);
+} else {
+  baseDate = new Date();
+  baseDate.setHours(0, 0, 0, 0);
+}
+
+let newDoDate = new Date(baseDate.getTime());
+
+switch (originalTask.recurrenceInterval) {
+  case 'Daily':
+    newDoDate.setDate(newDoDate.getDate() + 1);
+    break;
+  case 'Weekly':
+    newDoDate.setDate(newDoDate.getDate() + 7);
+    break;
+  case 'Biweekly':
+    newDoDate.setDate(newDoDate.getDate() + 14);
+    break;
+  case 'Monthly':
+    newDoDate.setMonth(newDoDate.getMonth() + 1);
+    break;
+  case 'Quarterly':
+    newDoDate.setMonth(newDoDate.getMonth() + 1);
+    break;
+  case 'Annually':
+    newDoDate.setMonth(newDoDate.getMonth() + 1);
+    break;
+  default:
+    newDoDate.setDate(newDoDate.getDate() + 1);
+}
+
+if (!originalTask.date) {
+  newDoDate.setHours(0, 0, 0, 0);
+}
+
+    const newTaskData: Partial<TaskInterface> = {
+      title: originalTask.title,
+      owner: originalTask.owner,
+      date: newDoDate,
+      requiredHours: originalTask.requiredHours,
+      focusLevel: originalTask.focusLevel,
+      joyLevel: originalTask.joyLevel,
+      notes: originalTask.notes,
+      tags: originalTask.tags,
+      jobId: originalTask.jobId,
+      isRecurring: originalTask.isRecurring,
+      recurrenceInterval: originalTask.recurrenceInterval,
+      completed: false,
+      isDeleted: false
+    };
+    
+    const newTask = await this.createTask(newTaskData, userId);
+    
+    return newTask;
+  } catch (error) {
+    console.error("Error creating new recurring task instance:", error);
+    throw new Error("Error creating new recurring task instance");
+  }
+}
+
+async checkForExistingActiveInstance(
+  taskTitle: string,
+  jobId: string,
+  userId: string
+): Promise<TaskInterface | null> {
+  try {
+    await dbConnect();
+    
+    const existingTask = await Task.findOne({
+      title: taskTitle,
+      jobId: jobId,
+      userId: userId,
+      completed: false,
+      isRecurring: true,
+      $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
+    }).lean();
+    
+    return existingTask ? JSON.parse(JSON.stringify(existingTask)) : null;
+  } catch (error) {
+    console.error("Error checking for existing active instance:", error);
+    throw new Error("Error checking for existing active task instance");
+  }
+}
+
+async updateTask(
+  id: string,
+  userId: string,
+  updateData: Partial<TaskInterface>
+): Promise<TaskInterface | null> {
+  try {
+    await dbConnect();
     // If requiredHours is not set or is null, default it to 0
     // if (updateData.requiredHours === undefined || updateData.requiredHours === null) {
     //   updateData.requiredHours = 0;
     // }      
-      const updatedTask = await Task.findOneAndUpdate(
-        { _id: id, userId },
-        { $set: updateData },
-        { new: true, runValidators: true }
-      ).lean();
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: id, userId },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).lean();
 
       return updatedTask ? JSON.parse(JSON.stringify(updatedTask)) : null;
-    } catch (error) {
-      throw new Error("Error updating task in database");
-    }
+  } catch (error) {
+    throw new Error("Error updating task in database");
   }
+}
 
   async deleteTask(id: string, userId: string): Promise<TaskInterface> {
     try {
@@ -105,20 +235,40 @@ export class TaskService {
     }
   }
 
-  async markCompleted(
-    id: string,
-    userId: string,
-    isCompleted: boolean
-  ): Promise<TaskInterface | null> {
-    try {
-      const updateData = {
-        completed: isCompleted,
-      };
-      return this.updateTask(id, userId, updateData);
-    } catch (error) {
-      throw new Error("Error setting task status");
+async markCompleted(
+  id: string,
+  userId: string,
+  isCompleted: boolean
+): Promise<TaskInterface | null> {
+  try {
+    const currentTask = await this.getTaskById(id, userId);
+    
+    if (!currentTask) {
+      throw new Error("Task not found");
     }
+    const updateData = { completed: isCompleted };
+    const updatedTask = await this.updateTask(id, userId, updateData);
+
+    if (!updatedTask) {
+      throw new Error("Failed to update task");
+    }
+
+    const wasNotCompleted = currentTask.completed === false;
+    const isBeingMarkedComplete = isCompleted === true;
+    const isRecurring = !!updatedTask.isRecurring;;
+
+    if (wasNotCompleted && isBeingMarkedComplete && isRecurring) {
+      try {
+        const newTask = await this.createNewRecurringTaskInstance(updatedTask, userId);
+      } catch (error) {
+        console.error("Error creating recurring task:", error);
+      }
+    }
+    return updatedTask;
+  } catch (error) {
+    throw new Error("Error setting task status");
   }
+}
 
   async getNextTasks(userId: string): Promise<TaskInterface[]> {
     try {

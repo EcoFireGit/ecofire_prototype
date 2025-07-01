@@ -1,10 +1,14 @@
+// components/tasks/tasks.card.tsx
+
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -16,15 +20,32 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { Task, FocusLevel, JoyLevel } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { useTaskContext } from "@/hooks/task-context";
+
+export enum RecurrenceInterval {
+    Daily = "Daily",
+    Weekly = "Weekly",
+    Biweekly = "Biweekly",
+    Monthly = "Monthly"
+}
 
 interface TaskCardProps {
     task: Task;
     onEdit: (task: Task) => void;
     onDelete: (id: string) => void;
     onComplete: (id: string, jobid: string, completed: boolean) => void;
+    onUpdateRecurrence?: (id: string, isRecurring: boolean, interval?: RecurrenceInterval) => void;
     ownerMap: Record<string, string>;
     onAddToCalendar?: (task: Task) => void; 
 }
@@ -34,11 +55,17 @@ export function TaskCard({
     onEdit,
     onDelete,
     onComplete,
+    onUpdateRecurrence,
     ownerMap,
     onAddToCalendar,
 }: TaskCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
+    const [isRecurringDialogOpen, setIsRecurringDialogOpen] = useState(false);
+    const [tempIsRecurring, setTempIsRecurring] = useState(task.isRecurring || false);
+    const [tempInterval, setTempInterval] = useState<RecurrenceInterval>(
+    (task.recurrenceInterval ?? RecurrenceInterval.Daily) as RecurrenceInterval
+    );
     const { refreshJobProgress } = useTaskContext();
 
     // Format the date
@@ -86,6 +113,28 @@ export function TaskCard({
         }
     };
 
+    const handleRecurrenceToggle = () => {
+        if (!task.isRecurring) {
+            setTempIsRecurring(true);
+            setIsRecurringDialogOpen(true);
+        } else {
+            onUpdateRecurrence?.(task.id, false);
+        }
+    };
+
+    const handleRecurrenceSubmit = () => {
+        onUpdateRecurrence?.(task.id, tempIsRecurring, tempInterval as RecurrenceInterval);
+        setIsRecurringDialogOpen(false);
+    };
+
+    const handleRecurrenceCancel = () => {
+        setTempIsRecurring(task.isRecurring || false);
+        setTempInterval(
+        (task.recurrenceInterval ?? RecurrenceInterval.Daily) as RecurrenceInterval
+        );
+        setIsRecurringDialogOpen(false);
+    };
+
     return (
         <div
             className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full`}
@@ -105,11 +154,21 @@ export function TaskCard({
 
                     {/* Content */}
                     <div className="flex-1">
-                        {/* Task title */}
+                        {/* Task title with recurring indicator */}
                         <div className="mb-4">
-                            <h3 className={`text-base font-bold ${task.completed ? "line-through text-gray-500" : ""}`}>
-                                {task.title}
-                            </h3>
+                            <div className="flex items-center gap-2">
+                                <h3 className={`text-base font-bold ${task.completed ? "line-through text-gray-500" : ""}`}>
+                                    {task.title}
+                                </h3>
+                                {task.isRecurring && (
+                                    <div className="flex items-center gap-1">
+                                        <RotateCcw className="h-4 w-4 text-blue-500" />
+                                        <span className="text-xs text-blue-500 font-medium">
+                                            {task.recurrenceInterval}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Task details */}
@@ -153,6 +212,18 @@ export function TaskCard({
                                     </div>
                                 )}
                             </div>
+                        </div>
+
+                        {/* Recurring toggle */}
+                        <div className="flex items-center gap-2 mt-2">
+                            <Switch
+                                checked={task.isRecurring || false}
+                                onCheckedChange={handleRecurrenceToggle}
+                                id={`recurring-${task.id}`}
+                            />
+                            <label htmlFor={`recurring-${task.id}`} className="text-sm text-gray-600">
+                                Recurring task
+                            </label>
                         </div>
 
                         {/* Tags */}
@@ -238,6 +309,58 @@ export function TaskCard({
                     </div>
                 </div>
             </div>
+
+            {/* Recurring Interval Selection Dialog */}
+            <Dialog open={isRecurringDialogOpen} onOpenChange={setIsRecurringDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Set Recurring Schedule</DialogTitle>
+                        <DialogDescription>
+                            Choose how often this task should repeat.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                checked={tempIsRecurring}
+                                onCheckedChange={setTempIsRecurring}
+                                id="recurring-toggle"
+                            />
+                            <label htmlFor="recurring-toggle" className="text-sm font-medium">
+                                Make this task recurring
+                            </label>
+                        </div>
+                        
+                        {tempIsRecurring && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Repeat every:</label>
+                                <Select
+                                    value={tempInterval}
+                                    onValueChange={(value) => setTempInterval(value as RecurrenceInterval)}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select interval" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={RecurrenceInterval.Daily}>Daily</SelectItem>
+                                        <SelectItem value={RecurrenceInterval.Weekly}>Weekly</SelectItem>
+                                        <SelectItem value={RecurrenceInterval.Biweekly}>Biweekly</SelectItem>
+                                        <SelectItem value={RecurrenceInterval.Monthly}>Monthly</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleRecurrenceCancel}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleRecurrenceSubmit}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

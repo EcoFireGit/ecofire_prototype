@@ -1,3 +1,5 @@
+// lib/services/job.service.ts
+
 import Task  from '../models/task.model';
 import Job from '../models/job.model';
 import { Jobs } from '../models/job.model';
@@ -6,35 +8,46 @@ import { Types } from 'mongoose';
 
 export class JobService {
   async setIncompleteTaskAsNextStep(jobId: string, taskId: string): Promise<Jobs | null> {
-    try {
-      await dbConnect();
-      const job = await Job.findById(jobId);
-      if(!job || !job.tasks){
-        throw new Error('Job or Tasks not found');
-      }
+  try {
+    await dbConnect();
+    const job = await Job.findById(jobId);
+    if(!job || !job.tasks){
+      throw new Error('Job or Tasks not found');
+    }
 
       if(!job.tasks.includes(taskId)){
         throw new Error('TaskId not found in job tasks');
       } 
-
-      if(job.nextTaskId !== taskId){
-        return job;
-      }
+    
+    if(job.nextTaskId !== taskId){
+      return job;
+    }
         //find the task from the array that is not comple
         // te and set it as nextTask
-      const nextTask = await this.getFirstIncompleteTask(job.tasks);
-      const updatedJob = await Job.findOneAndUpdate(
-        { _id: jobId },
-        { nextTaskId: nextTask }, // Specify the fields to update
-        { new: true }  // returns the updated document
-      );
+    const allJobTasks = await Task.find({ 
+      jobId: jobId,
+      $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }]
+    }).lean();
 
-      return updatedJob;
-    } catch (error) {
-      throw new Error('Error setting next TaskId in database');
-    }
+    const nextTask = allJobTasks.find((task: any) => 
+      !task.completed && 
+      String(task._id) !== taskId &&
+      !task.isDeleted
+    );
 
+    const nextTaskId = nextTask ? String(nextTask._id) : null;
+
+    const updatedJob = await Job.findOneAndUpdate(
+      { _id: jobId },
+      { nextTaskId: nextTaskId },
+      { new: true }
+    );
+
+    return updatedJob;
+  } catch (error) {
+    throw new Error('Error setting next TaskId in database');
   }
+}
 
   async  getFirstIncompleteTask(taskIds: string[]): Promise<string | null> {
     // Pull only the tasks you care about

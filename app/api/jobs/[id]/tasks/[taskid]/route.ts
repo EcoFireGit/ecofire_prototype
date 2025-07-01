@@ -1,3 +1,4 @@
+// app/api/jobs/[id]/tasks/[taskid]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskService } from '@/lib/services/task.service';
 import { JobService } from '@/lib/services/job.service';
@@ -20,12 +21,24 @@ export async function PUT( request: NextRequest,
     
     const userId = authResult.userId;
     const updateData = await request.json();
-    const updatedTask = await taskService.updateTask(taskid, userId!, updateData);
-   
-
-    if(updateData.completed === true){//set next task if nextTaskId is same as taskid
     
-      const updtedJob = await jobService.setIncompleteTaskAsNextStep(id, taskid);
+    let updatedTask;
+    
+    if ('completed' in updateData) {
+      updatedTask = await taskService.markCompleted(taskid, userId!, updateData.completed);
+      
+      const otherFields = { ...updateData };
+      delete otherFields.completed;
+      
+      if (Object.keys(otherFields).length > 0 && updatedTask) {
+        updatedTask = await taskService.updateTask(taskid, userId!, otherFields);
+      }
+    } else {
+      updatedTask = await taskService.updateTask(taskid, userId!, updateData);
+    }
+
+   if(updateData.completed === true){
+      const updatedJob = await jobService.setIncompleteTaskAsNextStep(id, taskid);
     }
 
     if (!updatedTask) {

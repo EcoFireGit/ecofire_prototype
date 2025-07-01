@@ -1,3 +1,5 @@
+// components/tasks/tasks-sidebar.tsx
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -21,7 +23,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { TaskDialog } from "./tasks-dialog";
-import { Task } from "./types";
+import { Task, RecurrenceInterval } from "./types";
 import { Job } from "@/components/jobs/table/columns";
 import { useToast } from "@/hooks/use-toast";
 import { NextTaskSelector } from "./next-task-selector";
@@ -65,6 +67,7 @@ interface SortableTaskItemProps {
   onComplete: (id: string, jobid: string, completed: boolean) => void;
   ownerMap: Record<string, string>;
   onAddToCalendar?: (task: Task) => void;
+  onUpdateRecurrence?: (id: string, isRecurring: boolean, interval?: RecurrenceInterval) => void;
 }
 
 // Sortable Task Item component with original UI plus Add to Calendar button
@@ -75,6 +78,7 @@ function SortableTaskItem({
   onComplete,
   ownerMap,
   onAddToCalendar,
+  onUpdateRecurrence,
 }: SortableTaskItemProps) {
   const {
     attributes,
@@ -115,6 +119,7 @@ function SortableTaskItem({
             onEdit={onEdit}
             onDelete={onDelete}
             onComplete={onComplete}
+            onUpdateRecurrence={onUpdateRecurrence}
             ownerMap={ownerMap}
             onAddToCalendar={onAddToCalendar}
           />
@@ -239,6 +244,8 @@ export function TasksSidebar({
           jobId: task.jobId,
           completed: task.completed,
           isNextTask: task._id === selectedJob.nextTaskId,
+          isRecurring: task.isRecurring || false,
+          recurrenceInterval: task.recurrenceInterval,
         }));
 
         // On initial load, sort tasks based on job.tasks array
@@ -301,6 +308,18 @@ export function TasksSidebar({
     }
   };
 
+    useEffect(() => {
+  const handleTaskRefresh = (event: any) => {
+    if (event.detail.jobId === selectedJob?.id) {
+      console.log("🔄 Refreshing tasks for job:", event.detail.jobId);
+      fetchTasks();
+    }
+  };
+
+  window.addEventListener("refresh-tasks", handleTaskRefresh);
+  return () => window.removeEventListener("refresh-tasks", handleTaskRefresh);
+}, [selectedJob, fetchTasks]);
+
   const handleAddTask = () => {
     setDialogMode("create");
     setCurrentTask(undefined);
@@ -312,6 +331,64 @@ export function TasksSidebar({
     setCurrentTask(task);
     setTaskDialogOpen(true);
   };
+
+  const handleUpdateRecurrence = async (
+  taskId: string,
+  isRecurring: boolean,
+  interval?: RecurrenceInterval
+) => {
+  try {
+    const updateData: any = {
+      isRecurring,
+    };
+    
+    if (isRecurring && interval) {
+      updateData.recurrenceInterval = interval;
+    }
+
+    const response = await fetch(`/api/tasks/${taskId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updateData),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      setTasks(
+        tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isRecurring,
+                recurrenceInterval: interval,
+              }
+            : task
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: `Task ${isRecurring ? 'set as recurring' : 'recurring disabled'} successfully`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to update task recurring settings",
+        variant: "destructive",
+      });
+    }
+  } catch (error) {
+    console.error("Error updating task recurrence:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update task recurring settings",
+      variant: "destructive",
+    });
+  }
+};
 
   const handleDeleteTask = async (id: string) => {
     try {
@@ -350,65 +427,71 @@ export function TasksSidebar({
   };
 
   const handleCompleteTask = async (
-    id: string,
-    jobid: string,
-    completed: boolean,
-  ) => {
-    try {
-      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ completed }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        // Use the function form of setState to ensure you're working with the latest state
-        setTasks((prevTasks) => {
-          const updatedTasks = prevTasks.map((task) => {
-            if (task.id === id){
-              return {
-                ...task,
-                completed,
-                isNextTask: completed? false : task.isNextTask,
-              };
-            }
-            return task;
-          });
-
-          return updatedTasks.sort((a,b) => {
-              if (a.isNextTask && !a.completed) return -1;
-              if (b.isNextTask && !b.completed) return 1;
-
-              if (!a.completed && b.completed) return -1;
-              if (a.completed && !b.completed) return 1;
-
-              return 0;
-          })
-        });
-
-        // Then trigger a refresh of the job progress
-        refreshJobProgress(jobid);
-        setTimeout(() => {
-          saveTasksOrderSilently();
-        }, 100)
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update task",
-          variant: "destructive",
-        });
+  id: string,
+  jobid: string,
+  completed: boolean,
+) => {
+  try {
+    const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ completed }),
+    });
+    const result = await response.json();
+    if (result.success) {
+      await fetchTasks();
+try {
+  const jobResponse = await fetch(`/api/jobs/${jobid}`);
+  if (jobResponse.ok) {
+    const jobResult = await jobResponse.json();
+    if (jobResult.success && selectedJob) {
+      selectedJob.nextTaskId = jobResult.data.nextTaskId;
+      setNextTaskId(jobResult.data.nextTaskId);
+      const newNextTaskId = jobResult.data.nextTaskId;
+      
+      setTasks(currentTasks => 
+        currentTasks.map(task => ({
+          ...task,
+          isNextTask: task.id === newNextTaskId
+        }))
+      );
+    }
+  }
+} catch (jobError) {
+  console.error("Error fetching updated job:", jobError);
+}
+      if (typeof onRefreshJobs === "function") {
+        onRefreshJobs();
       }
-    } catch (error) {
-      console.error("Error updating task:", error);
+
+      // Then trigger a refresh of the job progress
+      refreshJobProgress(jobid);
+      setTimeout(() => {
+        saveTasksOrderSilently();
+      }, 100);
+
+      toast({
+        title: "Success",
+        description: `Task ${completed ? 'completed' : 'marked incomplete'} successfully`,
+      });
+    } else {
       toast({
         title: "Error",
         description: "Failed to update task",
         variant: "destructive",
       });
     }
-  };
+  } catch (error) {
+    console.error("Error updating task:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update task",
+      variant: "destructive",
+    });
+  }
+};
 
   const handleNextTaskChange = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
@@ -536,6 +619,8 @@ export function TasksSidebar({
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: false,
+            isRecurring: result.data.isRecurring || false,
+            recurrenceInterval: result.data.recurrenceInterval,
           };
 
           // Add task ID to job's tasks array
@@ -590,6 +675,8 @@ export function TasksSidebar({
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: result.data._id === nextTaskId,
+            isRecurring: result.data.isRecurring || false,
+            recurrenceInterval: result.data.recurrenceInterval,
           };
 
           // If the task completion status changed, trigger a progress update
@@ -1071,6 +1158,7 @@ export function TasksSidebar({
                           onEdit={handleEditTask}
                           onDelete={handleDeleteTask}
                           onComplete={handleCompleteTask}
+                          onUpdateRecurrence={handleUpdateRecurrence}
                           ownerMap={ownerMap}
                           onAddToCalendar={handleAddToCalendar}
                         />
