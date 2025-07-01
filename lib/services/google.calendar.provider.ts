@@ -33,8 +33,7 @@ export async function getCalendar(
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
     return calendar;
   } catch (error) {
-    console.log("Error in getCalendar" + error);
-    throw new Error("Error getting calendar object");
+    console.error("Error in getCalendar" + error);
   }
 }
 
