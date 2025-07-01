@@ -32,15 +32,6 @@ export function calculateTimeElapsed(startDate: Date, endDate: Date): string {
   }
   
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) {
-    return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-  }
+  return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
   
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) {
-    return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`;
-  }
-  
-  const diffMonths = Math.floor(diffDays / 30);
-  return `${diffMonths} month${diffMonths !== 1 ? 's' : ''}`;
 }
