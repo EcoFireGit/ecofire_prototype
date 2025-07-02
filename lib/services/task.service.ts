@@ -3,6 +3,7 @@ import { Task as TaskInterface } from "../models/task.model";
 import dbConnect from "../mongodb";
 import Job from "../models/job.model"; // Import the Job model
 import { calculateTimeElapsed } from "../utils/time-calculator";
+import { start } from "repl";
 
 export class TaskService {
   /**
@@ -176,7 +177,16 @@ export class TaskService {
         
         if (existingTask?.createdDate) {
           try {
-            const timeElapsed = calculateTimeElapsed(existingTask.createdDate, now);
+            var startDate;
+            if ((existingTask.date) && (existingTask.date <= now)){
+                startDate = existingTask.date;
+            }
+            else{
+              startDate = existingTask.createdDate;
+            }
+            
+            
+            const timeElapsed = calculateTimeElapsed(startDate, now);
             updateData.timeElapsed = timeElapsed;
           } catch (timeError) {
             console.error("Error calculating time elapsed:", timeError);
