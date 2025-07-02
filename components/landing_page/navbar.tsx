@@ -30,6 +30,7 @@ function convertJobsToTableData(
 
     return {
       id: job._id,
+      jobNumber: job.jobNumber,
       title: job.title,
       notes: job.notes || undefined,
       businessFunctionId: job.businessFunctionId || undefined,
@@ -526,6 +527,10 @@ const Navbar = () => {
     }
   };
 
+  const openQuickGuide = () => {
+    window.open("https://coda.io/@urvashi-batra/prioriwise-getting-started-guide", "_blank");
+  };
+
   const handleStartTourClick = () => {
     if (pathname === "/jobs") {
       const timestamp = Date.now();
@@ -658,10 +663,13 @@ const Navbar = () => {
             >
               <div className="space-y-3">
                 <h4 className="font-medium text-base">Need help?</h4>
-                <p className="text-sm text-gray-500">
-                  Get familiar with our interface by taking a guided tour of the
-                  main features.
-                </p>
+                
+                <Button
+                className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
+                onClick={openQuickGuide}
+              >
+                Get Quick Guide
+              </Button>
                 <Button
                   className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
                   onClick={handleStartTourClick}

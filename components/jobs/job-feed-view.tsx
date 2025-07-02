@@ -34,6 +34,7 @@ function convertJobsToTableData(
 
     return {
       id: job._id,
+      jobNumber: job.jobNumber,
       title: job.title,
       notes: job.notes || undefined,
       businessFunctionId: job.businessFunctionId || undefined,
@@ -704,20 +705,24 @@ export default function JobsPage() {
     }
   }, [loading, activeJobs, completedJobs, activeFilters]);
   
+  
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const jobIdToOpen = params.get("openTaskSidebarFor");
     if (jobIdToOpen) {
+      // Find the job in active or completed jobs
       const job =
         activeJobs.find((j) => j.id === jobIdToOpen) ||
         completedJobs.find((j) => j.id === jobIdToOpen);
       if (job) {
         handleOpenTasksSidebar(job);
+        // Remove the param so it doesn't reopen on further updates
         params.delete("openTaskSidebarFor");
         window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
       }
     }
   }, [activeJobs, completedJobs]);
+  
   const handleActiveSortChange = (sortedJobs: Job[]) => {
     setSortedActiveJobs(sortedJobs);
   };
@@ -745,6 +750,8 @@ export default function JobsPage() {
 
       const result = await response.json();
 
+     
+
       if (result.success) {
         toast({
           title: "Success",
@@ -752,6 +759,10 @@ export default function JobsPage() {
         });
         await fetchJobs(); // Wait to fetch new jobs before closing dialog
         setDialogOpen(false);
+       
+         
+  
+
       } else {
         throw new Error(result.error);
       }

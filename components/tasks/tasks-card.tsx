@@ -26,6 +26,7 @@ interface TaskCardProps {
     onDelete: (id: string) => void;
     onComplete: (id: string, jobid: string, completed: boolean) => void;
     ownerMap: Record<string, string>;
+    onAddToCalendar?: (task: Task) => void; 
 }
 
 export function TaskCard({
@@ -33,7 +34,8 @@ export function TaskCard({
     onEdit,
     onDelete,
     onComplete,
-    ownerMap
+    ownerMap,
+    onAddToCalendar,
 }: TaskCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
@@ -174,6 +176,21 @@ export function TaskCard({
 
                     {/* Action buttons */}
                     <div className={`flex gap-1 ${isHovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
+                        {onAddToCalendar && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAddToCalendar(task);
+                                }}
+                                title="Add to calendar"
+                            >
+                                <Calendar className="h-4 w-4" />
+                            </Button>
+                        )}
+
                         <Button
                             variant="ghost"
                             size="icon"

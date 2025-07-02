@@ -14,6 +14,7 @@ export interface Jobs extends mongoose.Document {
   tasks?: string[]; // Array of task IDs associated with this job
   // owner field removed as it's now derived from the next task's owner
   isDeleted: boolean; // Soft delete flag
+  jobNumber: number;
 }
 
 enum level {
@@ -73,6 +74,11 @@ const JobSchema = new mongoose.Schema<Jobs>({
     type: Boolean,
     default: false,
     required: true
+  },
+  jobNumber: {
+    type: Number,
+    required: true,
+    index: true
   }
 });
 
