@@ -23,7 +23,9 @@ export interface Task extends mongoose.Document {
   userId: string;
   completed: boolean;
   isDeleted: boolean; // Soft delete flag
-
+  createdDate: Date;
+  endDate?: Date | null;
+  timeElapsed?: string | null;
   // nextTask: boolean; // New property to mark task as next
 }
 const TaskSchema = new mongoose.Schema<Task>({
@@ -88,6 +90,21 @@ const TaskSchema = new mongoose.Schema<Task>({
   //   default: false,
   //   required: true
   // }
+  createdDate: {
+    type: Date,
+    default: Date.now,
+    required: true
+  },
+  endDate: {
+    type: Date,
+    required: false,
+    default: null
+  },
+  timeElapsed: {
+    type: String,
+    required: false,
+    default: null
+  },
 });
 
 // Create a compound index to ensure only one task per job is marked as next
