@@ -4,9 +4,9 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard, Archive, Sparkles } from "lucide-react";
+import { Clipboard, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import TextareaAutosize from 'react-textarea-autosize';
+import TextareaAutosize from "react-textarea-autosize";
 
 interface ChatSession {
   _id: string;
@@ -20,52 +20,64 @@ interface ChatSession {
   updatedAt: string;
 }
 
-interface ChatResponse {
-  chats: ChatSession[];
-  total: number;
-  hasMore: boolean;
-}
-
-interface ProcessedMessage {
+interface Task {
   id: string;
-  role: "user" | "assistant";
-  content: string;
-  html?: string;
+  name: string;
 }
 
-// Utility to shuffle an array in place
-function shuffleArray<T>(array: T[]): T[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+interface Job {
+  id: string;
+  title: string;
+  impactValue?: number;
+  tasks?: Task[];
+}
+
+const WELCOME_MESSAGES = [
+  "👋 Welcome back! What can I help you accomplish today?",
+  "Hi there! Ready to tackle your top priorities?",
+  "Welcome! Ask me anything about your jobs or tasks.",
+  "Hello again! What job are we working on today?",
+  "Hey! How can I assist you with your current goals?"
+];
+
+// Utility to robustly extract JSON array of suggestions from a string (handles code blocks, plain text, etc)
+function extractJsonArray(text: string): string[] {
+  // Remove triple backtick code block and optional language
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]+?)\s*```/im;
+  let jsonStr = text;
+
+  // If inside code block, extract inner content
+  const match = text.match(codeBlockRegex);
+  if (match) {
+    jsonStr = match[1];
   }
-  return arr;
+
+  // Try to parse JSON array
+  try {
+    const parsed = JSON.parse(jsonStr.trim());
+    if (Array.isArray(parsed)) return parsed;
+  } catch {}
+
+  // Fallback: parse line by line, removing bullets and quotes
+  return jsonStr
+    .split("\n")
+    .map((s) => s.replace(/^- /, "").replace(/^["']|["']$/g, "").trim())
+    .filter(
+      (line) =>
+        !!line &&
+        !/^```/i.test(line) && // remove stray ```
+        !/^These Image numbers:/i.test(line) &&
+        !/may be referenced by subsequent user messages\./i.test(line) &&
+        line !== "["
+    );
 }
-
 export default function Chat() {
-  const welcomeMessages = [
-    "Welcome! How can I help you today?",
-    "Hi there! What would you like to talk about?",
-    "Hello! Ask me anything.",
-    "Ready when you are. What's on your mind?",
-    "Greetings! How can I assist you?",
-    "Hey! I'm here to help—what do you need?",
-    "Good to see you! How can I support you today?",
-    "Hi! Feel free to ask me anything at all.",
-    "Need assistance? I'm just a message away!",
-    "Let’s get started. What can I do for you?",
-    "Hello there! Got questions? I've got answers.",
-    "Hi! What brings you here today?",
-    "Welcome back! How can I be of service?"
-  ];
-
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [processedMessages, setProcessedMessages] = useState<ProcessedMessage[]>([]);
+  const [processedMessages, setProcessedMessages] = useState<any[]>([]);
   const [showArchive, setShowArchive] = useState(false);
   const archiveRef = useRef<HTMLDivElement>(null);
   const LIMIT = 3;
@@ -73,9 +85,10 @@ export default function Chat() {
   const searchParams = useSearchParams();
   const jobTitle = searchParams.get("jobTitle");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [hasAutoLoadedLatestChat, setHasAutoLoadedLatestChat] = useState(false);
-  const [welcomeText, setWelcomeText] = useState("");
-  const [recommendedPrompts, setRecommendedPrompts] = useState<string[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [welcomeMessage, setWelcomeMessage] = useState<string>("");
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const {
     error,
@@ -90,135 +103,77 @@ export default function Chat() {
     setInput,
   } = useChat({
     id: selectedChatId || undefined,
-    onFinish(message, { usage, finishReason }) {
+    onFinish() {
       setPage(0);
       fetchRecentChats(0);
     },
   });
 
-  // Set initial welcome text
+  // Fetch Jobs
   useEffect(() => {
-    setWelcomeText(
-      welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]
-    );
-  }, []);
-
-  // Generate and shuffle recommended prompts based on chat content.
-  // Triggered when a chat is loaded or closed (selectedChatId changes).
-  useEffect(() => {
-    const getPromptsForChat = () => {
-      // If user is searching for a job
-      if (jobTitle) {
-        return [
-          `What are the most important skills for a "${jobTitle}"?`,
-          `Can you help me prepare for a "${jobTitle}" interview?`,
-          `Show me recent trends in the "${jobTitle}" field.`,
-          `What are good certifications for a "${jobTitle}"?`,
-          `Suggest some projects to build as a "${jobTitle}".`,
-        ];
-      } else if (selectedChatId && processedMessages.length > 0) {
-        // Use the last user and assistant messages for context
-        const lastUserMsg = [...processedMessages].reverse().find(m => m.role === "user")?.content;
-        const lastAssistantMsg = [...processedMessages].reverse().find(m => m.role === "assistant")?.content;
-        return [
-          lastUserMsg ? `Can you expand on: "${lastUserMsg.slice(0, 40)}..."?` : "Can you elaborate on my last question?",
-          "What should I ask next based on this conversation?",
-          lastAssistantMsg ? `Summarize your last answer: "${lastAssistantMsg.slice(0, 40)}..."` : "Summarize the main points from our conversation.",
-          "Give me a list of follow-up questions.",
-          "What should be my next action based on this chat?"
-        ];
-      } else if (recentChats.length > 0) {
-        // Suggest follow-up based on last chat
-        const lastChat = recentChats[0];
-        const lastUserMsg = lastChat.messages.find(m => m.role === "user")?.content;
-        return [
-          lastUserMsg ? `Can you expand on: "${lastUserMsg.slice(0, 40)}..."?` : "Can you elaborate on my last question?",
-          "What should I ask next based on my previous chat?",
-          "Summarize the main points from my last conversation.",
-          "What did I talk about in my last session?",
-          "How can I continue from my last chat?"
-        ];
-      } else if (userId) {
-        // General personalized prompts
-        return [
-          "What are the best productivity tips for me?",
-          "How can I improve my technical skills?",
-          "Suggest some learning resources for my career growth.",
-          "How do I set effective goals?",
-          "What are some good daily habits?"
-        ];
-      } else {
-        // Generic fallback
-        return [
-          "What can you help me with today?",
-          "Give me tips to get started.",
-          "How does this assistant work?",
-          "Show me some example questions.",
-          "What topics can I ask you about?"
-        ];
+    const fetchJobs = async () => {
+      try {
+        const response = await fetch("/api/jobs");
+        if (response.ok) {
+          const jobsData = await response.json();
+          const jobsArr = Array.isArray(jobsData.data) ? jobsData.data : [];
+          setJobs(jobsArr);
+        }
+      } catch (e) {
+        setJobs([]);
       }
     };
+    fetchJobs();
+  }, []);
 
-    // Pick 3 shuffled prompts
-    const prompts = getPromptsForChat();
-    setRecommendedPrompts(shuffleArray(prompts).slice(0, 3));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedChatId, processedMessages.length, recentChats.length, jobTitle, userId]);
-
-  // Set prefilled input when jobTitle is present
+  // Prefill input if jobTitle is present
   useEffect(() => {
     if (jobTitle) {
-      setInput(`Can you help me with doing "${jobTitle}?"`);
+      setInput(`Can you help me with the job "${jobTitle}"?`);
     }
   }, [jobTitle, setInput]);
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [input]);
 
-  // Close archive dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (archiveRef.current && !archiveRef.current.contains(event.target as Node)) {
         setShowArchive(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [archiveRef]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const processMessages = async () => {
       if (messages.length) {
         const processed = await Promise.all(
           messages.map(async (msg) => {
-            if (msg.role === "user" || msg.role === "assistant") {
-              if (msg.role === "assistant") {
-                try {
-                  const response = await fetch("/api/markdown", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ markdown: msg.content }),
-                  });
-                  if (response.ok) {
-                    const { html } = await response.json();
-                    return { ...msg, html };
-                  }
-                } catch (error) {
-                  console.error("Error processing markdown:", error);
+            if (msg.role === "assistant") {
+              try {
+                const response = await fetch("/api/markdown", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ markdown: msg.content }),
+                });
+                if (response.ok) {
+                  const { html } = await response.json();
+                  return { ...msg, html };
                 }
+              } catch {
+                // ignore
               }
-              return msg;
             }
-            return null;
-          }),
+            return msg;
+          })
         );
-        setProcessedMessages(
-          processed.filter((msg) => msg !== null) as ProcessedMessage[],
-        );
+        setProcessedMessages(processed);
       } else {
         setProcessedMessages([]);
       }
@@ -226,15 +181,150 @@ export default function Chat() {
     processMessages();
   }, [messages]);
 
+  // Fetch recent chats on mount
+  useEffect(() => {
+    fetchRecentChats(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // When recentChats is updated, auto-open the last conversation if none is open
+  useEffect(() => {
+    if (recentChats.length > 0 && !selectedChatId) {
+      // Sort by updatedAt descending just in case
+      const sorted = [...recentChats].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+      setSelectedChatId(sorted[0].chatId);
+      loadChatSession(sorted[0].chatId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recentChats]);
+
+  // Welcome message
+  useEffect(() => {
+    setWelcomeMessage(
+      WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]
+    );
+  }, []);
+
+  // Suggestions: update on chat open, jobs, or messages change (FIX)
+  useEffect(() => {
+    const fetchAISuggestions = async () => {
+      // If a conversation is open, use its context. Otherwise, use top jobs for suggestions.
+      let contextJobTitles: string[] = [];
+      let contextJobTasks: { [jobTitle: string]: string[] } = {};
+      let convoContext: string[] = [];
+
+      if (selectedChatId && messages.length > 0) {
+        // Use last few messages for context (up to 10 exchanges)
+        convoContext = messages.slice(-10).map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
+        // Try to infer job(s) from user's messages, fallback to showing top jobs
+        for (const msg of messages) {
+          if (msg.role === "user") {
+            jobs.forEach((job) => {
+              if (
+                msg.content
+                  .toLocaleLowerCase()
+                  .includes(job.title.toLocaleLowerCase())
+              ) {
+                contextJobTitles.push(job.title);
+                if (job.tasks) {
+                  contextJobTasks[job.title] = job.tasks.map((t) => t.name);
+                }
+              }
+            });
+          }
+        }
+        // If no jobs mentioned in context, use top 3 jobs
+        if (contextJobTitles.length === 0) {
+          const jobsWithImpact = [...jobs].sort(
+            (a, b) => (b.impactValue || 0) - (a.impactValue || 0)
+          );
+          contextJobTitles = jobsWithImpact.slice(0, 3).map((j) => j.title);
+          jobsWithImpact.slice(0, 3).forEach((job) => {
+            if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
+          });
+        }
+      } else {
+        // No convo open: use top jobs and empty context
+        const jobsWithImpact = [...jobs].sort(
+          (a, b) => (b.impactValue || 0) - (a.impactValue || 0)
+        );
+        contextJobTitles = jobsWithImpact.slice(0, 3).map((j) => j.title);
+        jobsWithImpact.slice(0, 3).forEach((job) => {
+          if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
+        });
+        convoContext = [];
+      }
+
+      if (contextJobTitles.length === 0) {
+        setAiSuggestions([]);
+        return;
+      }
+      setLoadingSuggestions(true);
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            generateSuggestionsForJobs: contextJobTitles.map((title) => ({
+              title,
+              tasks: contextJobTasks[title] ?? [],
+            })),
+            conversationContext: convoContext,
+          }),
+        });
+        const data = await response.json();
+        let all: string[] = [];
+        if (Array.isArray(data.suggestions)) {
+          for (const sug of data.suggestions) {
+            if (Array.isArray(sug.suggestions)) {
+              sug.suggestions.forEach((s: string) => {
+                extractJsonArray(s).forEach(str => all.push(str));
+              });
+            }
+            if (all.length >= 3) break;
+          }
+        }
+        setAiSuggestions(all.slice(0, 3));
+      } catch {
+        setAiSuggestions([]);
+      }
+      setLoadingSuggestions(false);
+    };
+    fetchAISuggestions();
+    // Only re-run when selectedChatId, jobs, or messages (for the open chat) change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChatId, JSON.stringify(jobs), JSON.stringify(messages)]);
+
+  // Always show suggestions bar, even if no convo is open
+  const suggestionsBar = (
+    <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center"
+         style={{ borderRadius: "0 0 0.75rem 0.75rem" }}>
+      {loadingSuggestions && (
+        <span className="text-gray-400 text-sm">Loading suggestions...</span>
+      )}
+      {!loadingSuggestions &&
+        aiSuggestions.slice(0, 3).map((suggestion, idx) => (
+          <button
+            key={idx}
+            type="button"
+            className="transition bg-blue-50 border border-blue-100 text-blue-800 text-xs md:text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-100 hover:border-blue-200 focus:outline-none"
+            onClick={() => setInput(suggestion)}
+          >
+            {suggestion}
+          </button>
+        ))}
+    </div>
+  );
+
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
     try {
       const skip = pageToFetch * LIMIT;
-      const response = await fetch(
-        `/api/recent-chats?limit=${LIMIT}&skip=${skip}`,
-      );
+      const response = await fetch(`/api/recent-chats?limit=${LIMIT}&skip=${skip}`);
       if (response.ok) {
-        const data = (await response.json()) as ChatResponse;
+        const data = await response.json();
         if (pageToFetch === 0) {
           setRecentChats(data.chats);
         } else {
@@ -242,9 +332,7 @@ export default function Chat() {
         }
         setHasMoreChats(data.hasMore);
       }
-    } catch (error) {
-      console.error("Error fetching recent chats:", error);
-    }
+    } catch {}
   };
 
   const loadMoreChats = async () => {
@@ -269,36 +357,15 @@ export default function Chat() {
               id: `msg-${index}`,
               role: msg.role,
               content: msg.content,
-            }),
+            })
           );
           setTimeout(() => {
             setMessages(formattedMessages);
           }, 10);
         }
-      } else {
-        console.error("Failed to fetch chat history:", response.status);
       }
-    } catch (error) {
-      console.error("Error loading chat session:", error);
-    }
+    } catch {}
   };
-
-  useEffect(() => { fetchRecentChats(); }, [userId]);
-
-  useEffect(() => {
-    if (
-      !selectedChatId &&
-      recentChats.length > 0 &&
-      !hasAutoLoadedLatestChat &&
-      !jobTitle
-    ) {
-      const latestChat = recentChats[0];
-      if (latestChat && latestChat.chatId) {
-        loadChatSession(latestChat.chatId);
-        setHasAutoLoadedLatestChat(true);
-      }
-    }
-  }, [recentChats, selectedChatId, hasAutoLoadedLatestChat]);
 
   const getChatPreview = (chat: ChatSession) => {
     const userMessage =
@@ -324,7 +391,7 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 p-10 mx-auto">
-      {/* Header - Fixed at the top */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-6 w-full">
         <h1 className="text-2xl font-bold">Jija Assistant</h1>
         <div className="flex items-center gap-2">
@@ -366,6 +433,7 @@ export default function Chat() {
                           }`}
                           onClick={(e) => {
                             e.preventDefault();
+                            setSelectedChatId(chat.chatId);
                             loadChatSession(chat.chatId);
                             setShowArchive(false);
                           }}
@@ -407,16 +475,15 @@ export default function Chat() {
           )}
         </div>
       </div>
+
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
         {/* Chat Messages */}
         <div className="flex flex-col space-y-4">
-          {processedMessages.map((m) => (
+          {processedMessages.map((m, i) => (
             <div
-              key={m.id}
-              className={`flex ${
-                m.role === "user" ? "justify-end" : "justify-start"
-              }`}
+              key={m.id || i}
+              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`whitespace-pre-wrap p-3 rounded-lg relative max-w-[80%] ${
@@ -432,7 +499,7 @@ export default function Chat() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(m.content);
-                      const button = document.getElementById(`copy-btn-${m.id}`);
+                      const button = document.getElementById(`copy-btn-${m.id || i}`);
                       if (button) {
                         button.classList.add("text-green-500");
                         setTimeout(() => {
@@ -440,7 +507,7 @@ export default function Chat() {
                         }, 2000);
                       }
                     }}
-                    id={`copy-btn-${m.id}`}
+                    id={`copy-btn-${m.id || i}`}
                     className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1 rounded"
                     title="Copy message"
                   >
@@ -461,61 +528,41 @@ export default function Chat() {
             </div>
           ))}
         </div>
+
         {(status === "submitted" || status === "streaming") && (
           <div className="mt-4 text-gray-500">
             {status === "submitted" && <div>Loading...</div>}
-            <button
+            <Button
               type="button"
               className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
               onClick={stop}
             >
               Stop
-            </button>
+            </Button>
           </div>
         )}
         {error && (
           <div className="mt-4">
             <div className="text-red-500">An error occurred.</div>
-            <button
+            <Button
               type="button"
               className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
               onClick={() => reload()}
             >
               Retry
-            </button>
+            </Button>
           </div>
         )}
-        <div className="fixed bottom-0 w-full max-w-4xl mb-8">
 
-          {selectedChatId === null && (
-            <div className="mb-2 text-lg text-gray-700 font-semibold text-center">
-              {welcomeText}
+        {/* --- Welcome message, suggestions bar, and input at the bottom --- */}
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-4xl bg-white z-50 shadow-[0_-2px_16px_#0001] rounded-b-2xl px-3 pt-2">
+          {welcomeMessage && (
+            <div className="w-full pb-1 text-center text-base md:text-lg text-gray-700 font-semibold tracking-tight">
+              {welcomeMessage}
             </div>
           )}
-
-          {/* Recommended prompts */}
-          {recommendedPrompts.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-              {recommendedPrompts.map((prompt, idx) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  className="flex items-center gap-1 px-3 py-1 rounded-full border border-gray-300 bg-gray-100 hover:bg-blue-100 hover:text-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  onClick={() => {
-                    setInput(prompt);
-                    if (textareaRef.current) {
-                      textareaRef.current.focus();
-                    }
-                  }}
-                >
-                  <Sparkles size={16} className="text-blue-500" />
-                  <span className="text-sm">{prompt}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="relative flex items-center">
+          {suggestionsBar}
+          <form onSubmit={handleSubmit} className="relative flex items-center pb-2">
             <TextareaAutosize
               className="w-full p-2 border border-gray-300 rounded shadow-xl resize-none pr-10"
               value={input}
@@ -523,9 +570,9 @@ export default function Chat() {
               onChange={handleInputChange}
               disabled={status !== "ready"}
               ref={textareaRef}
-              style={{ overflow: 'hidden', lineHeight: '28px' }}
+              style={{ overflow: "hidden", lineHeight: "28px" }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   if (input.trim() && status === "ready") {
                     handleSubmit(e);
