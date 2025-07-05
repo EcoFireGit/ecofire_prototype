@@ -61,13 +61,10 @@ export function TaskDialog({
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
-  const [date, setDate] = useState<string | undefined>(undefined);
-  const [requiredHours, setRequiredHours] = useState<number | undefined>(
-    undefined,
-  );
-  const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(
-    undefined,
-  );
+  // Use string for clearable date input
+  const [date, setDate] = useState<string>(""); 
+  const [requiredHours, setRequiredHours] = useState<number | undefined>(undefined);
+  const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(undefined);
   const [joyLevel, setJoyLevel] = useState<JoyLevel | undefined>(undefined);
   const [notes, setNotes] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,14 +119,13 @@ export function TaskDialog({
     if (mode === "create") {
       setTitle("");
       setOwner(undefined);
-      setDate(undefined);
+      setDate(""); // use empty string for clearable
       setRequiredHours(undefined);
       setFocusLevel(undefined);
       setJoyLevel(undefined);
       setNotes(undefined);
       setTags([]);
       if (!propJobId) {
-        // If no jobId prop, reset to undefined
         setJobId(undefined);
       }
     } else if (initialData) {
@@ -138,7 +134,7 @@ export function TaskDialog({
       if (initialData.date) {
         setDate(new Date(initialData.date).toISOString().split("T")[0]);
       } else {
-        setDate(undefined);
+        setDate(""); // use empty string
       }
       setRequiredHours(initialData.requiredHours);
       setFocusLevel(initialData.focusLevel);
@@ -262,7 +258,12 @@ export function TaskDialog({
       if (jobId) task.jobId = jobId;
 
       if (owner) task.owner = owner;
-      if (date) task.date = `${date}T00:00:00.000Z`;
+      // Due date clearable logic
+      if (date) {
+        task.date = `${date}T00:00:00.000Z`;
+      } else {
+        task.date = ""; // Explicitly clear date if empty
+      }
       if (requiredHours !== undefined) task.requiredHours = requiredHours;
       if (focusLevel) task.focusLevel = focusLevel;
       if (joyLevel) task.joyLevel = joyLevel;
@@ -325,7 +326,7 @@ export function TaskDialog({
       if (mode === "create") {
         setTitle("");
         setOwner(undefined);
-        setDate(undefined);
+        setDate(""); // Clear date as string
         setRequiredHours(undefined);
         setFocusLevel(undefined);
         setJoyLevel(undefined);
@@ -531,7 +532,7 @@ export function TaskDialog({
                 </div>
               </div>
 
-              {/* Date */}
+              {/* Date - clearable just like task-dialog.tsx */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">
                   Do Date
@@ -540,7 +541,7 @@ export function TaskDialog({
                   id="date"
                   type="date"
                   value={date || ""}
-                  onChange={(e) => setDate(e.target.value || undefined)}
+                  onChange={(e) => setDate(e.target.value)}
                   className="col-span-3"
                 />
               </div>
@@ -687,4 +688,3 @@ export function TaskDialog({
     </>
   );
 }
-
