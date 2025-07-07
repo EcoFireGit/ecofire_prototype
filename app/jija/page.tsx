@@ -291,7 +291,7 @@ export default function Chat() {
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 p-4 sm:p-6 lg:p-10 mx-auto min-h-screen">
       <div className="mb-6 w-full">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4 text-center sm:text-left">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 text-left sm:text-left">
           Jija Assistant
         </h1>
         
