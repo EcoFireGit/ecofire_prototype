@@ -158,7 +158,7 @@ export function NextTasks({
           >
             <CardContent className="p-4">
               <div className="flex flex-col">
-                <div className="flex items-start gap-3 mb-5">
+                <div className="flex items-start gap-3 mb-3">
                   <div 
                     className="pt-1"
                     onClick={(e) => e.stopPropagation()}
@@ -171,7 +171,7 @@ export function NextTasks({
                   </div>
 
                   <div className="flex-1">
-                    <div className="mb-3 flex justify-between items-start">
+                    <div className="mb-2 flex justify-between items-start">
                       <div className="flex items-center">
                         <h3 className="text-base font-semibold hover:text-primary transition-colors">
                           {task.title}
@@ -192,74 +192,62 @@ export function NextTasks({
                     </div>
                   </div>
 
+                  {/* Compact action buttons - all in one horizontal row */}
                   <div 
-                    className="flex"
+                    className="flex gap-1"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {onAddToCalendar && (
                       <Button
                         variant="ghost"
-                        size="default"
-                        className="h-8 mr-2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        size="sm"
+                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
                           onAddToCalendar(task);
                         }}
                         title="Add to calendar"
                       >
-                        <Calendar className="h-4 w-4" /> Add to Calendar
+                        <Calendar className="h-4 w-4 mr-1" />
+                        Add to Calendar
                       </Button>
                     )}
-                    <div className="flex flex-col gap-2">
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(
+                          `/jija?jobTitle=${encodeURIComponent(task.title)}`,
+                        );
+                      }}
+                      title="Ask Jija about this task"
+                    >
+                      <PawPrint className="h-4 w-4 mr-1 text-[#F05523] fill-[#F05523]" />
+                    </Button>
+
+                    {onDeleteTask && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onViewTask(task);
+                          if (
+                            window.confirm(
+                              "Are you sure you want to delete this task?",
+                            )
+                          ) {
+                            onDeleteTask(taskId);
+                          }
                         }}
-                        title="View notes"
+                        title="Delete task"
                       >
-                        <FileText className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(
-                            `/jija?jobTitle=${encodeURIComponent(task.title)}`,
-                          );
-                        }}
-                        title="Ask Jija about this task"
-                      >
-                        <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
-                      </Button>
-
-                      {onDeleteTask && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (
-                              window.confirm(
-                                "Are you sure you want to delete this task?",
-                              )
-                            ) {
-                              onDeleteTask(taskId);
-                            }
-                          }}
-                          title="Delete task"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -346,8 +334,8 @@ function NextTasksSkeletonLoader() {
               <div className="flex items-start gap-3">
                 <Skeleton className="h-5 w-5 rounded-sm mt-1" />
                 <div className="flex-1">
-                  <Skeleton className="h-6 w-3/4 mb-3" />
-                  <Skeleton className="h-5 w-1/2 mb-3" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-5 w-1/2 mb-2" />
                   <div className="flex flex-wrap gap-4">
                     <Skeleton className="h-6 w-24" />
                     <Skeleton className="h-6 w-16" />
@@ -355,9 +343,9 @@ function NextTasksSkeletonLoader() {
                     <Skeleton className="h-6 w-28" />
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Skeleton className="h-8 w-8" />
-                  <Skeleton className="h-8 w-8" />
+                <div className="flex gap-1">
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-8 w-16" />
                   <Skeleton className="h-8 w-8" />
                 </div>
               </div>
