@@ -30,6 +30,7 @@ function convertJobsToTableData(
 
     return {
       id: job._id,
+      jobNumber: job.jobNumber,
       title: job.title,
       notes: job.notes || undefined,
       businessFunctionId: job.businessFunctionId || "none",
@@ -45,6 +46,9 @@ function convertJobsToTableData(
 }
 
 const TOUR_START_EVENT = "directTourStart";
+
+// NEW: Custom event name for opening the sidebar for a job
+const OPEN_TASKS_SIDEBAR_EVENT = "openTasksSidebarForJob";
 
 interface NotificationData {
   _id: {
@@ -163,6 +167,7 @@ const Navbar = () => {
   const [filteredCompletedJobs, setFilteredCompletedJobs] = useState<Job[]>([]);
   const [sortedCompletedJobs, setSortedCompletedJobs] = useState<Job[]>([]);
 
+  // --- MODIFIED handleCreate ---
   const handleCreate = async (jobData: Partial<Job>) => {
     setCreatingJob(true);
     try {
@@ -185,8 +190,11 @@ const Navbar = () => {
           description: "Job successfully created",
         });
         await fetchJobs();
+        window.dispatchEvent(new Event("refreshJobsList"));
+        // If on /jobs page, open the tasks sidebar for the new job
+       
         setDialogOpen(false);
-        router.push('/jobs');
+        router.push(`/jobs?openTaskSidebarFor=${result.data._id}`);
       } else {
         throw new Error(result.error);
       }
@@ -519,6 +527,10 @@ const Navbar = () => {
     }
   };
 
+  const openQuickGuide = () => {
+    window.open("https://coda.io/@urvashi-batra/prioriwise-getting-started-guide", "_blank");
+  };
+
   const handleStartTourClick = () => {
     if (pathname === "/jobs") {
       const timestamp = Date.now();
@@ -651,10 +663,13 @@ const Navbar = () => {
             >
               <div className="space-y-3">
                 <h4 className="font-medium text-base">Need help?</h4>
-                <p className="text-sm text-gray-500">
-                  Get familiar with our interface by taking a guided tour of the
-                  main features.
-                </p>
+                
+                <Button
+                className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
+                onClick={openQuickGuide}
+              >
+                Get Quick Guide
+              </Button>
                 <Button
                   className="w-full bg-[#f05523] hover:bg-[#f05523]/90 text-white"
                   onClick={handleStartTourClick}
@@ -739,4 +754,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
-export { TOUR_START_EVENT };
+export { TOUR_START_EVENT, OPEN_TASKS_SIDEBAR_EVENT };

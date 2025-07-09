@@ -123,7 +123,7 @@ export function QBOCircles({ onSelectJob }: QBOCircleProps) {
   return (
     <div className="mb-4">
       <h2 className="text-lg font-semibold mb-6 flex items-center justify-center">
-        Mission-impact matrix
+        Outcome-Job matrix
       </h2>
       <div className="flex flex-col gap-10">
         {qbos.map((qbo) => {

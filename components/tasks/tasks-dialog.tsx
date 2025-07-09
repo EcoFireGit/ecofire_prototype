@@ -47,7 +47,8 @@ export function TaskDialog({
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
-  const [date, setDate] = useState<string | undefined>(undefined);
+  const [date, setDate] = useState<string>(""); // always a string
+
   const [requiredHours, setRequiredHours] = useState<number | undefined>(undefined);
   const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(undefined);
   const [joyLevel, setJoyLevel] = useState<JoyLevel | undefined>(undefined);
@@ -89,7 +90,7 @@ export function TaskDialog({
     if (mode === "create") {
       setTitle("");
       setOwner("none");
-      setDate(undefined);
+      setDate("");
       setRequiredHours(0);
       setFocusLevel(FocusLevel.None);
       setJoyLevel(JoyLevel.None);
@@ -101,7 +102,7 @@ export function TaskDialog({
       if (initialData.date) {
         setDate(new Date(initialData.date).toISOString().split("T")[0]);
       } else {
-        setDate(undefined);
+        setDate(""); // use empty string
       }
       setRequiredHours(initialData.requiredHours);
       setFocusLevel(initialData.focusLevel);
@@ -118,7 +119,11 @@ export function TaskDialog({
     try {
       const task: Partial<Task> = { title, jobId };
       if (owner) task.owner = owner;
-      if (date) task.date = `${date}T00:00:00.000Z`;
+      if (date) {
+        task.date = `${date}T00:00:00.000Z`;
+      } else {
+        task.date = ""; // Explicitly clear the date!
+      }
       if (requiredHours !== undefined) task.requiredHours = requiredHours;
       if (focusLevel) task.focusLevel = focusLevel;
       if (joyLevel) task.joyLevel = joyLevel;
@@ -132,7 +137,7 @@ export function TaskDialog({
       if (mode === "create") {
         setTitle("");
         setOwner("none");
-        setDate(undefined);
+        setDate("");
         setRequiredHours(0);
         setFocusLevel(FocusLevel.None);
         setJoyLevel(JoyLevel.None);
@@ -264,7 +269,7 @@ export function TaskDialog({
                 id="date"
                 type="date"
                 value={date || ""}
-                onChange={(e) => setDate(e.target.value || undefined)}
+                onChange={(e) => setDate(e.target.value)}
                 className="col-span-3"
               />
             </div>
