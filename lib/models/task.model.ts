@@ -35,7 +35,6 @@ const TaskSchema = new mongoose.Schema<Task>({
   },
   owner: {
     type: String,
-    default: "none",
     required: false,
   },
   date: {

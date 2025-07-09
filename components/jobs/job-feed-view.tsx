@@ -571,65 +571,81 @@ export default function JobsPage() {
     setSortedCompletedJobs(sortByRecommended(filteredCompleted));
   };
 
-  // Helper function to check if a job matches filters
-  const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
-    let matches = true;
+// Helper function to check if a job matches filters
+const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
+  let matches = true;
 
-    // Get the associated task for this job (if it has a nextTaskId)
-    const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
+  // Get the associated task for this job (if it has a nextTaskId)
+  const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
 
-    // Process each filter
-    Object.entries(filters).forEach(([key, value]) => {
-      // Skip empty values or "any" values
-      if (
-        value === "" ||
-        value === null ||
-        value === undefined ||
-        value === "any"
-      )
-        return;
+  // Process each filter
+  Object.entries(filters).forEach(([key, value]) => {
+    // Skip empty values or "any" values
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      value === "any"
+    )
+      return;
 
-      switch (key) {
-        // Job filters
-        case "businessFunctionId":
+    switch (key) {
+      // Job filters
+      case "businessFunctionId":
           if (job.businessFunctionId !== value) matches = false;
-          break;
-        case "dueDate":
-          if (!job.dueDate || new Date(job.dueDate) > new Date(value))
-            matches = false;
-          break;
-        case "isDone":
-          if (job.isDone !== value) matches = false;
-          break;
+        break;
+      case "dueDate":
+        if (!job.dueDate || new Date(job.dueDate) > new Date(value))
+          matches = false;
+        break;
+      case "isDone":
+        if (job.isDone !== value) matches = false;
+        break;
 
-        // Task filters (applied to the job's next task)
-        case "focusLevel":
+      // Task filters (applied to the job's next task)
+      case "focusLevel":
           if (!nextTask || nextTask.focusLevel !== value) matches = false;
-          break;
-        case "joyLevel":
+        break;
+      case "joyLevel":
           if (!nextTask || nextTask.joyLevel !== value) matches = false;
-          break;
-        case "owner":
-          if (!nextTask || nextTask.owner !== value) matches = false;
-          break;
-        case "minHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours < value
-          )
+        break;
+      case "owner":
+        if (value === "none") {
+          // Check if the displayed owner name would be "Not assigned"
+          // This covers both cases: no nextTask, or nextTask with no owner
+          const nextTaskId = job.nextTaskId;
+          const displayedOwner = nextTaskId && taskOwnerMap && taskOwnerMap[nextTaskId] 
+            ? taskOwnerMap[nextTaskId] 
+            : "Not assigned";
+          
+          if (displayedOwner !== "Not assigned") {
             matches = false;
-          break;
-        case "maxHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours > value
-          )
+          }
+        } else {
+          // For specific owner filtering, check the actual task owner
+          if (!nextTask || nextTask.owner !== value) {
             matches = false;
-          break;
-        case "tags":
-          if (!Array.isArray(value) || value.length === 0) break;
+          }
+        }
+        break;
+      case "minHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours < value
+        )
+          matches = false;
+        break;
+      case "maxHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours > value
+        )
+          matches = false;
+        break;
+      case "tags":
+        if (!Array.isArray(value) || value.length === 0) break;
 
           if (!nextTask || !nextTask.tags || !Array.isArray(nextTask.tags)) {
             matches = false;
@@ -651,13 +667,13 @@ export default function JobsPage() {
             )
           ) {
             matches = false;
-          }
-          break;
-      }
-    });
+        }
+        break;
+    }
+  });
 
-    return matches;
-  };
+  return matches;
+};
 
   // Effect to reapply filters when jobs are loaded
   useEffect(() => {
