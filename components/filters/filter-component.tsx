@@ -42,95 +42,10 @@ export interface FilterComponentProps {
   initialFilters?: Record<string, any>;
 }
 
-// Robust "none" check for all filterable fields
-function isNone(val: any): boolean {
-  if (Array.isArray(val)) {
-    // If it's an array, treat as none if empty or every item is none
-    return val.length === 0 || val.every((v) => isNone(v));
-  }
-  return val === undefined || val === null || val === "" || val === "none";
-}
 
-// Filtering function with robust "none" logic
-export function filterTasks(tasks: any[], filters: Record<string, any>): any[] {
-  return tasks.filter((task) => {
-    // Focus Level
-    if ("focusLevel" in filters) {
-      if (filters.focusLevel === "none") {
-        if (!isNone(task.focusLevel)) return false;
-      } else {
-        if (task.focusLevel !== filters.focusLevel) return false;
-      }
-    }
 
-    // Joy Level
-    if ("joyLevel" in filters) {
-      if (filters.joyLevel === "none") {
-        if (!isNone(task.joyLevel)) return false;
-      } else {
-        if (task.joyLevel !== filters.joyLevel) return false;
-      }
-    }
 
-    // Business Function
-    if ("businessFunctionId" in filters) {
-      if (filters.businessFunctionId === "none") {
-        if (!isNone(task.businessFunctionId)) return false;
-      } else {
-        if (task.businessFunctionId !== filters.businessFunctionId) return false;
-      }
-    }
 
-    // Owner
-    if ("owner" in filters) {
-      if (filters.owner === "none") {
-        if (!isNone(task.owner)) return false;
-      } else {
-        if (task.owner !== filters.owner) return false;
-      }
-    }
-
-    // Tags (array of IDs, may include "none")
-    if ("tags" in filters && Array.isArray(filters.tags)) {
-      if (filters.tags.includes("none")) {
-        // Only match tasks with no tags or tags are all "none"
-        if (!isNone(task.tags)) return false;
-      } else {
-        // All selected tags must be present in task.tags
-        if (
-          !Array.isArray(task.tags) ||
-          !filters.tags.every((id: string) => task.tags.includes(id))
-        ) {
-          return false;
-        }
-      }
-    }
-
-    // Hours range
-    if (
-      filters.minHours !== undefined &&
-      filters.maxHours !== undefined
-    ) {
-      const hours = task.hoursRequired ?? 0;
-      if (hours < filters.minHours || hours > filters.maxHours) return false;
-    }
-
-    // Due Date
-    if ("dueDate" in filters) {
-      if (!task.dueDate) return false;
-      const taskDate = new Date(task.dueDate);
-      const filterDate = new Date(filters.dueDate);
-      if (
-        taskDate.getFullYear() !== filterDate.getFullYear() ||
-        taskDate.getMonth() !== filterDate.getMonth() ||
-        taskDate.getDate() !== filterDate.getDate()
-      )
-        return false;
-    }
-
-    return true;
-  });
-}
 
 const FilterComponent: React.FC<FilterComponentProps> = ({
   onFilterChange,
@@ -1066,44 +981,23 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
 
             {/* Tag selection list */}
             <div className="flex flex-col max-h-72 overflow-y-auto space-y-2">
-              {filteredTagOptions.length > 0 ? (
-                filteredTagOptions.map((tag) => (
-                  <div key={tag._id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`tag-${tag._id}`}
-                      checked={selectedTags.includes(tag._id)}
-                      onCheckedChange={() => handleTagToggle(tag._id)}
-                    />
-                    <label
-                      htmlFor={`tag-${tag._id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
-                      {tag.name}
-                    </label>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {tagSearchValue
-                    ? "No matching tags found"
-                    : "No tags available"}
-                </p>
-              )}
-              {/* None option for tags */}
-              <div className="flex items-center space-x-2 mt-2">
-                <Checkbox
-                  id="tag-none"
-                  checked={selectedTags.includes("none")}
-                  onCheckedChange={() => handleTagToggle("none")}
-                />
-                <label
-                  htmlFor="tag-none"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                >
-                  None
-                </label>
-              </div>
-            </div>
+  {filteredTagOptions.concat([{ _id: "none", name: "None" }]).map((tag) => (
+    <div key={tag._id} className="flex items-center space-x-2">
+      <Checkbox
+        id={`tag-${tag._id}`}
+        checked={selectedTags.includes(tag._id)}
+        onCheckedChange={() => handleTagToggle(tag._id)}
+      />
+      <label
+        htmlFor={`tag-${tag._id}`}
+        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+      >
+        {tag.name}
+      </label>
+    </div>
+  ))}
+</div>
+
           </div>
         </PopoverContent>
       </Popover>

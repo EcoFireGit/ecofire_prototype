@@ -39,6 +39,7 @@ const JobSchema = new mongoose.Schema<Jobs>({
   },
   businessFunctionId: {
     type: String, 
+    default: "none",
     required: false,
   },
   dueDate: {

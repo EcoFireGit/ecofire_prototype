@@ -88,11 +88,11 @@ export function TaskDialog({
   useEffect(() => {
     if (mode === "create") {
       setTitle("");
-      setOwner(undefined);
+      setOwner("none");
       setDate(undefined);
-      setRequiredHours(undefined);
-      setFocusLevel(undefined);
-      setJoyLevel(undefined);
+      setRequiredHours(0);
+      setFocusLevel(FocusLevel.None);
+      setJoyLevel(JoyLevel.None);
       setNotes(undefined);
       setTags([]);
     } else if (initialData) {
@@ -131,11 +131,11 @@ export function TaskDialog({
 
       if (mode === "create") {
         setTitle("");
-        setOwner(undefined);
+        setOwner("none");
         setDate(undefined);
-        setRequiredHours(undefined);
-        setFocusLevel(undefined);
-        setJoyLevel(undefined);
+        setRequiredHours(0);
+        setFocusLevel(FocusLevel.None);
+        setJoyLevel(JoyLevel.None);
         setNotes(undefined);
         setTags([]);
       }
@@ -182,7 +182,7 @@ export function TaskDialog({
                         if (value === "create") {
                           setIsCreatingOwner(true);
                         } else {
-                          setOwner(value === "none" ? undefined : value);
+                          setOwner(value === "none" ? "none" : value);
                         }
                       }}
                       disabled={isLoadingOwners}
@@ -293,7 +293,7 @@ export function TaskDialog({
                 <Select
                   value={focusLevel || "none"}
                   onValueChange={(value) =>
-                    value === "none" ? setFocusLevel(undefined) : setFocusLevel(value as FocusLevel)
+                    value === "none" ? setFocusLevel(FocusLevel.None) : setFocusLevel(value as FocusLevel)
                   }
                 >
                   <SelectTrigger className="w-full">
@@ -316,7 +316,7 @@ export function TaskDialog({
                 <Select
                   value={joyLevel || "none"}
                   onValueChange={(value) =>
-                    value === "none" ? setJoyLevel(undefined) : setJoyLevel(value as JoyLevel)
+                    value === "none" ? setJoyLevel(JoyLevel.None) : setJoyLevel(value as JoyLevel)
                   }
                 >
                   <SelectTrigger className="w-full">

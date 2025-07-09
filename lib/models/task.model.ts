@@ -2,12 +2,14 @@ import mongoose from "mongoose";
 export enum FocusLevel {
   High = "High",
   Medium = "Medium",
-  Low = "Low"
+  Low = "Low",
+  None = "none"
 }
 export enum JoyLevel {
   High = "High",
   Medium = "Medium",
-  Low = "Low"
+  Low = "Low",
+  None = "none"
 }
 export interface Task extends mongoose.Document {
   _id: string;
@@ -33,6 +35,7 @@ const TaskSchema = new mongoose.Schema<Task>({
   },
   owner: {
     type: String,
+    default: "none",
     required: false,
   },
   date: {
@@ -48,11 +51,13 @@ const TaskSchema = new mongoose.Schema<Task>({
   focusLevel: {
     type: String,
     enum: Object.values(FocusLevel),
+    default: FocusLevel.None,
     required: false,
   },
   joyLevel: {
     type: String,
     enum: Object.values(JoyLevel),
+    default: JoyLevel.None,
     required: false,
   },
   notes: {
