@@ -26,7 +26,8 @@ interface TaskCardProps {
     onDelete: (id: string) => void;
     onComplete: (id: string, jobid: string, completed: boolean) => void;
     ownerMap: Record<string, string>;
-    onAddToCalendar?: (task: Task) => void; 
+    onAddToCalendar?: (task: Task) => void;
+    onOpenTaskDetails?: (task: Task) => void;
 }
 
 export function TaskCard({
@@ -36,6 +37,7 @@ export function TaskCard({
     onComplete,
     ownerMap,
     onAddToCalendar,
+    onOpenTaskDetails,
 }: TaskCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
@@ -86,16 +88,22 @@ export function TaskCard({
         }
     };
 
+    const handleTaskClick = () => {
+        if (onOpenTaskDetails) {
+            onOpenTaskDetails(task);
+        }
+    };
+
     return (
         <div
-            className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full`}
+            className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full cursor-pointer hover:shadow-md transition-shadow`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onClick={handleTaskClick}
         >
             <div className="p-3">
                 <div className="flex items-start gap-3">
-                    {/* Checkbox - now using our new handler */}
-                    <div className="pt-1">
+                    <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                             checked={task.completed}
                             onCheckedChange={(value) => handleTaskComplete(!!value)}
@@ -174,8 +182,11 @@ export function TaskCard({
                         )}
                     </div>
 
-                    {/* Action buttons */}
-                    <div className={`flex gap-1 ${isHovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
+                    {/* Action buttons*/}
+                    <div 
+                        className={`flex gap-1 ${isHovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         {onAddToCalendar && (
                             <Button
                                 variant="ghost"
@@ -195,7 +206,10 @@ export function TaskCard({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => onEdit(task)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(task);
+                            }}
                         >
                             <Edit className="h-4 w-4" />
                         </Button>
@@ -215,7 +229,12 @@ export function TaskCard({
 
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </AlertDialogTrigger>
@@ -232,7 +251,7 @@ export function TaskCard({
                                     <AlertDialogAction onClick={() => onDelete(task.id)}>
                                         Delete
                                     </AlertDialogAction>
-                                </AlertDialogFooter>
+                                    </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>

@@ -3,7 +3,6 @@ import {
   Calendar,
   Clock,
   Briefcase,
-  ChevronRight,
   Edit,
   Trash2,
   Circle,
@@ -151,15 +150,19 @@ export function NextTasks({
         const taskIsNext = isNextTask(task);
         return (
           <Card
-            key={taskId} // Use just the taskId, which now includes index as fallback
-            className={`overflow-hidden hover:shadow-md transition-shadow w-full ${
+            key={taskId}
+            className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
               taskIsNext ? "border-orange-500 border-2" : ""
             }`}
+            onClick={() => onViewTask(task)}
           >
             <CardContent className="p-4">
               <div className="flex flex-col">
                 <div className="flex items-start gap-3 mb-5">
-                  <div className="pt-1">
+                  <div 
+                    className="pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Checkbox
                       checked={task.completed === true}
                       onCheckedChange={(value) => onComplete(taskId, !!value)}
@@ -167,16 +170,10 @@ export function NextTasks({
                     />
                   </div>
 
-                  <div
-                    className="flex-1 cursor-pointer group"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewTask(task);
-                    }}
-                  >
+                  <div className="flex-1">
                     <div className="mb-3 flex justify-between items-start">
                       <div className="flex items-center">
-                        <h3 className="text-base font-semibold group-hover:text-primary transition-colors">
+                        <h3 className="text-base font-semibold hover:text-primary transition-colors">
                           {task.title}
                           {taskIsNext && (
                             <Badge className="ml-2 bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
@@ -185,7 +182,6 @@ export function NextTasks({
                           )}
                         </h3>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -196,7 +192,10 @@ export function NextTasks({
                     </div>
                   </div>
 
-                  <div className="flex">
+                  <div 
+                    className="flex"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {onAddToCalendar && (
                       <Button
                         variant="ghost"
@@ -224,21 +223,6 @@ export function NextTasks({
                       >
                         <FileText className="h-4 w-4" />
                       </Button>
-
-                      {onEditTask && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditTask(task);
-                          }}
-                          title="Edit task"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
 
                       <Button
                         variant="ghost"

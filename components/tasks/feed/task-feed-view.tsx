@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
+import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
 import FilterComponent from "@/components/filters/filter-component";
 import TaskSortingComponent from "@/components/sorting/task-sorting-component";
 import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
@@ -56,12 +57,8 @@ export default function TaskFeedView() {
     title: string;
   } | null>(null);
 
-  // State for notes dialog
-  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
-  const [taskNotes, setTaskNotes] = useState<{
-    title: string;
-    notes: string;
-  } | null>(null);
+  const [taskDetailsSidebarOpen, setTaskDetailsSidebarOpen] = useState(false);
+  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -574,18 +571,45 @@ export default function TaskFeedView() {
     }
   };
 
-  // Handle viewing task notes
-  const handleViewNotes = (task: any) => {
-    if (task && task.title) {
-      setTaskNotes({
-        title: task.title,
-        notes: task.notes || "No notes available for this task.",
-      });
-      setNotesDialogOpen(true);
-    }
+  const handleViewTask = (task: any) => {
+    const formattedTask: Task = {
+      id: task._id || task.id,
+      title: task.title,
+      owner: task.owner,
+      date: task.date,
+      requiredHours: task.requiredHours,
+      focusLevel: task.focusLevel,
+      joyLevel: task.joyLevel,
+      notes: task.notes,
+      tags: task.tags || [],
+      jobId: task.jobId,
+      completed: task.completed,
+      isNextTask: isNextTask(task),
+    };
+    
+    setSelectedTaskForDetails(formattedTask);
+    setTaskDetailsSidebarOpen(true);
   };
 
-  // Add task to calendar
+  const handleTaskUpdated = (updatedTask: Task) => {
+    const updateTaskState = (tasksArray: any[]) =>
+      tasksArray.map((task) => {
+        if (task._id === updatedTask.id || task.id === updatedTask.id) {
+          return {
+            ...task,
+            ...updatedTask,
+            _id: task._id || updatedTask.id,
+          };
+        }
+        return task;
+      });
+
+    setTasks(updateTaskState(tasks));
+    setFilteredTasks(updateTaskState(filteredTasks));
+    setSortedTasks(updateTaskState(sortedTasks));
+  };
+
+  // Add to Calendar
   const handleAddToCalendar = async (task: any) => {
     try {
       if (!task.date) {
@@ -930,7 +954,7 @@ export default function TaskFeedView() {
             tasks={sortedTasks}
             jobs={jobs}
             onComplete={handleCompleteTask}
-            onViewTask={handleViewNotes}
+            onViewTask={handleViewTask}
             onAddToCalendar={handleAddToCalendar}
             ownerMap={ownerMap}
             loading={loading}
@@ -950,6 +974,15 @@ export default function TaskFeedView() {
         onSubmit={handleTaskSubmit}
         initialData={editingTask}
         jobs={jobs} // Pass the jobs object to TaskDialog
+      />
+
+      {/* Task Details Sidebar - NEW */}
+      <TaskDetailsSidebar
+        open={taskDetailsSidebarOpen}
+        onOpenChange={setTaskDetailsSidebarOpen}
+        selectedTask={selectedTaskForDetails}
+        onTaskUpdated={handleTaskUpdated}
+        onDeleteTask={handleDeleteTask}
       />
 
       {/* Task Completion Confirmation Dialog */}
@@ -981,24 +1014,6 @@ export default function TaskFeedView() {
             >
               Complete
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Task Notes Dialog */}
-      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{taskNotes?.title}</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <h3 className="text-sm font-medium mb-2">Notes:</h3>
-            <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded border max-h-60 overflow-y-auto">
-              {taskNotes?.notes}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setNotesDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

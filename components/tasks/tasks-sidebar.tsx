@@ -11,14 +11,26 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Plus,
   PawPrint,
   Calendar,
   Briefcase,
   FileText,
-  Edit,
   GripVertical,
+  Check,
+  X,
+  Info,
+  Trash2,
 } from "lucide-react";
 import { TaskDialog } from "./tasks-dialog";
 import { Task } from "./types";
@@ -29,6 +41,7 @@ import { TaskProvider } from "@/hooks/task-context";
 import { TaskCard } from "./tasks-card";
 import { useTaskContext } from "@/hooks/task-context";
 import { useRouter } from "next/navigation";
+import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
 
 // DnD Kit imports
 import {
@@ -65,7 +78,9 @@ interface SortableTaskItemProps {
   onComplete: (id: string, jobid: string, completed: boolean) => void;
   ownerMap: Record<string, string>;
   onAddToCalendar?: (task: Task) => void;
+  onOpenTaskDetails?: (task: Task) => void;
 }
+type EditableJobField = 'title' | 'dueDate' | 'notes' | 'businessFunction';
 
 // Sortable Task Item component with original UI plus Add to Calendar button
 function SortableTaskItem({
@@ -75,6 +90,7 @@ function SortableTaskItem({
   onComplete,
   ownerMap,
   onAddToCalendar,
+  onOpenTaskDetails,
 }: SortableTaskItemProps) {
   const {
     attributes,
@@ -117,6 +133,7 @@ function SortableTaskItem({
             onComplete={onComplete}
             ownerMap={ownerMap}
             onAddToCalendar={onAddToCalendar}
+            onOpenTaskDetails={onOpenTaskDetails}
           />
         </div>
       </div>
@@ -129,6 +146,7 @@ interface TasksSidebarProps {
   onOpenChange: (open: boolean) => void;
   selectedJob: Job | null;
   onRefreshJobs?: () => void; // Simple callback to refresh jobs data
+  onDeleteJob?: (jobId: string) => void;
 }
 
 export function TasksSidebar({
@@ -136,6 +154,7 @@ export function TasksSidebar({
   onOpenChange,
   selectedJob,
   onRefreshJobs,
+  onDeleteJob,
 }: TasksSidebarProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -144,9 +163,17 @@ export function TasksSidebar({
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [owners, setOwners] = useState<Owner[]>([]);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
+  const [businessFunctions, setBusinessFunctions] = useState<{ _id: string; name: string }[]>([]);
   const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
   const [showSaveOrder, setShowSaveOrder] = useState<boolean>(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [taskDetailsSidebarOpen, setTaskDetailsSidebarOpen] = useState(false);
+  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
+
+  // Job inline editing state
+  const [editingJobField, setEditingJobField] = useState<EditableJobField | null>(null);
+  const [editingJobValue, setEditingJobValue] = useState<string>('');
+  const [isSavingJob, setIsSavingJob] = useState(false);
 
   // This flag will track if we've already done the initial sort
   const initialSortDoneRef = useRef(false);
@@ -162,6 +189,30 @@ export function TasksSidebar({
     }
   }, [open]);
 
+  useEffect(() => {
+    const handleJobTasksRefresh = (event: CustomEvent) => {
+      if (selectedJob && event.detail.jobId === selectedJob.id) {
+        console.log(`Refreshing tasks for job ${selectedJob.id} due to job change`);
+        fetchTasks();
+      }
+    };
+
+    const handleJobProgressUpdate = (event: CustomEvent) => {
+      if (selectedJob && event.detail.jobId === selectedJob.id) {
+        console.log(`Job progress updated for job ${selectedJob.id}`);
+        fetchTasks();
+      }
+    };
+
+    window.addEventListener('refresh-job-tasks', handleJobTasksRefresh as EventListener);
+    window.addEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('refresh-job-tasks', handleJobTasksRefresh as EventListener);
+      window.removeEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+    };
+  }, [selectedJob]);
+
   // Set up sensors for drag operations
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -169,6 +220,153 @@ export function TasksSidebar({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  const handleOpenTaskDetails = (task: Task) => {
+    setSelectedTaskForDetails(task);
+    setTaskDetailsSidebarOpen(true);
+  };
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    setTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      )
+    );
+    
+    if (updatedTask.isNextTask && typeof onRefreshJobs === "function") {
+      onRefreshJobs();
+    }
+  };
+
+  const handleTaskDetailsSidebarClose = (open: boolean) => {
+    setTaskDetailsSidebarOpen(open);
+    
+    if (!open && selectedJob) {
+      console.log('Task details sidebar closed, refreshing tasks');
+      fetchTasks();
+    }
+  };
+
+  const handleNavigateToJob = (jobId: string) => {
+    setSelectedTaskForDetails(null);
+  };
+
+  const startEditingJob = (field: EditableJobField, currentValue: any) => {
+    setEditingJobField(field);
+    
+    switch (field) {
+      case 'dueDate':
+        if (currentValue) {
+          const date = new Date(currentValue);
+          setEditingJobValue(date.toISOString().split('T')[0]);
+        } else {
+          setEditingJobValue('');
+        }
+        break;
+      case 'businessFunction':
+        setEditingJobValue(currentValue || 'none');
+        break;
+      default:
+        setEditingJobValue(currentValue || '');
+    }
+  };
+
+  const cancelEditingJob = () => {
+    setEditingJobField(null);
+    setEditingJobValue('');
+  };
+
+  const saveJobEdit = async () => {
+    if (!selectedJob || !editingJobField) return;
+
+    setIsSavingJob(true);
+    try {
+      const updateData: any = {};
+      
+      switch (editingJobField) {
+        case 'title':
+          updateData.title = editingJobValue;
+          break;
+        case 'dueDate':
+          updateData.dueDate = editingJobValue ? `${editingJobValue}T00:00:00.000Z` : null;
+          break;
+        case 'notes':
+          updateData.notes = editingJobValue;
+          break;
+        case 'businessFunction':
+          updateData.businessFunctionId = editingJobValue === 'none' ? null : editingJobValue;
+          break;
+      }
+
+      console.log('Updating job with data:', updateData);
+
+      const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await response.json();
+      console.log('Job update result:', result);
+
+      if (result.success) {
+        Object.assign(selectedJob, {
+          ...selectedJob,
+          ...updateData,
+        });
+
+        if (editingJobField === 'businessFunction') {
+          const selectedBF = businessFunctions.find(bf => bf._id === editingJobValue);
+          if (selectedBF) {
+            selectedJob.businessFunctionName = selectedBF.name;
+          } else if (editingJobValue === 'none') {
+            selectedJob.businessFunctionName = undefined;
+          }
+        }
+
+        if (typeof onRefreshJobs === "function") {
+          onRefreshJobs();
+        }
+
+        toast({
+          title: "Success",
+          description: "Job updated successfully",
+        });
+
+        setEditingJobField(null);
+        setEditingJobValue('');
+      } else {
+        throw new Error(result.error || "Failed to update job");
+      }
+    } catch (error) {
+      console.error("Error updating job:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update job",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingJob(false);
+    }
+  };
+
+  const handleAskJija = () => {
+    if (!selectedJob) return;
+    
+    const jijaUrl = `/jija?jobTitle=${encodeURIComponent(selectedJob.title)}`;
+    window.open(jijaUrl, '_blank');
+  };
+
+  const handleDeleteJob = () => {
+    if (!selectedJob || !onDeleteJob) return;
+    
+    if (window.confirm(`Are you sure you want to delete "${selectedJob.title}"? This action cannot be undone and will also delete all associated tasks.`)) {
+      onDeleteJob(selectedJob.id);
+      onOpenChange(false);
+    }
+  };
 
   // Fetch owners from API
   useEffect(() => {
@@ -200,6 +398,33 @@ export function TasksSidebar({
     };
 
     fetchOwners();
+  }, [toast]);
+
+  useEffect(() => {
+    const fetchBusinessFunctions = async () => {
+      try {
+        const response = await fetch("/api/business-functions");
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch business functions: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success && Array.isArray(result.data)) {
+          setBusinessFunctions(result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching business functions:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch business functions list",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchBusinessFunctions();
   }, [toast]);
 
   // Fetch tasks when job changes
@@ -870,6 +1095,92 @@ export function TasksSidebar({
     }
   };
 
+  const renderEditableJobField = (
+    field: EditableJobField,
+    currentValue: any,
+    displayValue: string,
+    icon: React.ReactNode,
+    label: string,
+    isTextarea: boolean = false,
+    isSelect: boolean = false
+  ) => {
+    const isEditing = editingJobField === field;
+
+    return (
+      <div className="flex items-start">
+        {icon}
+        <div className="flex-1">
+          <span className="text-xs text-gray-500">{label}</span>
+          {isEditing ? (
+            <div className="flex items-start gap-2 mt-1">
+              {isSelect ? (
+                <Select value={editingJobValue} onValueChange={setEditingJobValue}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No business function</SelectItem>
+                    {businessFunctions.map((bf) => (
+                      <SelectItem key={bf._id} value={bf._id}>
+                        {bf.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : isTextarea ? (
+                <Textarea
+                  value={editingJobValue}
+                  onChange={(e) => setEditingJobValue(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                  placeholder={`Enter ${label.toLowerCase()}...`}
+                />
+              ) : (
+                <Input
+                  type={field === 'dueDate' ? 'date' : 'text'}
+                  value={editingJobValue}
+                  onChange={(e) => setEditingJobValue(e.target.value)}
+                  className="h-8 text-sm"
+                  placeholder={`Enter ${label.toLowerCase()}...`}
+                />
+              )}
+              
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={saveJobEdit}
+                  disabled={isSavingJob}
+                  className="h-8 w-8 p-0"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={cancelEditingJob}
+                  disabled={isSavingJob}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 mt-1 transition-colors group relative"
+              onClick={() => startEditingJob(field, currentValue)}
+            >
+              <p className="text-sm font-medium">{displayValue}</p>
+              <div className="absolute -top-8 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                Click to edit
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (!selectedJob) {
     return null;
   }
@@ -885,12 +1196,12 @@ export function TasksSidebar({
    * 
    * This ensures users always see their next priority task at the top and don't need
    * to scroll through completed tasks to find incomplete work.
-   *  * @remarks
+   * @remarks
    * - Uses spread operator to avoid mutating original tasks array
    * - Comparison function returns -1/1/0 for before/after/equal positioning
    * - Within same completion status, tasks maintain their relative order
    * - Next task loses priority when marked as completed
-   * */
+   */
 
   // Sort tasks - only prioritize the next task, allowing drag and drop to manage the rest
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -933,37 +1244,92 @@ export function TasksSidebar({
           {/* Wrap the content with the TaskProvider */}
           <TaskProvider>
             <SheetHeader className="mb-4">
-              <div className="flex justify-between items-center">
-                <SheetTitle>Job Tasks</SheetTitle>
-                {selectedJob && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // Close the sidebar first
-                      onOpenChange(false);
-                      // Then set the editing job and open the dialog
-                      if (selectedJob) {
-                        const editEvent = new CustomEvent("open-job-edit", {
-                          detail: { job: selectedJob },
-                        });
-                        window.dispatchEvent(editEvent);
-                      }
-                    }}
-                  >
-                    <Edit className="h-4 w-4 mr-2" /> Edit Job
-                  </Button>
-                )}
-              </div>
-              <SheetDescription>Manage tasks for this job</SheetDescription>
+              <SheetTitle>Job Tasks</SheetTitle>
+              <SheetDescription>
+                Manage tasks for this job
+                {/* Helper text for inline editing */}
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <Info className="h-4 w-4" />
+                    <p className="text-sm">
+                      <span className="font-medium">Tip:</span> Click on the job details below to edit them inline. After editing, click ✓ to save.
+                    </p>
+                  </div>
+                </div>
+              </SheetDescription>
             </SheetHeader>
 
-            {/* Job Details Card */}
+            {/* Quick Action Buttons */}
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAskJija}
+                  className="flex items-center gap-2"
+                >
+                  <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
+                  Ask Jija
+                </Button>
+              </div>
+              
+              {onDeleteJob && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteJob}
+                  className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Job
+                </Button>
+              )}
+            </div>
+
+            {/* Job Details Card with Inline Editing */}
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span>{selectedJob.title}</span>
+                    {/* Editable Job Title */}
+                    {editingJobField === 'title' ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editingJobValue}
+                          onChange={(e) => setEditingJobValue(e.target.value)}
+                          className="text-lg font-semibold"
+                          placeholder="Job title"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={saveJobEdit}
+                          disabled={isSavingJob}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={cancelEditingJob}
+                          disabled={isSavingJob}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span 
+                        className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors relative group"
+                        onClick={() => startEditingJob('title', selectedJob.title)}
+                      >
+                        {selectedJob.title}
+                        <div className="absolute -top-8 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          Click to edit
+                        </div>
+                      </span>
+                    )}
                     <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
                       #{selectedJob.jobNumber}
                     </span>
@@ -971,58 +1337,86 @@ export function TasksSidebar({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {/* Notes Section */}
-                {selectedJob.notes && (
-                  <div className="mb-4 pb-4 border-b">
-                    <div className="flex items-center mb-2">
-                      <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                      <h3 className="text-sm font-semibold">Notes</h3>
-                    </div>
-                    <div className="pl-6">
-                      <div
-                        className="text-sm text-muted-foreground"
-                        style={{
-                          whiteSpace: "pre-wrap",
-                          overflowY: "auto",
-                          overflowX: "hidden",
-                          maxHeight: "10rem",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {selectedJob.notes}
-                      </div>
-                    </div>
+                {/* Editable Notes Section */}
+                <div className="mb-4 pb-4 border-b">
+                  <div className="flex items-center mb-2">
+                    <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                    <h3 className="text-sm font-semibold">Notes</h3>
                   </div>
-                )}
+                  <div className="pl-6">
+                    {editingJobField === 'notes' ? (
+                      <div className="flex flex-col gap-2">
+                        <Textarea
+                          value={editingJobValue}
+                          onChange={(e) => setEditingJobValue(e.target.value)}
+                          className="text-sm min-h-[100px]"
+                          placeholder="Add notes..."
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={saveJobEdit}
+                            disabled={isSavingJob}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={cancelEditingJob}
+                            disabled={isSavingJob}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors group relative"
+                        onClick={() => startEditingJob('notes', selectedJob.notes)}
+                      >
+                        <div
+                          className="text-sm text-muted-foreground"
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            overflowY: "auto",
+                            overflowX: "hidden",
+                            maxHeight: "10rem",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {selectedJob.notes || "Click to add notes..."}
+                        </div>
+                        <div className="absolute -top-8 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          Click to edit
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Job Attributes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Business Function */}
-                  {selectedJob.businessFunctionName && (
-                    <div className="flex items-start">
-                      <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
-                      <div>
-                        <span className="text-xs text-gray-500">
-                          Business Function
-                        </span>
-                        <p className="text-sm font-medium">
-                          {selectedJob.businessFunctionName}
-                        </p>
-                      </div>
-                    </div>
+                  {/* Editable Business Function */}
+                  {renderEditableJobField(
+                    'businessFunction',
+                    selectedJob.businessFunctionId,
+                    selectedJob.businessFunctionName || 'No business function',
+                    <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />,
+                    'Business Function',
+                    false,
+                    true
                   )}
 
-                  {/* Due Date */}
-                  {selectedJob.dueDate && (
-                    <div className="flex items-start">
-                      <Calendar className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
-                      <div>
-                        <span className="text-xs text-gray-500">Due Date</span>
-                        <p className="text-sm font-medium">
-                          {formatDate(selectedJob.dueDate)}
-                        </p>
-                      </div>
-                    </div>
+                  {/* Editable Due Date */}
+                  {renderEditableJobField(
+                    'dueDate',
+                    selectedJob.dueDate,
+                    formatDate(selectedJob.dueDate),
+                    <Calendar className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />,
+                    'Due Date'
                   )}
                 </div>
               </CardContent>
@@ -1073,6 +1467,7 @@ export function TasksSidebar({
                           onComplete={handleCompleteTask}
                           ownerMap={ownerMap}
                           onAddToCalendar={handleAddToCalendar}
+                          onOpenTaskDetails={handleOpenTaskDetails}
                         />
                       ))}
                     </SortableContext>
@@ -1119,6 +1514,16 @@ export function TasksSidebar({
         onSubmit={handleTaskSubmit}
         initialData={currentTask}
         jobId={selectedJob?.id ?? ""}
+      />
+
+      {/* Task Details Sidebar */}
+      <TaskDetailsSidebar
+        open={taskDetailsSidebarOpen}
+        onOpenChange={handleTaskDetailsSidebarClose}
+        selectedTask={selectedTaskForDetails}
+        onTaskUpdated={handleTaskUpdated}
+        onNavigateToJob={handleNavigateToJob}
+        onDeleteTask={handleDeleteTask}
       />
     </>
   );

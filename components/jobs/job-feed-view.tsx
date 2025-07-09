@@ -1109,6 +1109,7 @@ export default function JobsPage() {
           onOpenChange={handleSidebarClose}
           selectedJob={selectedJob}
           onRefreshJobs={() => setNeedsRefresh(true)}
+          onDeleteJob={handleDelete}
         />
 
         {selectedActiveJobs.size > 0 && (
