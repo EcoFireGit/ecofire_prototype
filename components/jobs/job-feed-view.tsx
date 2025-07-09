@@ -592,7 +592,7 @@ const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
     switch (key) {
       // Job filters
       case "businessFunctionId":
-          if (job.businessFunctionId !== value) matches = false;
+        if (job.businessFunctionId !== value) matches = false;
         break;
       case "dueDate":
         if (!job.dueDate || new Date(job.dueDate) > new Date(value))
@@ -604,10 +604,10 @@ const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
 
       // Task filters (applied to the job's next task)
       case "focusLevel":
-          if (!nextTask || nextTask.focusLevel !== value) matches = false;
+        if (!nextTask || nextTask.focusLevel !== value) matches = false;
         break;
       case "joyLevel":
-          if (!nextTask || nextTask.joyLevel !== value) matches = false;
+        if (!nextTask || nextTask.joyLevel !== value) matches = false;
         break;
       case "owner":
         if (value === "none") {
@@ -647,26 +647,27 @@ const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
       case "tags":
         if (!Array.isArray(value) || value.length === 0) break;
 
+        if (value.includes("none")) {
+          if (!nextTask) {
+            matches = false;
+          } else if (nextTask.tags && nextTask.tags.length > 0) {
+            matches = false;
+          }
+        } else {
           if (!nextTask || !nextTask.tags || !Array.isArray(nextTask.tags)) {
             matches = false;
-            break;
+          } else {
+            const selectedTagNames = value
+              .map((tagId) => {
+                const tag = tags.find((t) => t._id === tagId);
+                return tag ? tag.name : null;
+              })
+              .filter(Boolean);
+
+            if (!selectedTagNames.every((tagName) => nextTask.tags.includes(tagName))) {
+              matches = false;
+            }
           }
-
-          // Convert selected tag IDs to tag names for comparison
-          const selectedTagNames = value
-            .map((tagId) => {
-              const tag = tags.find((t) => t._id === tagId);
-              return tag ? tag.name : null;
-            })
-            .filter(Boolean); // Remove any null values
-
-          // Compare using tag names instead of IDs
-          if (
-            !selectedTagNames.every((tagName) =>
-              nextTask.tags.includes(tagName),
-            )
-          ) {
-            matches = false;
         }
         break;
     }
