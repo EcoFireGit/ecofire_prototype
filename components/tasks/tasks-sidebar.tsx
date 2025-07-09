@@ -32,7 +32,7 @@ import {
   Info,
   Trash2,
 } from "lucide-react";
-import { TaskDialog } from "./tasks-dialog";
+import { TaskDialog } from "./tasks-dialog-jobselector";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
 import { useToast } from "@/hooks/use-toast";
@@ -147,6 +147,7 @@ interface TasksSidebarProps {
   selectedJob: Job | null;
   onRefreshJobs?: () => void; // Simple callback to refresh jobs data
   onDeleteJob?: (jobId: string) => void;
+  jobs?: Record<string, any>;
 }
 
 export function TasksSidebar({
@@ -155,6 +156,7 @@ export function TasksSidebar({
   selectedJob,
   onRefreshJobs,
   onDeleteJob,
+  jobs,
 }: TasksSidebarProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -250,6 +252,58 @@ export function TasksSidebar({
   const handleNavigateToJob = (jobId: string) => {
     setSelectedTaskForDetails(null);
   };
+
+  const handleMarkJobComplete = async (completed: boolean) => {
+  if (!selectedJob) return;
+
+  try {
+    const response = await fetch(`/api/jobs/${selectedJob.id}?updateTasks=true`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ isDone: completed }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      Object.assign(selectedJob, {
+        ...selectedJob,
+        isDone: completed,
+      });
+
+      if (typeof onRefreshJobs === "function") {
+        onRefreshJobs();
+        
+        const refreshEvent = new CustomEvent('force-jobs-refresh', {
+          detail: { jobId: selectedJob.id, completed }
+        });
+        window.dispatchEvent(refreshEvent);
+      }
+
+      toast({
+        title: "Success",
+        description: completed ? "Job marked as complete" : "Job marked as active",
+      });
+
+      if (completed) {
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 1000);
+      }
+    } else {
+      throw new Error(result.error || "Failed to update job");
+    }
+  } catch (error) {
+    console.error("Error updating job completion:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update job completion status",
+      variant: "destructive",
+    });
+  }
+};
 
   const startEditingJob = (field: EditableJobField, currentValue: any) => {
     setEditingJobField(field);
@@ -1247,44 +1301,59 @@ export function TasksSidebar({
               <SheetTitle>Job Tasks</SheetTitle>
               <SheetDescription>
                 Manage tasks for this job
-                {/* Helper text for inline editing */}
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <div className="flex items-center gap-2 text-blue-800">
-                    <Info className="h-4 w-4" />
-                    <p className="text-sm">
-                      <span className="font-medium">Tip:</span> Click on the job details below to edit them inline. After editing, click ✓ to save.
-                    </p>
-                  </div>
-                </div>
               </SheetDescription>
+              {/* Helper text for inline editing*/}
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <Info className="h-4 w-4" />
+                  <span className="text-sm">
+                    <span className="font-medium">Tip:</span> Click on the job details below to edit them inline. After editing, click ✓ to save.
+                  </span>
+                </div>
+              </div>
             </SheetHeader>
 
             {/* Quick Action Buttons */}
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAskJija}
-                  className="flex items-center gap-2"
-                >
-                  <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
-                  Ask Jija
-                </Button>
-              </div>
-              
-              {onDeleteJob && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDeleteJob}
-                  className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Job
-                </Button>
-              )}
-            </div>
+<div className="mb-6 flex items-center justify-between">
+  <div className="flex flex-wrap gap-3">
+    {/* Mark Job Complete/Active Button */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleMarkJobComplete(!selectedJob.isDone)}
+      className={`flex items-center gap-2 ${
+        selectedJob.isDone 
+          ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50" 
+          : "text-green-600 hover:text-green-700 hover:bg-green-50"
+      }`}
+    >
+      <Check className="h-4 w-4" />
+      {selectedJob.isDone ? "Mark job as active" : "Mark job as complete"}
+    </Button>
+    
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleAskJija}
+      className="flex items-center gap-2"
+    >
+      <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
+      Ask Jija
+    </Button>
+  </div>
+  
+  {onDeleteJob && (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleDeleteJob}
+      className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+    >
+      <Trash2 className="h-4 w-4" />
+      Delete Job
+    </Button>
+  )}
+</div>
 
             {/* Job Details Card with Inline Editing */}
             <Card className="mb-6">
@@ -1483,7 +1552,7 @@ export function TasksSidebar({
             {/* Save Order Notification */}
             {showSaveOrder && (
               <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 z-50 border border-gray-200">
-                <p className="text-sm mb-2">Save the new task order?</p>
+                <span className="text-sm mb-2 block">Save the new task order?</span>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -1514,6 +1583,7 @@ export function TasksSidebar({
         onSubmit={handleTaskSubmit}
         initialData={currentTask}
         jobId={selectedJob?.id ?? ""}
+        jobs={jobs}
       />
 
       {/* Task Details Sidebar */}

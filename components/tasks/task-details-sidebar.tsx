@@ -593,6 +593,61 @@ const cancelEditing = () => {
     }
   };
 
+  const handleMarkComplete = async (completed: boolean) => {
+  if (!taskDetails) return;
+
+  try {
+    const response = await fetch(`/api/tasks/${taskDetails.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ completed }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      const updatedTask: TaskDetailsSidebarTask = {
+        ...taskDetails,
+        completed,
+      };
+
+      setTaskDetails(updatedTask);
+
+      if (onTaskUpdated) {
+        onTaskUpdated(updatedTask);
+      }
+
+      if (taskDetails.jobId) {
+        const jobRefreshEvent = new CustomEvent('refresh-job-tasks', {
+          detail: { jobId: taskDetails.jobId }
+        });
+        window.dispatchEvent(jobRefreshEvent);
+        
+        const jobProgressEvent = new CustomEvent('job-progress-update', {
+          detail: { jobId: taskDetails.jobId }
+        });
+        window.dispatchEvent(jobProgressEvent);
+      }
+
+      toast({
+        title: "Success",
+        description: completed ? "Task marked as complete" : "Task marked as incomplete",
+      });
+    } else {
+      throw new Error(result.error || "Failed to update task");
+    }
+  } catch (error) {
+    console.error("Error updating task completion:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update task completion status",
+      variant: "destructive",
+    });
+  }
+};
+
   const renderEditableField = (
     field: EditableField,
     currentValue: any,
@@ -699,7 +754,7 @@ const cancelEditing = () => {
                   <span className="text-sm text-gray-500">Not set</span>
                 )
               ) : (
-                <p className="text-sm font-medium">{displayValue}</p>
+                <span className="text-sm font-medium">{displayValue}</span>
               )}
               <div className="absolute -top-8 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                 Click to edit
@@ -746,27 +801,43 @@ const cancelEditing = () => {
             )}
             <SheetTitle>Task Details</SheetTitle>
             <SheetDescription>
-                  {/* Helper text for inline editing */}
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <div className="flex items-center gap-2 text-blue-800">
-                      <Info className="h-4 w-4" />
-                      <p className="text-sm">
-                        <span className="font-medium">Tip:</span> Click on any field below to edit it inline. After editing, click ✓ to save.
-                      </p>
-                    </div>
-                  </div>
+              View and edit task details
             </SheetDescription>
+            {/* Helper text for inline editing */}
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-center gap-2 text-blue-800">
+                <Info className="h-4 w-4" />
+                <span className="text-sm">
+                  <span className="font-medium">Tip:</span> Click on any field below to edit it inline. After editing, click ✓ to save.
+                </span>
+              </div>
+            </div>
           </SheetHeader>
 
           {isLoading ? (
             <div className="flex justify-center p-8">
-              <p>Loading task details...</p>
+              <span>Loading task details...</span>
             </div>
           ) : (
             <>
             {/* Action Buttons */}
 <div className="mb-6 flex items-center justify-between">
   <div className="flex flex-wrap gap-3">
+    {/* Mark Complete/Incomplete Button */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleMarkComplete(!taskDetails.completed)}
+      className={`flex items-center gap-2 ${
+        taskDetails.completed 
+          ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50" 
+          : "text-green-600 hover:text-green-700 hover:bg-green-50"
+      }`}
+    >
+      <Check className="h-4 w-4" />
+      {taskDetails.completed ? "Mark as incomplete" : "Mark as complete"}
+    </Button>
+    
     <Button
       variant="outline"
       size="sm"
@@ -952,7 +1023,9 @@ const cancelEditing = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">No job</SelectItem>
-                              {Object.entries(jobs).map(([id, job]: [string, any]) => (
+                              {Object.entries(jobs)
+                                .filter(([id, job]: [string, any]) => !job.isDone)
+                                .map(([id, job]: [string, any]) => (
                                 <SelectItem key={id} value={id}>
                                   {job.title}
                                 </SelectItem>
@@ -1008,9 +1081,9 @@ const cancelEditing = () => {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <span className="text-xs text-gray-500 mt-1 block">
                                 {jobInfo.businessFunctionName}
-                              </p>
+                              </span>
                             </div>
                           ) : (
                             <span className="text-sm text-gray-500">No job assigned</span>
@@ -1100,7 +1173,7 @@ const cancelEditing = () => {
         
         {/* Available tags to add */}
         <div className="mb-2">
-          <p className="text-xs text-gray-500 mb-1">Available tags:</p>
+          <span className="text-xs text-gray-500 mb-1 block">Available tags:</span>
           <div className="flex flex-wrap gap-1 mb-2">
             {availableTags
               .filter(tag => !editingTags.includes(tag.name))

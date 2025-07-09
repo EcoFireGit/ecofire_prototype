@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Jobs } from "@/lib/models/job.model";
 import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
 import { Job, columns } from "@/components/jobs/table/columns";
@@ -80,10 +80,32 @@ export default function JobsPage() {
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [isTableViewEnabled, setIsTableViewEnabled] = useState(false);
-  const [creatingJob, setCreatingJob] = useState(false); //State to track job creation
+  const [creatingJob, setCreatingJob] = useState(false);
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const jobs = React.useMemo(() => {
+    const jobsMap: Record<string, any> = {};
+    
+    [...activeJobs, ...completedJobs].forEach(job => {
+      jobsMap[job.id] = {
+        _id: job.id,
+        title: job.title,
+        jobNumber: job.jobNumber,
+        businessFunctionId: job.businessFunctionId,
+        businessFunctionName: job.businessFunctionName,
+        dueDate: job.dueDate,
+        isDone: job.isDone,
+        nextTaskId: job.nextTaskId,
+        tasks: job.tasks,
+        impact: job.impact,
+        notes: job.notes,
+        createdDate: job.createdDate
+      };
+    });
+    
+    return jobsMap;
+  }, [activeJobs, completedJobs]);
 
   useEffect(() => {
     // Event handler to open the dialog
@@ -105,14 +127,21 @@ export default function JobsPage() {
       fetchJobs();
     };
 
+    const handleForceJobsRefresh = (event: CustomEvent) => {
+      console.log('Force refreshing jobs due to completion status change:', event.detail);
+      fetchJobs();
+    };
+
     window.addEventListener("openJobDialog", handleOpenDialog);
     window.addEventListener("open-job-edit", handleEditJob);
     window.addEventListener("refreshJobsList", handleRefreshJobsList);
+    window.addEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
 
     return () => {
       window.removeEventListener("openJobDialog", handleOpenDialog);
       window.removeEventListener("open-job-edit", handleEditJob);
       window.removeEventListener("refreshJobsList", handleRefreshJobsList);
+      window.removeEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
     };
   }, []);
 
@@ -539,33 +568,6 @@ export default function JobsPage() {
     }
   }, [searchParams]);
 
-  // Add this new useEffect to listen for the custom event from the Navbar
-  useEffect(() => {
-    // Event handler to open the dialog
-    const handleOpenDialog = () => {
-      setEditingJob(undefined);
-      setDialogOpen(true);
-    };
-
-    // Event handler for editing a job from TasksSidebar
-    const handleEditJob = (event: any) => {
-      if (event.detail && event.detail.job) {
-        setEditingJob(event.detail.job);
-        setDialogOpen(true);
-      }
-    };
-
-    // Add the event listeners
-    window.addEventListener("openJobDialog", handleOpenDialog);
-    window.addEventListener("open-job-edit", handleEditJob);
-
-    // Clean up the event listeners when component unmounts
-    return () => {
-      window.removeEventListener("openJobDialog", handleOpenDialog);
-      window.removeEventListener("open-job-edit", handleEditJob);
-    };
-  }, []);
-
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
 
@@ -703,8 +705,7 @@ export default function JobsPage() {
         setSortedCompletedJobs(sortByRecommended(filteredCompleted));
       }
     }
-  }, [loading, activeJobs, completedJobs, activeFilters]);
-  
+  }, [loading, activeJobs, completedJobs, activeFilters, taskDetails, tags]);
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -865,39 +866,6 @@ export default function JobsPage() {
     }
     setTasksSidebarOpen(open);
     if (!open) setSelectedJob(null); // Clear selected job and avoid stale sidebar data
-  };
-
-  const updateJobProgressById = async (jobId: string) => {
-    try {
-      const response = await fetch(`/api/jobs/${jobId}`);
-      const result = await response.json();
-
-      if (result.success) {
-        const updatedJob = result.data;
-        setActiveJobs((prevActiveJobs) =>
-          prevActiveJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setCompletedJobs((prevCompletedJobs) =>
-          prevCompletedJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setFilteredActiveJobs((prevFilteredActiveJobs) =>
-          prevFilteredActiveJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setFilteredCompletedJobs((prevFilteredCompletedJobs) =>
-          prevFilteredCompletedJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-      }
-    } catch (error) {
-      console.error("Error updating job progress:", error);
-    }
   };
 
   if (loading) {
@@ -1110,6 +1078,7 @@ export default function JobsPage() {
           selectedJob={selectedJob}
           onRefreshJobs={() => setNeedsRefresh(true)}
           onDeleteJob={handleDelete}
+          jobs={jobs} 
         />
 
         {selectedActiveJobs.size > 0 && (
