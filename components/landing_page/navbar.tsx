@@ -220,11 +220,12 @@ const Navbar = () => {
     try {
       const gcalResponse = await fetch("/api/gcal");
       if (!gcalResponse.ok) {
-        throw new Error("Failed to fetch Google Calendar data");
+        console.log("Failed to fetch Google Calendar data");
+        return
       } else {
         const response = await fetch("/api/notifications");
         if (!response.ok) {
-          throw new Error("Failed to fetch notifications");
+          console.log("Failed to fetch notifications");
         }
 
         const data = await response.json();
