@@ -88,6 +88,21 @@ export function MappingJPTable<TData, TValue>({
               </TableCell>
             </TableRow>
           )}
+          {table.getRowModel().rows?.length > 0 && (
+            <TableRow className="bg-gray-50">
+              <TableCell colSpan={3} className="text-right font-medium">
+                Total Impact:
+              </TableCell>
+              
+              <TableCell className="font-medium">
+                {data.reduce((sum, item: any) => sum + (item.piImpactValue || 0), 0)}
+              </TableCell>
+              
+              <TableCell></TableCell>
+              
+              <TableCell></TableCell>
+            </TableRow>
+)}
         </TableBody>
       </Table>
     </div>

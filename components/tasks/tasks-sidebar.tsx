@@ -64,15 +64,17 @@ interface SortableTaskItemProps {
   onDelete: (id: string) => void;
   onComplete: (id: string, jobid: string, completed: boolean) => void;
   ownerMap: Record<string, string>;
+  onAddToCalendar?: (task: Task) => void;
 }
 
-// Sortable Task Item component with proper typing
+// Sortable Task Item component with original UI plus Add to Calendar button
 function SortableTaskItem({
   task,
   onEdit,
   onDelete,
   onComplete,
   ownerMap,
+  onAddToCalendar,
 }: SortableTaskItemProps) {
   const {
     attributes,
@@ -92,6 +94,8 @@ function SortableTaskItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Patch: Compose TaskCard's action area with add-to-calendar button if present
+  // We'll render TaskCard as normal, and if onAddToCalendar exists, we render the button after TaskCard.
   return (
     <div ref={setNodeRef} style={style} className="mb-3">
       <div className="flex items-start">
@@ -100,18 +104,19 @@ function SortableTaskItem({
           {...attributes}
           {...listeners}
           className={`flex items-center justify-center h-full min-h-[80px] px-2 ${
-            task.isNextTask? "opacity-20 cursor-not-allowed" : "cursor-grab"
+            task.isNextTask ? "opacity-20 cursor-not-allowed" : "cursor-grab"
           }`}
         >
           <GripVertical className="h-5 w-5 text-gray-400" />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <TaskCard
             task={task}
             onEdit={onEdit}
             onDelete={onDelete}
             onComplete={onComplete}
             ownerMap={ownerMap}
+            onAddToCalendar={onAddToCalendar}
           />
         </div>
       </div>
@@ -382,6 +387,7 @@ export function TasksSidebar({
         return updatedTasks.sort((a, b) => {
           if (a.isNextTask && !a.completed) return -1;
           if (b.isNextTask && !b.completed) return 1;
+
 
           if (!a.completed && b.completed) return -1;
           if (a.completed && !b.completed) return 1;
@@ -686,14 +692,14 @@ export function TasksSidebar({
       }
 
       if (draggedTask && targetTask && draggedTask.completed !== targetTask.completed) {
-      toast({
-        title: "Cannot reorder between completion statuses",
-        description: "Completed and incomplete tasks must stay in their respective sections",
-        variant: "destructive",
-      });
-      setActiveId(null);
-      return;
-    }
+        toast({
+          title: "Cannot reorder between completion statuses",
+          description: "Completed and incomplete tasks must stay in their respective sections",
+          variant: "destructive",
+        });
+        setActiveId(null);
+        return;
+      }
 
       setTasks((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
@@ -708,57 +714,56 @@ export function TasksSidebar({
     setActiveId(null);
   };
 
+  /**
+   * Saves the current task order to the backend without showing user feedback.
+   * This function is used for automatic saves (e.g., after task completion status changes)
+   * where we don't want to show toast notifications or other UI feedback to the user.
+   * 
+   * @async
+   * @function saveTasksOrderSilently
+   * @returns {Promise<void>} A promise that resolves when the save operation completes
+   * 
+   * @description
+   * - Gets the current task IDs in their display order
+   * - Sends a PUT request to update the job's task order in the backend
+   * - Updates the local selectedJob object with the new task order
+   * - Triggers a job refresh if the onRefreshJobs callback is available
+   * - Logs errors to console but doesn't show user notifications
+   * 
+   * @example
+   * // Typically called after task completion status changes
+   * setTimeout(() => {
+   *   saveTasksOrderSilently();
+   * }, 100);
+   */
+  const saveTasksOrderSilently = async () => {
+    if (!selectedJob) return;
 
-/**
- * Saves the current task order to the backend without showing user feedback.
- * This function is used for automatic saves (e.g., after task completion status changes)
- * where we don't want to show toast notifications or other UI feedback to the user.
- * 
- * @async
- * @function saveTasksOrderSilently
- * @returns {Promise<void>} A promise that resolves when the save operation completes
- * 
- * @description
- * - Gets the current task IDs in their display order
- * - Sends a PUT request to update the job's task order in the backend
- * - Updates the local selectedJob object with the new task order
- * - Triggers a job refresh if the onRefreshJobs callback is available
- * - Logs errors to console but doesn't show user notifications
- * 
- * @example
- * // Typically called after task completion status changes
- * setTimeout(() => {
- *   saveTasksOrderSilently();
- * }, 100);
- */
-const saveTasksOrderSilently = async () => {
-  if (!selectedJob) return;
+    try {
+      const taskIds = tasks.map((task) => task.id);
+      
+      const response = await fetch("/api/tasks/order", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jobId: selectedJob.id,
+          taskIds: taskIds,
+        }),
+      });
 
-  try {
-    const taskIds = tasks.map((task) => task.id);
-    
-    const response = await fetch("/api/tasks/order", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        jobId: selectedJob.id,
-        taskIds: taskIds,
-      }),
-    });
-
-    const result = await response.json();
-    if (result.success && selectedJob) {
-      Object.assign(selectedJob, { ...selectedJob, tasks: taskIds });
-      if (typeof onRefreshJobs === "function") {
-        onRefreshJobs();
+      const result = await response.json();
+      if (result.success && selectedJob) {
+        Object.assign(selectedJob, { ...selectedJob, tasks: taskIds });
+        if (typeof onRefreshJobs === "function") {
+          onRefreshJobs();
+        }
       }
+    } catch (error) {
+      console.error("Error saving task order silently:", error);
     }
-  } catch (error) {
-    console.error("Error saving task order silently:", error);
-  }
-};
+  };
 
   // Save the new order of tasks
   const saveTasksOrder = async () => {
@@ -823,27 +828,84 @@ const saveTasksOrderSilently = async () => {
     }
   };
 
+  // Add to Calendar
+  const handleAddToCalendar = async (task: any) => {
+    try {
+      if (!task.date) {
+        toast({
+          title: "Error",
+          description: "Task date is not defined.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use current local time as the start time
+      const startDate = new Date();
+      const taskDate = new Date(task.date);
+      // Keep the date from the task but use current time
+      startDate.setFullYear(
+        taskDate.getFullYear(),
+        taskDate.getMonth(),
+        taskDate.getUTCDate(),
+      );
+      const endDate = new Date(
+        startDate.getTime() + task.requiredHours * 60 * 60 * 1000,
+      );
+
+      const startDateStr =
+        startDate.toISOString().replace(/[-:]/g, "").slice(0, -5) + "Z";
+      const endDateStr =
+        endDate.toISOString().replace(/[-:]/g, "").slice(0, -5) + "Z";
+
+      // Fetch the calendar ID from the server
+      const response = await fetch("/api/gcal/calendars/prioriwise"); // or your actual route
+      if (!response.ok) {
+        throw new Error("Failed to fetch calendar ID");
+      }
+
+      const { calendarId } = await response.json();
+
+      // Construct Google Calendar URL
+      const googleCalendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(task.title)}&dates=${startDateStr}/${endDateStr}&details=${encodeURIComponent(task.description)}&sf=true&output=xml&src=${calendarId}`;
+
+      window.open(googleCalendarUrl, "_blank");
+
+      toast({
+        title: "Redirecting to Google Calendar",
+        description: "You can now add this event to your calendar.",
+      });
+    } catch (error) {
+      console.error("Error adding task to calendar:", error);
+      toast({
+        title: "Error",
+        description: "Failed to redirect to calendar",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!selectedJob) {
     return null;
   }
 
   /**
- * Sorted array of tasks with automatic prioritization based on completion status.
- * 
- * @description
- * Creates a new sorted array from the tasks state with the following priority order:
- * 1. Next Task (if incomplete) - Always appears first
- * 2. Other incomplete tasks - Appear in middle section
- * 3. Completed tasks - Automatically moved to bottom
- * 
- * This ensures users always see their next priority task at the top and don't need
- * to scroll through completed tasks to find incomplete work.
- *  * @remarks
- * - Uses spread operator to avoid mutating original tasks array
- * - Comparison function returns -1/1/0 for before/after/equal positioning
- * - Within same completion status, tasks maintain their relative order
- * - Next task loses priority when marked as completed
- * */
+   * Sorted array of tasks with automatic prioritization based on completion status.
+   * 
+   * @description
+   * Creates a new sorted array from the tasks state with the following priority order:
+   * 1. Next Task (if incomplete) - Always appears first
+   * 2. Other incomplete tasks - Appear in middle section
+   * 3. Completed tasks - Automatically moved to bottom
+   * 
+   * This ensures users always see their next priority task at the top and don't need
+   * to scroll through completed tasks to find incomplete work.
+   *  * @remarks
+   * - Uses spread operator to avoid mutating original tasks array
+   * - Comparison function returns -1/1/0 for before/after/equal positioning
+   * - Within same completion status, tasks maintain their relative order
+   * - Next task loses priority when marked as completed
+   * */
 
   // Sort tasks - only prioritize the next task, allowing drag and drop to manage the rest
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -1025,6 +1087,7 @@ const saveTasksOrderSilently = async () => {
                           onDelete={handleDeleteTask}
                           onComplete={handleCompleteTask}
                           ownerMap={ownerMap}
+                          onAddToCalendar={handleAddToCalendar}
                         />
                       ))}
                     </SortableContext>
@@ -1070,9 +1133,8 @@ const saveTasksOrderSilently = async () => {
         onOpenChange={setTaskDialogOpen}
         onSubmit={handleTaskSubmit}
         initialData={currentTask}
-        jobId={selectedJob.id}
+        jobId={selectedJob?.id ?? ""}
       />
     </>
   );
 }
-

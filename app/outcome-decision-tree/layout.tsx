@@ -1,7 +1,6 @@
-// app/profile/layout.tsx
 import Layout from "../layouts/layout";
 
-export default function DashboardSectionLayout({
+export default function OutcomeDecisionTreeLayout({
   children,
 }: {
   children: React.ReactNode;

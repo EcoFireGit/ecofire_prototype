@@ -17,6 +17,7 @@ import {
   ChartNoAxesCombinedIcon,
   BriefcaseBusinessIcon,
   Heart,
+  GitBranch,
 } from "lucide-react";
 import {
   Sidebar,
@@ -54,48 +55,17 @@ import { usePathname } from "next/navigation";
 // Menu items.
 const items = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: Home,
-  },
-  {
-    title: "Quick Guide",
-    url: "https://coda.io/@urvashi-batra/prioriwise-getting-started-guide",
-    target: "_blank",
-    rel: "noopener noreferrer",
-    icon: Inbox,
-  },
-  {
-    title: "Jobs",
-    url: "/jobs",
-    icon: Calendar,
-  },
-  {
-    title: "Business Functions",
-    url: "/business-functions",
-    icon: BriefcaseBusinessIcon,
-  },
-  {
-    title: "Business Info",
-    url: "/business-info",
-    icon: BarChart2,
-  },
-  {
     title: "Jija",
     url: "/jija",
     icon: PawPrint,
     id: "jija",
   },
+];
+const dashboardItems = [
   {
-    title: "Organizations",
-    url: "/organizations",
-    icon: Users,
-  },
-  {
-    title: "Calendar",
-    url: "/backstage/gcal",
-    icon: Calendar,
-    id: "gcal-integration",
+    title: "Outcome Decision Tree",
+    url: "/outcome-decision-tree",
+    icon: GitBranch,
   },
 ];
 
@@ -140,6 +110,14 @@ export function AppSidebar() {
       return pathname === "/dashboard";
     }
     return pathname.startsWith(url);
+  };
+
+  const isDashboardSectionActive = () => {
+    return pathname.startsWith("/dashboard") || pathname.startsWith("/outcome-decision-tree");
+  };
+
+  const isJobsSectionActive = () => {
+    return pathname.startsWith("/jobs");
   };
 
   const [userPreferences, setUserPreferences] = useState({
@@ -260,6 +238,76 @@ export function AppSidebar() {
 
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* Dashboard Collapsible Group */}
+              <Collapsible className="group/collapsible" defaultOpen={isDashboardSectionActive()}>
+                <SidebarMenuItem>
+                  {!isMobile && effectiveState === "collapsed" ? (
+                    <SidebarMenuButton
+                      size={"lg"}
+                      asChild
+                      className="flex items-center justify-center"
+                    >
+                      <Link href="/dashboard">
+                        <Home className={`mx-auto h-4 w-4 ${isDashboardSectionActive() ? "text-[#F05523]" : ""}`} />
+                      </Link>
+                    </SidebarMenuButton>
+                  ) : (
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        size={"lg"}
+                        className="flex items-center w-full"
+                      >
+                        <Link href="/dashboard" className="flex items-center flex-1">
+                          <Home className={`mr-2 h-4 w-4 ${isDashboardSectionActive() ? "text-[#F05523]" : ""}`} />
+                          <span
+                            className={`${
+                              isDashboardSectionActive()
+                                ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
+                                : ""
+                            }`}
+                          >
+                            Dashboard
+                          </span>
+                        </Link>
+                        <ChevronDown className="h-4 w-4 ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                  )}
+                </SidebarMenuItem>
+                {(isMobile || effectiveState !== "collapsed") && (
+                  <CollapsibleContent>
+                    <SidebarMenu className="pl-6">
+                      {dashboardItems.map((item) => {
+                        const active = isActive(item.url);
+                        return (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton
+                              size={"lg"}
+                              asChild
+                              className="flex items-center"
+                            >
+                              <Link href={item.url}>
+                                <item.icon className={active ? "text-[#F05523]" : ""} />
+                                <span
+                                  className={
+                                    active
+                                      ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
+                                      : ""
+                                  }
+                                >
+                                  {item.title}
+                                </span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </CollapsibleContent>
+                )}
+              </Collapsible>
+
+              {/* Regular menu items */}
               {items.map((item) => {
                 const active = isActive(item.url);
                 const IconComponent = item.icon;
@@ -271,7 +319,7 @@ export function AppSidebar() {
                       asChild
                       className="flex items-center"
                     >
-                      <Link href={item.url} target={item.target} rel={item.rel}>
+                      <Link href={item.url}>
                         <IconComponent
                           className={`${active ? "text-[#F05523]" : ""} ${
                             !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
@@ -294,6 +342,34 @@ export function AppSidebar() {
                 );
               })}
 
+              {/* Jobs */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  size={"lg"}
+                  asChild
+                  className="flex items-center"
+                >
+                  <Link href="/jobs">
+                    <Calendar
+                      className={`${isJobsSectionActive() ? "text-[#F05523]" : ""} ${
+                        !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
+                      }`}
+                    />
+                    <span
+                      className={`${
+                        !isMobile && effectiveState === "collapsed" ? "hidden" : ""
+                      } ${
+                        isJobsSectionActive()
+                          ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
+                          : ""
+                      }`}
+                    >
+                      Jobs
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               {/* Backstage Collapsible Group - Only shown if enabled in preferences */}
               {userPreferences.enableBackstage && (
                 <Collapsible className="group/collapsible">
@@ -309,10 +385,15 @@ export function AppSidebar() {
                         </Link>
                       </SidebarMenuButton>
                     ) : (
-                      <CollapsibleTrigger className="flex items-center w-full py-2 px-3 text-sm font-medium rounded-md hover:bg-accent hover:text-sidebar-accent-foreground">
-                        <ChartNoAxesCombinedIcon className="mr-2 h-4 w-4" />
-                        <span>Backstage</span>
-                        <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton
+                          size={"lg"}
+                          className="flex items-center w-full"
+                        >
+                          <ChartNoAxesCombinedIcon className="mr-2" />
+                          <span>Backstage</span>
+                          <ChevronDown className="h-4 w-4 ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </SidebarMenuButton>
                       </CollapsibleTrigger>
                     )}
                   </SidebarMenuItem>

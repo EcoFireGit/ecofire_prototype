@@ -173,7 +173,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
       style={{ width: "100%" }}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium">Progress towards mission</h3>
+        <h3 className="text-lg font-medium">Expected vs Achieved Outcome Progress</h3>
         <div className="flex items-center space-x-6">
           {/* Legend - Moved to top right */}
           <div className="flex items-center">
