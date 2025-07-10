@@ -1061,29 +1061,13 @@ const cancelEditing = () => {
                           {jobInfo ? (
                             <div>
                               <div className="flex items-center gap-2">
-                                {onNavigateToJob ? (
-                                  <Button
-                                    variant="link"
-                                    className="p-0 h-auto text-blue-600 hover:text-blue-800"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleNavigateToJob();
-                                    }}
-                                  >
-                                    {jobInfo.title}
-                                  </Button>
-                                ) : (
-                                  <span className="text-sm font-medium">{jobInfo.title}</span>
-                                )}
+                                <span className="text-sm font-medium">{jobInfo.title}</span>
                                 {jobInfo.jobNumber && (
                                   <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
                                     #{jobInfo.jobNumber}
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs text-gray-500 mt-1 block">
-                                {jobInfo.businessFunctionName}
-                              </span>
                             </div>
                           ) : (
                             <span className="text-sm text-gray-500">No job assigned</span>
