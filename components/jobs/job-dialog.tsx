@@ -40,8 +40,8 @@ interface JobDialogProps {
 const emptyFormState = {
   title: "",
   notes: "",
-  owner: "",
-  businessFunctionId: undefined as string | undefined,
+  owner: "none",
+  businessFunctionId: "none",
   dueDate: "",
   isDone: false,
 };
@@ -175,7 +175,7 @@ export function JobDialog({
     }
     setFormData(prev => ({
       ...prev,
-      businessFunctionId: value === "none" ? undefined : value,
+      businessFunctionId: value === "none" ? "none" : value,
     }));
   };
 
