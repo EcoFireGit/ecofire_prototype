@@ -27,6 +27,7 @@ interface Job {
   dueDate?: Date;
   notes?: string;
   isDone: boolean;
+
 }
 
 interface Task {
@@ -335,6 +336,7 @@ const OutcomeDecisionTree = () => {
   };
 
   const isJobCompleted = (jobId: string): boolean => {
+
     const job = jobs.find(job => job._id === jobId);
     return job ? job.isDone : false;
   };

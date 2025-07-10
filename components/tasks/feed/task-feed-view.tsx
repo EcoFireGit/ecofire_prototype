@@ -403,92 +403,77 @@ export default function TaskFeedView() {
   }, []);
 
   // Function to complete a task
-  const completeTask = async (jobid: string, id: string) => {
-    try {
-      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          completed: true,
-        }),
-      });
+const completeTask = async (jobid: string, id: string) => {
+  try {
+    const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        completed: true,
+      }),
+    });
 
-      const result = await response.json();
+    const result = await response.json();
 
-      if (result.success) {
-        // Update local state
-        setTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task._id === id
-              ? {
-                  ...task,
-                  completed: true,
-                }
-              : task,
-          ),
-        );
+    if (result.success) {
+      const updatedTaskData = result.data;      
+      // Update local state
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task._id === id
+            ? {
+                ...task,
+                completed: updatedTaskData.completed,
+                endDate: updatedTaskData.endDate,
+                timeElapsed: updatedTaskData.timeElapsed,
+              }
+            : task,
+        ),
+      );
 
-        // Also update filtered tasks
+      // Also update filtered tasks
+      setFilteredTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task._id === id
+            ? {
+                ...task,
+                completed: updatedTaskData.completed,
+                endDate: updatedTaskData.endDate,
+                timeElapsed: updatedTaskData.timeElapsed,
+              }
+            : task,
+        ),
+      );
+
+      // Filter out the task after a brief delay
+      setTimeout(() => {
+        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
         setFilteredTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task._id === id
-              ? {
-                  ...task,
-                  completed: true,
-                }
-              : task,
-          ),
+          prevTasks.filter((task) => task._id !== id),
         );
+        setSortedTasks((prevTasks) =>
+          prevTasks.filter((task) => task._id !== id),
+        );
+      }, 500);
 
-        //No need to update job because task udpate will handle it in the backend
-
-        // If this task is a next task for a job, update the job
-        // const jobsWithThisNextTask = Object.values(jobs).filter(
-        //   (job: any) => job.nextTaskId === id
-        // );
-
-        // // Update each job found
-        // for (const job of jobsWithThisNextTask) {
-        //   await fetch(`/api/jobs/${job._id}`, {
-        //     method: "PUT",
-        //     headers: {
-        //       "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify({
-        //       nextTaskId: null,
-        //     }),
-        //   });
-        // }
-
-        // Filter out the task after a brief delay
-        setTimeout(() => {
-          setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
-          setFilteredTasks((prevTasks) =>
-            prevTasks.filter((task) => task._id !== id),
-          );
-          setSortedTasks((prevTasks) =>
-            prevTasks.filter((task) => task._id !== id),
-          );
-        }, 500);
-
-        toast({
-          title: "Task completed",
-          description: "Great job!",
-        });
-      } else {
-        throw new Error(result.error || "Failed to update task");
-      }
-    } catch (error) {
-      console.error("Error completing task:", error);
       toast({
-        title: "Error",
-        description: "Failed to complete task",
-        variant: "destructive",
+        title: "Task completed",
+        description: "Great job!",
       });
+    } else {
+      throw new Error(result.error || "Failed to update task");
     }
-  };
+  } catch (error) {
+    console.error("Error completing task:", error);
+    toast({
+      title: "Error",
+      description: "Failed to complete task",
+      variant: "destructive",
+    });
+  }
+};
 
   // Handle checkbox change
   const handleCompleteTask = (id: string, completed: boolean) => {
@@ -664,172 +649,178 @@ export default function TaskFeedView() {
   };
 
   const handleTaskSubmit = async (taskData: Partial<Task>) => {
-    try {
-      // Make sure tags is always defined as an array
-      const processedTaskData = {
-        ...taskData,
-        tags: taskData.tags || [],
-      };
+  try {
+    // Make sure tags is always defined as an array
+    const processedTaskData = {
+      ...taskData,
+      tags: taskData.tags || [],
+    };
 
-      if (dialogMode === "create") {
-        // Create new task
-        const response = await fetch("/api/tasks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(processedTaskData),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Map from MongoDB _id to id for frontend consistency
-          const newTask: Task = {
-            id: result.data._id,
-            title: result.data.title,
-            owner: result.data.owner,
-            date: result.data.date,
-            requiredHours: result.data.requiredHours,
-            focusLevel: result.data.focusLevel,
-            joyLevel: result.data.joyLevel,
-            notes: result.data.notes,
-            tags: result.data.tags || [],
-            jobId: result.data.jobId,
-            completed: result.data.completed,
-            isNextTask: false,
-          };
-
-          // Add task ID to job's tasks array if jobId exists
-          if (result.data.jobId && jobs[result.data.jobId]) {
-            try {
-              // Get current tasks array for the job
-              const currentJob = jobs[result.data.jobId];
-              const currentTasks = currentJob.tasks || [];
-              const updatedTasks = [...currentTasks, result.data._id];
-
-              // Update the job with the new tasks array
-              const jobUpdateResponse = await fetch(`/api/jobs/${result.data.jobId}`, {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ tasks: updatedTasks }),
-              });
-
-              if (!jobUpdateResponse.ok) {
-                console.error("Failed to update job tasks array");
-              } else {
-                // Update local jobs state
-                setJobs(prevJobs => ({
-                  ...prevJobs,
-                  [result.data.jobId]: {
-                    ...prevJobs[result.data.jobId],
-                    tasks: updatedTasks
-                  }
-                }));
-
-                // Trigger a job progress update event
-                const event = new CustomEvent("job-progress-update", {
-                  detail: { jobId: result.data.jobId },
-                });
-                window.dispatchEvent(event);
-              }
-            } catch (jobUpdateError) {
-              console.error("Error updating job tasks:", jobUpdateError);
-            }
-          }
-
-          // Add task to the state
-          setTasks((prevTasks) => [...prevTasks, newTask]);
-
-          // Re-sort and update filtered tasks
-          const updatedTasks = [...tasks, newTask];
-          const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
-          setTasks(sortedUpdatedTasks);
-          handleFilterChange(activeFilters);
-
-          toast({
-            title: "Success",
-            description: "Task created successfully",
-          });
-        } else {
-          throw new Error(result.error || "Failed to create task");
-        }
-      } else {
-        // Update existing task
-        if (!currentTask) return;
-
-        const response = await fetch(`/api/tasks/${currentTask.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(processedTaskData),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Map from MongoDB _id to id for frontend consistency
-          const updatedTask: Task = {
-            id: result.data._id,
-            title: result.data.title,
-            owner: result.data.owner,
-            date: result.data.date,
-            requiredHours: result.data.requiredHours,
-            focusLevel: result.data.focusLevel,
-            joyLevel: result.data.joyLevel,
-            notes: result.data.notes,
-            tags: result.data.tags || [],
-            jobId: result.data.jobId,
-            completed: result.data.completed,
-            isNextTask: false,
-          };
-
-          // If the task completion status changed, trigger a progress update
-          if (currentTask.completed !== updatedTask.completed) {
-            const event = new CustomEvent("job-progress-update", {
-              detail: { jobId: result.data.jobId },
-            });
-            window.dispatchEvent(event);
-          }
-
-          // Update task in all state arrays - ensure we properly update with the full task data
-          const updateTaskState = (tasksArray: any[]) =>
-            tasksArray.map((task) => {
-              if (task.id === updatedTask.id) {
-                // Create a complete merged object to ensure all properties are updated
-                return {
-                  ...task,
-                  ...updatedTask,
-                };
-              }
-              return task;
-            });
-
-          // Apply updates to all task arrays
-          setTasks(updateTaskState(tasks));
-          setFilteredTasks(updateTaskState(filteredTasks));
-          setSortedTasks(updateTaskState(sortedTasks));
-          await fetchData();
-          toast({
-            title: "Success",
-            description: "Task updated successfully",
-          });
-        } else {
-          throw new Error(result.error || "Failed to update task");
-        }
-      }
-    } catch (error) {
-      console.error("Error submitting task:", error);
-      toast({
-        title: "Error",
-        description: "Failed to submit task",
-        variant: "destructive",
+    if (dialogMode === "create") {
+      // Create new task
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(processedTaskData),
       });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Map from MongoDB _id to id for frontend consistency
+        const newTask: Task = {
+          id: result.data._id,
+          title: result.data.title,
+          owner: result.data.owner,
+          date: result.data.date,
+          requiredHours: result.data.requiredHours,
+          focusLevel: result.data.focusLevel,
+          joyLevel: result.data.joyLevel,
+          notes: result.data.notes,
+          tags: result.data.tags || [],
+          jobId: result.data.jobId,
+          completed: result.data.completed,
+          isNextTask: false,
+          createdDate: result.data.createdDate,
+          endDate: result.data.endDate,
+          timeElapsed: result.data.timeElapsed,
+        };
+
+        // Add task ID to job's tasks array if jobId exists
+        if (result.data.jobId && jobs[result.data.jobId]) {
+          try {
+            // Get current tasks array for the job
+            const currentJob = jobs[result.data.jobId];
+            const currentTasks = currentJob.tasks || [];
+            const updatedTasks = [...currentTasks, result.data._id];
+
+            // Update the job with the new tasks array
+            const jobUpdateResponse = await fetch(`/api/jobs/${result.data.jobId}`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ tasks: updatedTasks }),
+            });
+
+            if (!jobUpdateResponse.ok) {
+              console.error("Failed to update job tasks array");
+            } else {
+              // Update local jobs state
+              setJobs(prevJobs => ({
+                ...prevJobs,
+                [result.data.jobId]: {
+                  ...prevJobs[result.data.jobId],
+                  tasks: updatedTasks
+                }
+              }));
+
+              // Trigger a job progress update event
+              const event = new CustomEvent("job-progress-update", {
+                detail: { jobId: result.data.jobId },
+              });
+              window.dispatchEvent(event);
+            }
+          } catch (jobUpdateError) {
+            console.error("Error updating job tasks:", jobUpdateError);
+          }
+        }
+
+        // Add task to the state
+        setTasks((prevTasks) => [...prevTasks, newTask]);
+
+        // Re-sort and update filtered tasks
+        const updatedTasks = [...tasks, newTask];
+        const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
+        setTasks(sortedUpdatedTasks);
+        handleFilterChange(activeFilters);
+
+        toast({
+          title: "Success",
+          description: "Task created successfully",
+        });
+      } else {
+        throw new Error(result.error || "Failed to create task");
+      }
+    } else {
+      // Update existing task
+      if (!currentTask) return;
+
+      const response = await fetch(`/api/tasks/${currentTask.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(processedTaskData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Map from MongoDB _id to id for frontend consistency
+        const updatedTask: Task = {
+          id: result.data._id,
+          title: result.data.title,
+          owner: result.data.owner,
+          date: result.data.date,
+          requiredHours: result.data.requiredHours,
+          focusLevel: result.data.focusLevel,
+          joyLevel: result.data.joyLevel,
+          notes: result.data.notes,
+          tags: result.data.tags || [],
+          jobId: result.data.jobId,
+          completed: result.data.completed,
+          isNextTask: false,
+          createdDate: result.data.createdDate,
+          endDate: result.data.endDate,
+          timeElapsed: result.data.timeElapsed,
+        };
+
+        // If the task completion status changed, trigger a progress update
+        if (currentTask.completed !== updatedTask.completed) {
+          const event = new CustomEvent("job-progress-update", {
+            detail: { jobId: result.data.jobId },
+          });
+          window.dispatchEvent(event);
+        }
+
+        // Update task in all state arrays - ensure we properly update with the full task data
+        const updateTaskState = (tasksArray: any[]) =>
+          tasksArray.map((task) => {
+            if (task.id === updatedTask.id) {
+              // Create a complete merged object to ensure all properties are updated
+              return {
+                ...task,
+                ...updatedTask,
+              };
+            }
+            return task;
+          });
+
+        // Apply updates to all task arrays
+        setTasks(updateTaskState(tasks));
+        setFilteredTasks(updateTaskState(filteredTasks));
+        setSortedTasks(updateTaskState(sortedTasks));
+        await fetchData();
+        toast({
+          title: "Success",
+          description: "Task updated successfully",
+        });
+      } else {
+        throw new Error(result.error || "Failed to update task");
+      }
     }
-  };
+  } catch (error) {
+    console.error("Error submitting task:", error);
+    toast({
+      title: "Error",
+      description: "Failed to submit task",
+      variant: "destructive",
+    });
+  }
+};
 
   // Delete task
   const handleDeleteTask = async (id: string) => {

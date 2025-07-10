@@ -65,6 +65,16 @@ export function NextTasks({
     });
   };
 
+  const formatTimestamp = (dateString?: Date | string) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+};
+
   const getOwnerName = (ownerId?: string) => {
     if (!ownerId) return "Unassigned";
     return ownerMap[ownerId] || "Unassigned";
@@ -196,22 +206,28 @@ export function NextTasks({
                     </div>
                   </div>
 
-                  <div className="flex">
-                    {onAddToCalendar && (
-                      <Button
-                        variant="ghost"
-                        size="default"
-                        className="h-8 mr-2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAddToCalendar(task);
-                        }}
-                        title="Add to calendar"
-                      >
-                        <Calendar className="h-4 w-4" /> Add to Calendar
-                      </Button>
-                    )}
-                    <div className="flex flex-col gap-2">
+                <div className="flex items-start gap-3">
+                  {task.createdDate && (
+                    <div className="text-xs text-muted-foreground pt-2">
+                      Created {formatTimestamp(task.createdDate)}
+                    </div>
+                  )}
+                  
+                  {onAddToCalendar && (
+                    <Button
+                      variant="ghost"
+                      size="default"
+                      className="h-8 mr-2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddToCalendar(task);
+                      }}
+                      title="Add to calendar"
+                    >
+                      <Calendar className="h-4 w-4" /> Add to Calendar
+                    </Button>
+                  )}
+  <div className="flex flex-col gap-2">
                       <Button
                         variant="ghost"
                         size="sm"

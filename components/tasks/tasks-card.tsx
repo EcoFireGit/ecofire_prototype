@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,6 +40,7 @@ export function TaskCard({
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
     const { refreshJobProgress } = useTaskContext();
+    const [showDetails, setShowDetails] = useState(false);
 
     // Format the date
     const formatDate = (dateString?: string) => {
@@ -70,6 +71,16 @@ export function TaskCard({
         if (task.isNextTask) return "border-l-4 border border-orange-500 bg-white";
         if (task.completed) return "border border-gray-200 bg-gray-50";
         return "border border-gray-200 bg-white";
+    };
+
+    const formatTimestamp = (dateString?: Date | string) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+    });
     };
 
     const handleTaskComplete = async (value: boolean) => {
@@ -171,6 +182,48 @@ export function TaskCard({
                                     </span>
                                 ))}
                             </div>
+                        )}
+                        {/* Time tracking details dropdown */}
+                        {(task.createdDate || task.endDate || task.timeElapsed) && (
+                        <div className="mt-3">
+                            <button
+                            onClick={() => setShowDetails(!showDetails)}
+                            className="flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                            >
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>Details</span>
+                            {showDetails ? (
+                                <ChevronUp className="h-3 w-3 ml-1" />
+                            ) : (
+                                <ChevronDown className="h-3 w-3 ml-1" />
+                            )}
+                            </button>
+                            
+                            {showDetails && (
+                            <div className="mt-2 p-2 rounded text-xs">
+                                <div className="flex items-center justify-between gap-4">
+                                {task.createdDate && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-500">Created:</span>
+                                    <span>{formatTimestamp(task.createdDate)}</span>
+                                    </div>
+                                )}
+                                {task.endDate && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-500">Completed:</span>
+                                    <span>{formatTimestamp(task.endDate)}</span>
+                                    </div>
+                                )}
+                                {task.timeElapsed && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-500">Duration:</span>
+                                    <span className="font-medium">{task.timeElapsed}</span>
+                                    </div>
+                                )}
+                                </div>
+                            </div>
+                            )}
+                        </div>
                         )}
                     </div>
 
