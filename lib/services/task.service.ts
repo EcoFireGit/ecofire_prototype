@@ -160,60 +160,70 @@ export class TaskService {
   }
 
   async markCompleted(
-    id: string,
-    userId: string,
-    isCompleted: boolean
-  ): Promise<TaskInterface | null> {
-    try {
-      const updateData: Partial<TaskInterface> = {
-        completed: isCompleted,
-      };
+  id: string,
+  userId: string,
+  isCompleted: boolean
+): Promise<TaskInterface | null> {
+  try {
+    await dbConnect();
+    
+    const updateData: Partial<TaskInterface> = {
+      completed: isCompleted,
+    };
 
-      if (isCompleted) {
-        const now = new Date();
-        updateData.endDate = now;
+    if (isCompleted) {
+      const now = new Date();
+      updateData.endDate = now;
 
-        const existingTask = await this.getTaskById(id, userId);
-        
-        if (existingTask?.createdDate) {
-          try {
-            var startDate;
-            if ((existingTask.date) && (existingTask.date <= now)){
-                startDate = existingTask.date;
-            }
-            else{
-              startDate = existingTask.createdDate;
-            }
+      const existingTask = await this.getTaskById(id, userId);
+      
+      if (existingTask?.createdDate) {
+        try {
+          let startDate: Date;
+          
+          const createdDate = new Date(existingTask.createdDate);
+          
+          if (existingTask.date) {
+            const taskDueDate = new Date(existingTask.date);
             
-            
-            const timeElapsed = calculateTimeElapsed(startDate, now);
-            updateData.timeElapsed = timeElapsed;
-          } catch (timeError) {
-            console.error("Error calculating time elapsed:", timeError);
-            updateData.timeElapsed = null;
+            if (now >= taskDueDate) {
+              startDate = taskDueDate;
+            } else {
+              startDate = createdDate;
+            }
+          } else {
+            startDate = createdDate;
           }
-        } else {
-          console.log("No created date found, skipping time calculation");
+          
+          
+          const timeElapsed = calculateTimeElapsed(startDate, now);
+          updateData.timeElapsed = timeElapsed;         
+        } catch (timeError) {
+          console.error("Error calculating time elapsed:", timeError);
+          updateData.timeElapsed = null;
         }
       } else {
-        updateData.endDate = null;
         updateData.timeElapsed = null;
       }
-      
-      const result = await this.updateTask(id, userId, updateData);
-      
-      return result;
-    } catch (error) {
-        console.error("=== markCompleted ERROR ===");
-        console.error("Error details:", error);
-        
-        const err = error as Error;
-        console.error("Error message:", err.message);
-        console.error("Error stack:", err.stack);
-        
-        throw new Error("Error setting task status: " + err.message);
-          }
-      }
+    } else {
+      updateData.endDate = null;
+      updateData.timeElapsed = null;
+    }
+    
+    const result = await this.updateTask(id, userId, updateData);   
+    
+    return result;
+  } catch (error) {
+    console.error("=== markCompleted ERROR ===");
+    console.error("Error details:", error);
+    
+    const err = error as Error;
+    console.error("Error message:", err.message);
+    console.error("Error stack:", err.stack);
+    
+    throw new Error("Error setting task status: " + err.message);
+  }
+}
 
   async getNextTasks(userId: string): Promise<TaskInterface[]> {
     try {

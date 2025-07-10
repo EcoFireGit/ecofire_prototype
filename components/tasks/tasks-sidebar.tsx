@@ -348,80 +348,69 @@ export function TasksSidebar({
   };
 
   const handleCompleteTask = async (
-    id: string,
-    jobid: string,
-    completed: boolean,
-  ) => {
-    try {
-      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ completed }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        // Use the function form of setState to ensure you're working with the latest state
-        setTasks((prevTasks) => {
-          const updatedTasks = prevTasks.map((task) => {
-            if (task.id === id){
-              return {
-                ...task,
-                completed,
-                isNextTask: completed? false : task.isNextTask,
-                createdDate: result.data.createdDate || task.createdDate,
-                endDate: result.data.endDate,
-                timeElapsed: result.data.timeElapsed,
-              };
-            }
-            return task;
-          });
-
-          return updatedTasks.sort((a,b) => {
-              if (a.isNextTask && !a.completed) return -1;
-              if (b.isNextTask && !b.completed) return 1;
-
-              if (!a.completed && b.completed) return -1;
-              if (a.completed && !b.completed) return 1;
-
-              return 0;
-          })
-
-          // return prevTasks.map((task) => {
-          //   if (task.id === id) {
-          //     // Update completed status and remove isNextTask if it's being completed
-          //     return {
-          //       ...task,
-          //       completed,
-          //       // If the task is being completed and it was the next task, remove that status
-          //       isNextTask: completed ? false : task.isNextTask,
-          //     };
-          //   }
-          //   return task;
-          });
-
-        // Then trigger a refresh of the job progress
-        refreshJobProgress(jobid);
-        setTimeout(() => {
-          saveTasksOrderSilently();
-        }, 100)
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update task",
-          variant: "destructive",
+  id: string,
+  jobid: string,
+  completed: boolean,
+) => {
+  try {
+    const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ completed }),
+    });
+    const result = await response.json();
+    if (result.success) {
+      const updatedTaskData = result.data;
+      // Use the function form of setState to ensure you're working with the latest state
+      setTasks((prevTasks) => {
+        const updatedTasks = prevTasks.map((task) => {
+          if (task.id === id) {
+            return {
+              ...task,
+              completed: updatedTaskData.completed,
+              isNextTask: completed ? false : task.isNextTask,
+              createdDate: updatedTaskData.createdDate || task.createdDate,
+              endDate: updatedTaskData.endDate,
+              timeElapsed: updatedTaskData.timeElapsed,
+            };
+          }
+          return task;
         });
-      }
-    } catch (error) {
-      console.error("Error updating task:", error);
+
+        return updatedTasks.sort((a, b) => {
+          if (a.isNextTask && !a.completed) return -1;
+          if (b.isNextTask && !b.completed) return 1;
+
+          if (!a.completed && b.completed) return -1;
+          if (a.completed && !b.completed) return 1;
+
+          return 0;
+        });
+      });
+
+      // Then trigger a refresh of the job progress
+      refreshJobProgress(jobid);
+      setTimeout(() => {
+        saveTasksOrderSilently();
+      }, 100);
+    } else {
       toast({
         title: "Error",
         description: "Failed to update task",
         variant: "destructive",
       });
     }
-  };
+  } catch (error) {
+    console.error("Error updating task:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update task",
+      variant: "destructive",
+    });
+  }
+};
 
   const handleNextTaskChange = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
