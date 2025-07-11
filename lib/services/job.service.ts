@@ -10,30 +10,45 @@ export class JobService {
       await dbConnect();
       const job = await Job.findById(jobId);
       if(!job || !job.tasks){
-        throw new Error('Job or Tasks not found');
+        console.log(`Job ${jobId} or tasks not found`);
+        return null;
       }
 
       if(!job.tasks.includes(taskId)){
-        throw new Error('TaskId not found in job tasks');
+        console.log(`TaskId ${taskId} not found in job ${jobId} tasks array`);
+        return null;
       } 
 
       if(job.nextTaskId !== taskId){
+        console.log(`Task ${taskId} is not the current next task, no update needed`);
         return job;
       }
         //find the task from the array that is not comple
         // te and set it as nextTask
       const nextTask = await this.getFirstIncompleteTask(job.tasks);
+      
+      if (!nextTask) {
+        console.log(`No incomplete tasks found for job ${jobId}, clearing nextTaskId`);
+        const updatedJob = await Job.findOneAndUpdate(
+          { _id: jobId },
+          { nextTaskId: null },
+          { new: true }
+        );
+        return updatedJob;
+      }
+      
       const updatedJob = await Job.findOneAndUpdate(
         { _id: jobId },
         { nextTaskId: nextTask }, // Specify the fields to update
         { new: true }  // returns the updated document
       );
 
+      console.log(`Successfully set next task ${nextTask} for job ${jobId}`);
       return updatedJob;
     } catch (error) {
-      throw new Error('Error setting next TaskId in database');
+      console.error('Error in setIncompleteTaskAsNextStep:', error);
+      return null;
     }
-
   }
 
   async  getFirstIncompleteTask(taskIds: string[]): Promise<string | null> {

@@ -443,6 +443,18 @@ const completeTask = async (jobid: string, id: string) => {
             : task,
         ),
       );
+      setSortedTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task._id === id
+            ? {
+                ...task,
+                completed: updatedTaskData.completed,
+                endDate: updatedTaskData.endDate,
+                timeElapsed: updatedTaskData.timeElapsed,
+              }
+            : task,
+        ),
+      );
 
       // Filter out the task after a brief delay
       setTimeout(() => {
@@ -454,6 +466,9 @@ const completeTask = async (jobid: string, id: string) => {
           prevTasks.filter((task) => task._id !== id),
         );
       }, 500);
+      setTimeout(() => {
+        fetchData();
+      }, 1000);
 
       toast({
         title: "Task completed",
@@ -538,6 +553,10 @@ const completeTask = async (jobid: string, id: string) => {
               : task,
           ),
         );
+
+        setTimeout(() => {
+          fetchData();
+        }, 500);
 
         toast({
           title: "Task reopened",
@@ -752,14 +771,9 @@ const completeTask = async (jobid: string, id: string) => {
           }
         }
 
-        // Add task to the state
-        setTasks((prevTasks) => [...prevTasks, newTask]);
-
-        // Re-sort and update filtered tasks
-        const updatedTasks = [...tasks, newTask];
-        const sortedUpdatedTasks = sortTasks(updatedTasks, jobs);
-        setTasks(sortedUpdatedTasks);
-        handleFilterChange(activeFilters);
+        setTimeout(() => {
+          fetchData();
+        }, 0);
 
         toast({
           title: "Success",
@@ -827,7 +841,10 @@ const completeTask = async (jobid: string, id: string) => {
         setTasks(updateTaskState(tasks));
         setFilteredTasks(updateTaskState(filteredTasks));
         setSortedTasks(updateTaskState(sortedTasks));
-        await fetchData();
+        setTimeout(() => {
+          fetchData();
+        }, 0);
+        
         toast({
           title: "Success",
           description: "Task updated successfully",
