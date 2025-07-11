@@ -518,6 +518,9 @@ export function TasksSidebar({
           jobId: task.jobId,
           completed: task.completed,
           isNextTask: task._id === selectedJob.nextTaskId,
+          createdDate: task.createdDate,
+          endDate: task.endDate,
+          timeElapsed: task.timeElapsed,
         }));
 
         // On initial load, sort tasks based on job.tasks array
@@ -629,65 +632,70 @@ export function TasksSidebar({
   };
 
   const handleCompleteTask = async (
-    id: string,
-    jobid: string,
-    completed: boolean,
-  ) => {
-    try {
-      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ completed }),
+  id: string,
+  jobid: string,
+  completed: boolean,
+) => {
+  try {
+    const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ completed }),
+    });
+    const result = await response.json();
+    if (result.success) {
+      const updatedTaskData = result.data;
+      // Use the function form of setState to ensure you're working with the latest state
+      setTasks((prevTasks) => {
+        const updatedTasks = prevTasks.map((task) => {
+          if (task.id === id) {
+            return {
+              ...task,
+              completed: updatedTaskData.completed,
+              isNextTask: completed ? false : task.isNextTask,
+              createdDate: updatedTaskData.createdDate || task.createdDate,
+              endDate: updatedTaskData.endDate,
+              timeElapsed: updatedTaskData.timeElapsed,
+            };
+          }
+          return task;
+        });
+
+        return updatedTasks.sort((a, b) => {
+          if (a.isNextTask && !a.completed) return -1;
+          if (b.isNextTask && !b.completed) return 1;
+
+
+          if (!a.completed && b.completed) return -1;
+          if (a.completed && !b.completed) return 1;
+
+          return 0;
+        });
       });
-      const result = await response.json();
-      if (result.success) {
-        // Use the function form of setState to ensure you're working with the latest state
-        setTasks((prevTasks) => {
-          const updatedTasks = prevTasks.map((task) => {
-            if (task.id === id){
-              return {
-                ...task,
-                completed,
-                isNextTask: completed? false : task.isNextTask,
-              };
-            }
-            return task;
-          });
 
-          return updatedTasks.sort((a,b) => {
-              if (a.isNextTask && !a.completed) return -1;
-              if (b.isNextTask && !b.completed) return 1;
-
-              if (!a.completed && b.completed) return -1;
-              if (a.completed && !b.completed) return 1;
-
-              return 0;
-          })
-        });
-
-        // Then trigger a refresh of the job progress
-        refreshJobProgress(jobid);
-        setTimeout(() => {
-          saveTasksOrderSilently();
-        }, 100)
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update task",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error updating task:", error);
+      // Then trigger a refresh of the job progress
+      refreshJobProgress(jobid);
+      setTimeout(() => {
+        saveTasksOrderSilently();
+      }, 100);
+    } else {
       toast({
         title: "Error",
         description: "Failed to update task",
         variant: "destructive",
       });
     }
-  };
+  } catch (error) {
+    console.error("Error updating task:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update task",
+      variant: "destructive",
+    });
+  }
+};
 
   const handleNextTaskChange = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;
@@ -815,6 +823,9 @@ export function TasksSidebar({
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: false,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
           };
 
           // Add task ID to job's tasks array
@@ -869,6 +880,10 @@ export function TasksSidebar({
             jobId: result.data.jobId,
             completed: result.data.completed,
             isNextTask: result.data._id === nextTaskId,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
+
           };
 
           // If the task completion status changed, trigger a progress update

@@ -62,8 +62,7 @@ export function TaskDialog({
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
-  // Use string for clearable date input
-  const [date, setDate] = useState<string>(""); 
+  const [date, setDate] = useState<string>("");
   const [requiredHours, setRequiredHours] = useState<number | undefined>(undefined);
   const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(undefined);
   const [joyLevel, setJoyLevel] = useState<JoyLevel | undefined>(undefined);
@@ -120,7 +119,7 @@ export function TaskDialog({
     if (mode === "create") {
       setTitle("");
       setOwner(undefined);
-      setDate(""); // use empty string for clearable
+      setDate("");
       setRequiredHours(undefined);
       setFocusLevel(undefined);
       setJoyLevel(undefined);
@@ -137,7 +136,7 @@ export function TaskDialog({
       if (initialData.date) {
         setDate(new Date(initialData.date).toISOString().split("T")[0]);
       } else {
-        setDate(""); // use empty string
+        setDate("");
       }
       setRequiredHours(initialData.requiredHours);
       setFocusLevel(initialData.focusLevel);
@@ -179,6 +178,7 @@ export function TaskDialog({
         [newJobId]: {
           _id: newJobId,
           title: jobData.title || createdJob.data?.title || "New Job",
+          isDone: false, // New jobs are not done
           ...createdJob.data,
         },
       }));
@@ -261,11 +261,10 @@ export function TaskDialog({
       if (jobId) task.jobId = jobId;
 
       if (owner) task.owner = owner;
-      // Due date clearable logic
       if (date) {
         task.date = `${date}T00:00:00.000Z`;
       } else {
-        task.date = ""; // Explicitly clear date if empty
+        task.date = "";
       }
       if (requiredHours !== undefined) task.requiredHours = requiredHours;
       if (focusLevel) task.focusLevel = focusLevel;
@@ -273,11 +272,8 @@ export function TaskDialog({
       if (notes) task.notes = notes;
       if (tags.length > 0) task.tags = tags;
 
-      // For task creation with a job ID specified via props, handle it here
-      // to avoid double task creation
       if (mode === "create" && propJobId) {
         try {
-          // Direct API call to create task
           const response = await fetch("/api/tasks", {
             method: "POST",
             headers: {
@@ -293,11 +289,7 @@ export function TaskDialog({
           const result: TaskResponse = await response.json();
 
           if (result.success && result.data?._id) {
-            // Update the job's tasks array with the new task ID
             await updateJobTasks(jobId!, result.data._id);
-
-            // Here we call onSubmit with the created task for UI updates,
-            // but we don't await it since we don't want it to create another task
             onSubmit({ ...task, id: result.data._id });
           }
         } catch (error) {
@@ -305,18 +297,13 @@ export function TaskDialog({
           throw error;
         }
       } else {
-        // For editing tasks or creating tasks without a job ID from props,
-        // let the parent handle it
         await onSubmit(task);
       }
 
-      // Save tags if any
       if (tags.length > 0) await saveTags(tags);
 
-      // Close the dialog
       onOpenChange(false);
 
-      // Show success toast
       toast({
         title: "Success",
         description:
@@ -325,11 +312,10 @@ export function TaskDialog({
             : "Task updated successfully",
       });
 
-      // Reset form if creating new task
       if (mode === "create") {
         setTitle("");
         setOwner(undefined);
-        setDate(""); // Clear date as string
+        setDate("");
         setRequiredHours(undefined);
         setFocusLevel(undefined);
         setJoyLevel(undefined);
@@ -524,7 +510,7 @@ export function TaskDialog({
                 </div>
               </div>
 
-              {/* Date - clearable just like task-dialog.tsx */}
+              {/* Date */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">
                   Do Date
@@ -662,8 +648,8 @@ export function TaskDialog({
                 {isSubmitting
                   ? "Saving..."
                   : mode === "create"
-                    ? "Add Task"
-                    : "Save Changes"}
+                  ? "Add Task"
+                  : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>

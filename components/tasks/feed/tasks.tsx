@@ -64,6 +64,16 @@ export function NextTasks({
     });
   };
 
+  const formatTimestamp = (dateString?: Date | string) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+};
+
   const getOwnerName = (ownerId?: string) => {
     if (!ownerId) return "Unassigned";
     return ownerMap[ownerId] || "Unassigned";
