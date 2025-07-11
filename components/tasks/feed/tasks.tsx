@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import { RefreshCcw } from "lucide-react";
 
 interface NextTasksProps {
   tasks: any[];
@@ -183,12 +184,18 @@ export function NextTasks({
                   <div className="flex-1">
                     <div className="mb-2 flex justify-between items-start">
                       <div className="flex items-center">
-                        <h3 className="text-base font-semibold hover:text-primary transition-colors">
+                        <h3 className="text-base font-semibold hover:text-primary transition-colors flex items-center gap-2">
                           {task.title}
                           {taskIsNext && (
-                            <Badge className="ml-2 bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
                               Next
                             </Badge>
+                          )}
+                          {task.isRecurring && task.recurrenceInterval && (
+                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                              <RefreshCcw className="h-4 w-4 inline" />
+                              {task.recurrenceInterval}
+                            </span>
                           )}
                         </h3>
                       </div>

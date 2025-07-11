@@ -35,9 +35,12 @@ import {
   PawPrint,
   Trash2,
   Tags,
-  Plus
+  Plus,
+  RefreshCcw,
+  Tag,
+  Edit
 } from "lucide-react";
-import { Task } from "@/components/tasks/types";
+import { Task, RecurrenceInterval } from "@/components/tasks/types";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -96,6 +99,10 @@ export function TaskDetailsSidebar({
   const [isSaving, setIsSaving] = useState(false);
 
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
+  const [recurringEdit, setRecurringEdit] = useState<{
+    isEditing: boolean;
+    interval: RecurrenceInterval | undefined;
+  }>({ isEditing: false, interval: undefined });
 
   const { toast } = useToast();
 
@@ -648,6 +655,55 @@ const cancelEditing = () => {
   }
 };
 
+  const handleSetRecurring = async () => {
+    if (!taskDetails) return;
+    if (!recurringEdit.interval) {
+      toast({ title: "Error", description: "Please select a recurrence interval.", variant: "destructive" });
+      return;
+    }
+    try {
+      const response = await fetch(`/api/tasks/${taskDetails.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRecurring: true, recurrenceInterval: recurringEdit.interval }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTaskDetails({ ...taskDetails, isRecurring: true, recurrenceInterval: recurringEdit.interval });
+        setRecurringEdit({ isEditing: false, interval: undefined });
+        toast({ title: "Success", description: "Task set as recurring." });
+      } else {
+        throw new Error(result.error || "Failed to update task");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
+    }
+  };
+
+  const handleStopRecurring = async () => {
+    if (!taskDetails) return;
+    try {
+      const response = await fetch(`/api/tasks/${taskDetails.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRecurring: false, recurrenceInterval: null }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTaskDetails({ ...taskDetails, isRecurring: false, recurrenceInterval: undefined });
+        toast({ title: "Success", description: "Task will no longer recur." });
+      } else {
+        throw new Error(result.error || "Failed to update task");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
+    }
+  };
+
+  const handleTagsChange = (newTags: string[]) => {
+    setEditingTags(newTags);
+  };
+
   const renderEditableField = (
     field: EditableField,
     currentValue: any,
@@ -1120,14 +1176,60 @@ const cancelEditing = () => {
                       )}
                     </div>
 
-                    {/* Bottom row - Hours Required */}
-                    {renderEditableField(
-                      'requiredHours',
-                      taskDetails.requiredHours,
-                      taskDetails.requiredHours ? `${taskDetails.requiredHours}h` : 'Not set',
-                      <Clock className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />,
-                      'Hours Required'
-                    )}
+                  {/* Hours Required and Recurring in same row */}
+                  <div className="mb-4 pb-4 border-b">
+                    <div className="flex gap-8">
+                      {/* Hours Required Section */}
+                      <div className="flex-1">
+                        {renderEditableField(
+                          'requiredHours',
+                          taskDetails.requiredHours,
+                          taskDetails.requiredHours ? `${taskDetails.requiredHours}h` : 'Not set',
+                          <Clock className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />,
+                          'Hours Required'
+                        )}
+                      </div>
+
+                      {/* Recurring Section */}
+                      {!taskDetails.completed && (
+                        <div className="flex-1">
+                          <div className="flex items-center mb-2">
+                            <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                            <h3 className="text-sm text-gray-600">Recurring</h3>
+                          </div>
+                          <div className="pl-6">
+                            {taskDetails.isRecurring ? (
+                              <div className="flex items-center gap-4">
+                                <span className="text-sm flex items-center gap-1"><RefreshCcw className="h-4 w-4 inline text-blue-500" />{taskDetails.recurrenceInterval}</span>
+                                <Button size="sm" variant="outline" onClick={handleStopRecurring}>Stop Recurring</Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Select
+                                    value={recurringEdit.interval || ""}
+                                    onValueChange={(value) => setRecurringEdit(prev => ({ ...prev, interval: value as RecurrenceInterval }))}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue placeholder="Interval" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="daily">Daily</SelectItem>
+                                      <SelectItem value="weekly">Weekly</SelectItem>
+                                      <SelectItem value="monthly">Monthly</SelectItem>
+                                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                                      <SelectItem value="annually">Annually</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button size="sm" onClick={handleSetRecurring}>Make Recurring</Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                     {/* Editable Tags */}
 <div className="flex items-start">

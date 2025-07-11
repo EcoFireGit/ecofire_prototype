@@ -521,6 +521,8 @@ export function TasksSidebar({
           createdDate: task.createdDate,
           endDate: task.endDate,
           timeElapsed: task.timeElapsed,
+          isRecurring: task.isRecurring,
+          recurrenceInterval: task.recurrenceInterval,
         }));
 
         // On initial load, sort tasks based on job.tasks array
@@ -632,70 +634,71 @@ export function TasksSidebar({
   };
 
   const handleCompleteTask = async (
-  id: string,
-  jobid: string,
-  completed: boolean,
-) => {
-  try {
-    const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ completed }),
-    });
-    const result = await response.json();
-    if (result.success) {
-      const updatedTaskData = result.data;
-      // Use the function form of setState to ensure you're working with the latest state
-      setTasks((prevTasks) => {
-        const updatedTasks = prevTasks.map((task) => {
-          if (task.id === id) {
-            return {
-              ...task,
-              completed: updatedTaskData.completed,
-              isNextTask: completed ? false : task.isNextTask,
-              createdDate: updatedTaskData.createdDate || task.createdDate,
-              endDate: updatedTaskData.endDate,
-              timeElapsed: updatedTaskData.timeElapsed,
-            };
-          }
-          return task;
-        });
-
-        return updatedTasks.sort((a, b) => {
-          if (a.isNextTask && !a.completed) return -1;
-          if (b.isNextTask && !b.completed) return 1;
-
-
-          if (!a.completed && b.completed) return -1;
-          if (a.completed && !b.completed) return 1;
-
-          return 0;
-        });
+    id: string,
+    jobid: string,
+    completed: boolean,
+  ) => {
+    try {
+      const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ completed }),
       });
+      const result = await response.json();
+      if (result.success) {
+        const updatedTaskData = result.data;
+      // Use the function form of setState to ensure you're working with the latest state
+        setTasks((prevTasks) => {
+          const updatedTasks = prevTasks.map((task) => {
+            if (task.id === id) {
+              return {
+                ...task,
+                completed: updatedTaskData.completed,
+                isNextTask: completed ? false : task.isNextTask,
+                createdDate: updatedTaskData.createdDate || task.createdDate,
+                endDate: updatedTaskData.endDate,
+                timeElapsed: updatedTaskData.timeElapsed,
+              };
+            }
+            return task;
+          });
 
-      // Then trigger a refresh of the job progress
-      refreshJobProgress(jobid);
-      setTimeout(() => {
-        saveTasksOrderSilently();
-      }, 100);
-    } else {
+          return updatedTasks.sort((a, b) => {
+            if (a.isNextTask && !a.completed) return -1;
+            if (b.isNextTask && !b.completed) return 1;
+
+
+            if (!a.completed && b.completed) return -1;
+            if (a.completed && !b.completed) return 1;
+
+            return 0;
+          });
+        });
+
+        // Then trigger a refresh of the job progress
+        refreshJobProgress(jobid);
+        setTimeout(() => {
+          saveTasksOrderSilently();
+        }, 100);
+        await fetchTasks();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update task",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating task:", error);
       toast({
         title: "Error",
         description: "Failed to update task",
         variant: "destructive",
       });
     }
-  } catch (error) {
-    console.error("Error updating task:", error);
-    toast({
-      title: "Error",
-      description: "Failed to update task",
-      variant: "destructive",
-    });
-  }
-};
+  };
 
   const handleNextTaskChange = async (taskId: string): Promise<void> => {
     if (!selectedJob) return;

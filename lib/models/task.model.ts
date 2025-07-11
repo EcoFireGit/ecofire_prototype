@@ -9,6 +9,13 @@ export enum JoyLevel {
   Medium = "Medium",
   Low = "Low"
 }
+export enum RecurrenceInterval {
+  Daily = "daily",
+  Weekly = "weekly",
+  Monthly = "monthly",
+  Quarterly = "quarterly",
+  Annually = "annually"
+}
 export interface Task extends mongoose.Document {
   _id: string;
   title: string;
@@ -26,6 +33,8 @@ export interface Task extends mongoose.Document {
   createdDate: Date;
   endDate?: Date | null;
   timeElapsed?: string | null;
+  isRecurring?: boolean;
+  recurrenceInterval?: RecurrenceInterval;
   // nextTask: boolean; // New property to mark task as next
 }
 const TaskSchema = new mongoose.Schema<Task>({
@@ -104,6 +113,17 @@ const TaskSchema = new mongoose.Schema<Task>({
     type: String,
     required: false,
     default: null
+  },
+  isRecurring: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
+  recurrenceInterval: {
+    type: String,
+    enum: Object.values(RecurrenceInterval),
+    required: false,
+    default: undefined
   },
 });
 
