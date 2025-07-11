@@ -676,6 +676,7 @@ export function TaskDialog({
                         <SelectItem value="none">None</SelectItem>
                         <SelectItem value={RecurrenceInterval.Daily}>Daily</SelectItem>
                         <SelectItem value={RecurrenceInterval.Weekly}>Weekly</SelectItem>
+                        <SelectItem value={RecurrenceInterval.Biweekly}>Biweekly</SelectItem>
                         <SelectItem value={RecurrenceInterval.Monthly}>Monthly</SelectItem>
                         <SelectItem value={RecurrenceInterval.Quarterly}>Quarterly</SelectItem>
                         <SelectItem value={RecurrenceInterval.Annually}>Annually</SelectItem>

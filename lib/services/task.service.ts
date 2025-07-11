@@ -248,6 +248,9 @@ export class TaskService {
                   case RecurrenceInterval.Weekly:
                     nextDate.setDate(nextDate.getDate() + 7);
                     break;
+                  case RecurrenceInterval.Biweekly:
+                    nextDate.setDate(nextDate.getDate() + 14);
+                    break;
                   case RecurrenceInterval.Monthly:
                     nextDate.setMonth(nextDate.getMonth() + 1);
                     break;

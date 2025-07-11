@@ -13,6 +13,7 @@ export enum FocusLevel {
   export enum RecurrenceInterval {
     Daily = "daily",
     Weekly = "weekly",
+    Biweekly = "biweekly",
     Monthly = "monthly",
     Quarterly = "quarterly",
     Annually = "annually"
