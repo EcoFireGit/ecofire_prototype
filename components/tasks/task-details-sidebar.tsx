@@ -581,7 +581,7 @@ const cancelEditing = () => {
 
   const handleAskJija = (task: TaskDetailsSidebarTask) => {
     const jijaUrl = `/jija?jobTitle=${encodeURIComponent(task.title)}`;
-    window.open(jijaUrl, '_blank');
+    window.location.href = jijaUrl;
   };
 
   const handleDeleteTask = () => {

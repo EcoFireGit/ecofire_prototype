@@ -410,7 +410,7 @@ export function TasksSidebar({
     if (!selectedJob) return;
     
     const jijaUrl = `/jija?jobTitle=${encodeURIComponent(selectedJob.title)}`;
-    window.open(jijaUrl, '_blank');
+    window.location.href = jijaUrl;
   };
 
   const handleDeleteJob = () => {
