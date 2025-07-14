@@ -69,7 +69,14 @@ export class TaskService {
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
-      return JSON.parse(JSON.stringify(tasks));
+      // Ensure active tasks never have an endDate or timeElapsed
+      const sanitizedTasks = tasks.map(task => {
+        if (task.completed === false) {
+          return { ...task, endDate: null, timeElapsed: null };
+        }
+        return task;
+      });
+      return JSON.parse(JSON.stringify(sanitizedTasks));
     } catch (error) {
       throw new Error("Error fetching tasks from database");
     }
