@@ -9,6 +9,15 @@ export enum FocusLevel {
     Medium = "Medium",
     Low = "Low"
   }
+
+  export enum RecurrenceInterval {
+    Daily = "daily",
+    Weekly = "weekly",
+    Biweekly = "biweekly",
+    Monthly = "monthly",
+    Quarterly = "quarterly",
+    Annually = "annually"
+  }
   
   export type Task = {
     id: string;
@@ -23,6 +32,11 @@ export enum FocusLevel {
     completed: boolean;
     tags?: string[];
     isNextTask: boolean;
+    createdDate?: Date;
+    endDate?: Date | null;
+    timeElapsed?: string | null;
+    isRecurring?: boolean;
+    recurrenceInterval?: RecurrenceInterval;
   };
 
   

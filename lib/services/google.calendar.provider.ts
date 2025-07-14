@@ -23,7 +23,7 @@ const oauth2Client = new google.auth.OAuth2(
 
 export async function getCalendar(
   auth: Credentials,
-): Promise<calendar_v3.Calendar> {
+): Promise<calendar_v3.Calendar | null> {
   try {
     await dbConnect();
 
@@ -34,7 +34,7 @@ export async function getCalendar(
     return calendar;
   } catch (error) {
     console.log("Error in getCalendar" + error);
-    throw new Error("Error getting calendar object");
+    return null;
   }
 }
 
@@ -44,7 +44,10 @@ export async function getAllEventsForTimeInEnvironmentSetting(
 ): Promise<any> {
   try {
     const calendar = await getCalendar(auth);
-
+    if (!calendar) {
+      console.log("Failed to get calendar instance");
+      return [];
+    }
     const timeToGetEvents = process.env.REPRIORITIZE_EVENT_TIME_IN_HOURS;
     console.log("timeToGetEvents: ", timeToGetEvents);
     const startTime = moment().toISOString(); //

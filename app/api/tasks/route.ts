@@ -34,10 +34,15 @@ export async function GET(request: Request) {
 
     const tasks = await taskService.getTasksByJobId(jobId, userId!);
    
+    const formattedTasks = tasks.map(task => ({
+      ...task,
+      isRecurring: task.isRecurring,
+      recurrenceInterval: task.recurrenceInterval,
+    }));
     return NextResponse.json({
       success: true,
-      count: tasks.length,
-      data: tasks
+      count: formattedTasks.length,
+      data: formattedTasks
     });
   } catch (error) {
     console.error('Error in GET /api/tasks:', error);

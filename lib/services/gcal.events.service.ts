@@ -13,6 +13,10 @@ export class EventsService {
         await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
       const calendar = await getCalendar(prioriwiseCalendarExists.auth);
+      if (!calendar) {
+        console.log("Failed to get calendar instance");
+        return null;
+      }
       const calendarId = prioriwiseCalendarExists.prioriwiseCalendar.id;
       //extract to provider class
       const response = await calendar.events.insert({
@@ -40,6 +44,10 @@ export class EventsService {
         await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
       const calendar = await getCalendar(prioriwiseCalendarExists.auth);
+      if (!calendar) {
+        console.log("Failed to get calendar instance");
+        return null;
+      }
       const calendarId = prioriwiseCalendarExists.prioriwiseCalendar.id;
       const event = await calendar.events.get({
         calendarId: calendarId,
@@ -75,6 +83,10 @@ export class EventsService {
         await this.getCalendarAuthForUserIfPrioriwiseCalendarExists(userId);
 
       const calendar = await getCalendar(prioriwiseCalendarExists.auth);
+      if (!calendar) {
+        console.log("Failed to get calendar instance");
+        return null;
+      }
       const calendarId = prioriwiseCalendarExists.prioriwiseCalendar.id;
 
       // Call the API to delete the event
@@ -208,6 +220,10 @@ export class EventsService {
   ): Promise<calendar_v3.Schema$Event[] | null> {
     try {
       const calendar = await getCalendar(auth);
+      if (!calendar) {
+        console.log("Failed to get calendar instance");
+        return null;
+      }
       const now = new Date();
 
       const max_hours = Number(process.env.REPRIORITIZE_EVENT_TIME_IN_HOURS!);

@@ -119,6 +119,15 @@ async function updateTasksStatus(updateData: any,updatedJob: Jobs, userId: strin
     updatedJob.tasks.forEach(async (taskId:string) => {
       await taskService.markCompleted(taskId, userId!, updatedJob.isDone);
     });
+    
+    if (updatedJob.isDone) {
+      updatedJob.tasks.forEach(async (taskId:string) => {
+        await taskService.updateTask(taskId, userId!, {
+          isRecurring: false,
+          recurrenceInterval: undefined
+        });
+      });
+    }
   }
 }
 

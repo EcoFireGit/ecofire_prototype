@@ -150,6 +150,9 @@ export async function getCalendarsFromGoogle(
     const gcalAuth = await getCalendarAuthForUser(userId);
 
     const calendar = await getCalendar(gcalAuth.auth);
+    if (!calendar) {
+      throw new Error("Failed to get calendar instance");
+    }
     const res = await calendar.calendarList.list();
     return res.data.items || [];
   } catch (error) {
@@ -168,6 +171,9 @@ export async function createPrioriCalendar(
     const gcalAuth = await getCalendarAuthForUser(userId);
 
     const calendar = await getCalendar(gcalAuth.auth);
+    if (!calendar) {
+      throw new Error("Failed to get calendar instance");
+    }
 
     if (gcalAuth.prioriwiseCalendar && gcalAuth.prioriwiseCalendar.id) {
       //exists in db

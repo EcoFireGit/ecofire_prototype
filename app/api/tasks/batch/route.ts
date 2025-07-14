@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
       notes: task.notes,
       tags: task.tags || [],
       jobId: task.jobId,
-      completed: task.completed
+      completed: task.completed,
+      isRecurring: task.isRecurring,
+      recurrenceInterval: task.recurrenceInterval,
     }));
 
     return NextResponse.json({

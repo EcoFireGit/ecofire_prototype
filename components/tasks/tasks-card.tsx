@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Task, FocusLevel, JoyLevel } from "./types";
+import { Task, FocusLevel, JoyLevel, RecurrenceInterval } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { useTaskContext } from "@/hooks/task-context";
 
@@ -26,7 +26,9 @@ interface TaskCardProps {
     onDelete: (id: string) => void;
     onComplete: (id: string, jobid: string, completed: boolean) => void;
     ownerMap: Record<string, string>;
-    onAddToCalendar?: (task: Task) => void; 
+    onAddToCalendar?: (task: Task) => void;
+    onOpenTaskDetails?: (task: Task) => void;
+    onCloseSidebar?: () => void;
 }
 
 export function TaskCard({
@@ -36,10 +38,13 @@ export function TaskCard({
     onComplete,
     ownerMap,
     onAddToCalendar,
+    onOpenTaskDetails,
+    onCloseSidebar,
 }: TaskCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
     const { refreshJobProgress } = useTaskContext();
+    const [showDetails, setShowDetails] = useState(false);
 
     // Format the date
     const formatDate = (dateString?: string) => {
@@ -72,6 +77,16 @@ export function TaskCard({
         return "border border-gray-200 bg-white";
     };
 
+    const formatTimestamp = (dateString?: Date | string) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+    });
+    };
+
     const handleTaskComplete = async (value: boolean) => {
         try {
             // Call the original onComplete handler
@@ -86,16 +101,30 @@ export function TaskCard({
         }
     };
 
+    const handleTaskClick = () => {
+        if (onOpenTaskDetails) {
+            onOpenTaskDetails(task);
+        }
+    };
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        await onDelete(task.id);
+        if (typeof onCloseSidebar === 'function') {
+            onCloseSidebar();
+        }
+    };
+
     return (
         <div
-            className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full`}
+            className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full cursor-pointer hover:shadow-md transition-shadow`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onClick={handleTaskClick}
         >
             <div className="p-3">
                 <div className="flex items-start gap-3">
-                    {/* Checkbox - now using our new handler */}
-                    <div className="pt-1">
+                    <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                             checked={task.completed}
                             onCheckedChange={(value) => handleTaskComplete(!!value)}
@@ -107,8 +136,14 @@ export function TaskCard({
                     <div className="flex-1">
                         {/* Task title */}
                         <div className="mb-4">
-                            <h3 className={`text-base font-bold ${task.completed ? "line-through text-gray-500" : ""}`}>
+                            <h3 className="text-base font-semibold flex items-center gap-2">
                                 {task.title}
+                                {task.isRecurring && task.recurrenceInterval && (
+                                    <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                                        <RefreshCcw className="h-4 w-4 inline" />
+                                        {task.recurrenceInterval}
+                                    </span>
+                                )}
                             </h3>
                         </div>
 
@@ -159,23 +194,65 @@ export function TaskCard({
                         {task.tags && task.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                                 {task.tags.map((tag, index) => (
-                                    <span
-                                        key={`${tag}-${index}`}
-                                        className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white shadow-sm"
-                                        style={{
-                                            backgroundColor: getTagColor(tag),
-                                            whiteSpace: 'nowrap'
-                                        }}
+                                    <Badge
+                                        key={index}
+                                        variant="secondary"
+                                        className="text-xs"
                                     >
                                         {tag}
-                                    </span>
+                                    </Badge>
                                 ))}
                             </div>
+                        )}
+                        {/* Time tracking details dropdown */}
+                        {(task.createdDate || task.endDate || task.timeElapsed) && (
+                        <div className="mt-3">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowDetails(!showDetails);
+                                }}
+                                className="flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                            >
+                                <Clock className="h-3 w-3 mr-1" />
+                                <span>Details</span>
+                                {showDetails ? (
+                                    <ChevronUp className="h-3 w-3 ml-1" />
+                                ) : (
+                                    <ChevronDown className="h-3 w-3 ml-1" />
+                                )}
+                            </button>
+                            
+                            {showDetails && (
+                            <div className="mt-2 p-2 rounded text-xs">
+                                <div className="flex items-center justify-between gap-4">
+                                {task.createdDate && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-500">Created:</span>
+                                    <span>{formatTimestamp(task.createdDate)}</span>
+                                    </div>
+                                )}
+                                {task.endDate && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-500">Completed:</span>
+                                    <span>{formatTimestamp(task.endDate)}</span>
+                                    </div>
+                                )}
+                                {task.timeElapsed && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-500">Duration:</span>
+                                    <span className="font-medium">{task.timeElapsed}</span>
+                                    </div>
+                                )}
+                                </div>
+                            </div>
+                            )}
+                        </div>
                         )}
                     </div>
 
                     {/* Action buttons */}
-                    <div className={`flex gap-1 ${isHovered ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
+                    <div className="flex gap-1">
                         {onAddToCalendar && (
                             <Button
                                 variant="ghost"
@@ -190,16 +267,6 @@ export function TaskCard({
                                 <Calendar className="h-4 w-4" />
                             </Button>
                         )}
-
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onEdit(task)}
-                        >
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        
                         <Button
                             variant="ghost"
                             size="icon"
@@ -212,10 +279,9 @@ export function TaskCard({
                         >
                             <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
                         </Button>
-
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => e.stopPropagation()}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </AlertDialogTrigger>
@@ -223,15 +289,12 @@ export function TaskCard({
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the
-                                        task "{task.title}" and remove it from our servers.
+                                        This action cannot be undone. This will permanently delete the task.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => onDelete(task.id)}>
-                                        Delete
-                                    </AlertDialogAction>
+                                    <AlertDialogCancel onClick={e => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
