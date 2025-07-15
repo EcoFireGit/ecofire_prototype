@@ -38,11 +38,13 @@ import {
   Plus,
   RefreshCcw,
   Tag,
-  Edit
+  Edit,
+  ChevronRight
 } from "lucide-react";
 import { Task, RecurrenceInterval } from "@/components/tasks/types";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
+import Link from 'next/link';
 
 interface TaskDetailsSidebarTask extends Task {
 
@@ -617,7 +619,9 @@ const cancelEditing = () => {
     if (result.success) {
       const updatedTask: TaskDetailsSidebarTask = {
         ...taskDetails,
+        ...result.data, // Use all updated fields from API, including endDate and timeElapsed
         completed,
+        ...(completed === false ? { endDate: undefined, timeElapsed: undefined } : {}),
       };
 
       setTaskDetails(updatedTask);
@@ -1057,9 +1061,25 @@ const cancelEditing = () => {
                   </div>
                   {/* Job Information - Editable */}
                   <div className="mb-4 pb-4 border-b">
-                    <div className="flex items-center mb-2">
-                      <Briefcase className="h-4 w-4 mr-2 text-gray-500" />
-                      <h3 className="text-sm font-semibold">Job</h3>
+                    <div className="flex items-center mb-2 justify-between">
+                      <div className="flex items-center">
+                        <Briefcase className="h-4 w-4 mr-2 text-gray-500" />
+                        <h3 className="text-sm font-semibold">Job</h3>
+                      </div>
+                      {jobInfo && onNavigateToJob && (
+                        <button
+                          className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground font-medium"
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            onOpenChange(false);
+                            setTimeout(() => onNavigateToJob(jobInfo.id), 150);
+                          }}
+                        >
+                          View Job
+                          <ChevronRight className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                     <div className="pl-6">
                       {editingField === 'job' ? (
@@ -1111,11 +1131,11 @@ const cancelEditing = () => {
                         </div>
                       ) : (
                         <div 
-                          className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors group relative"
+                          className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors group relative flex items-center gap-2"
                           onClick={() => startEditing('job', taskDetails.jobId)}
                         >
                           {jobInfo ? (
-                            <div>
+                            <>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium">{jobInfo.title}</span>
                                 {jobInfo.jobNumber && (
@@ -1124,7 +1144,7 @@ const cancelEditing = () => {
                                   </span>
                                 )}
                               </div>
-                            </div>
+                            </>
                           ) : (
                             <span className="text-sm text-gray-500">No job assigned</span>
                           )}
@@ -1336,6 +1356,35 @@ const cancelEditing = () => {
       )}
     </div>
   </div>
+
+{/* Non-editable, greyed-out fields for createdDate, endDate, and duration */}
+<div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div className="flex items-center gap-2 bg-gray-50 rounded p-2">
+    <Calendar className="h-4 w-4 text-gray-400" />
+    <div>
+      <div className="text-xs text-gray-500">Created</div>
+      <div className="text-sm text-gray-400 select-none">{formatDate((taskDetails.createdDate instanceof Date ? taskDetails.createdDate.toISOString() : taskDetails.createdDate) as string)}</div>
+    </div>
+  </div>
+  {taskDetails.completed && (
+    <>
+      <div className="flex items-center gap-2 bg-gray-50 rounded p-2">
+        <Clock className="h-4 w-4 text-gray-400" />
+        <div>
+          <div className="text-xs text-gray-500">Completed</div>
+          <div className="text-sm text-gray-400 select-none">{taskDetails.endDate ? formatDate((taskDetails.endDate instanceof Date ? taskDetails.endDate.toISOString() : taskDetails.endDate) as string) : '—'}</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 bg-gray-50 rounded p-2">
+        <BarChart className="h-4 w-4 text-gray-400" />
+        <div>
+          <div className="text-xs text-gray-500">Duration</div>
+          <div className="text-sm text-gray-400 select-none">{taskDetails.timeElapsed || '—'}</div>
+        </div>
+      </div>
+    </>
+  )}
+</div>
                   </div>
                 </CardContent>
               </Card>

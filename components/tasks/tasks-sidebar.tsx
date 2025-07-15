@@ -148,6 +148,9 @@ interface TasksSidebarProps {
   onRefreshJobs?: () => void; // Simple callback to refresh jobs data
   onDeleteJob?: (jobId: string) => void;
   jobs?: Record<string, any>;
+  onTaskCreated?: (newTask: any) => void;
+  onTaskUpdated?: (updatedTask: any) => void;
+  onTaskDeleted?: (deletedTaskId: string, jobId?: string) => void;
 }
 
 export function TasksSidebar({
@@ -157,6 +160,9 @@ export function TasksSidebar({
   onRefreshJobs,
   onDeleteJob,
   jobs,
+  onTaskCreated,
+  onTaskUpdated,
+  onTaskDeleted,
 }: TasksSidebarProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -497,11 +503,21 @@ export function TasksSidebar({
 
   const fetchTasks = async () => {
     if (!selectedJob) return;
-
+    let jobId: string | undefined = undefined;
+    if ('id' in selectedJob && selectedJob.id) {
+      jobId = selectedJob.id;
+    } else if ('_id' in selectedJob && (selectedJob as any)._id) {
+      jobId = (selectedJob as any)._id;
+    }
+    if (!jobId) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/tasks?jobId=${selectedJob.id}`);
+      const response = await fetch(`/api/tasks?jobId=${jobId}`);
       const result = await response.json();
+      console.log('TasksSidebar: API response for /api/tasks?jobId=', jobId, result);
 
       if (result.success) {
         // Map from MongoDB _id to id for frontend consistency
@@ -597,6 +613,156 @@ export function TasksSidebar({
     setTaskDialogOpen(true);
   };
 
+  const handleTaskSubmit = async (taskData: Partial<Task>) => {
+    try {
+      // Make sure tags is always defined as an array
+      const processedTaskData = {
+        ...taskData,
+        tags: taskData.tags || [],
+      };
+
+      if (dialogMode === "create") {
+        // Create new task
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(processedTaskData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Map from MongoDB _id to id for frontend consistency
+          const newTask: Task = {
+            id: result.data._id,
+            title: result.data.title,
+            owner: result.data.owner,
+            date: result.data.date,
+            requiredHours: result.data.requiredHours,
+            focusLevel: result.data.focusLevel,
+            joyLevel: result.data.joyLevel,
+            notes: result.data.notes,
+            tags: result.data.tags || [],
+            jobId: result.data.jobId,
+            completed: result.data.completed,
+            isNextTask: false,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
+          };
+
+          // Add task ID to job's tasks array
+          if (selectedJob) {
+            await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
+
+            // Trigger a refresh of the job progress since we added a new task
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
+            });
+            window.dispatchEvent(event);
+          }
+
+          setTasks([...tasks, newTask]);
+          
+          // Call the callback to notify parent component
+          if (onTaskCreated) {
+            onTaskCreated(newTask);
+          }
+          
+          toast({
+            title: "Success",
+            description: "Task created successfully",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create task",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Update existing task
+        if (!currentTask) return;
+
+        const response = await fetch(`/api/tasks/${currentTask.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(processedTaskData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Map from MongoDB _id to id for frontend consistency
+          const updatedTask: Task = {
+            id: result.data._id,
+            title: result.data.title,
+            owner: result.data.owner,
+            date: result.data.date,
+            requiredHours: result.data.requiredHours,
+            focusLevel: result.data.focusLevel,
+            joyLevel: result.data.joyLevel,
+            notes: result.data.notes,
+            tags: result.data.tags || [],
+            jobId: result.data.jobId,
+            completed: result.data.completed,
+            isNextTask: result.data._id === nextTaskId,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
+
+          };
+
+          // If the task completion status changed, trigger a progress update
+          if (currentTask.completed !== updatedTask.completed && selectedJob) {
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
+            });
+            window.dispatchEvent(event);
+          }
+
+           // Add this check: If the edited task is the next task, trigger a refresh
+          if (updatedTask.isNextTask && typeof onRefreshJobs === "function") {
+            onRefreshJobs();
+          }
+
+          setTasks(
+            tasks.map((task) =>
+              task.id === updatedTask.id ? updatedTask : task,
+            ),
+          );
+
+          // Call the callback to notify parent component
+          if (onTaskUpdated) {
+            onTaskUpdated(updatedTask);
+          }
+
+          toast({
+            title: "Success",
+            description: "Task updated successfully",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to update task",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error submitting task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit task",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteTask = async (id: string) => {
     try {
       const response = await fetch(`/api/tasks/${id}`, {
@@ -612,6 +778,12 @@ export function TasksSidebar({
         // }
 
         setTasks(tasks.filter((task) => task.id !== id));
+        
+        // Call the callback to notify parent component
+        if (onTaskDeleted) {
+          onTaskDeleted(id, selectedJob?.id);
+        }
+        
         toast({
           title: "Success",
           description: "Task deleted successfully",
@@ -653,7 +825,7 @@ export function TasksSidebar({
         setTasks((prevTasks) => {
           const updatedTasks = prevTasks.map((task) => {
             if (task.id === id) {
-              return {
+              const updatedTask = {
                 ...task,
                 completed: updatedTaskData.completed,
                 isNextTask: completed ? false : task.isNextTask,
@@ -661,6 +833,13 @@ export function TasksSidebar({
                 endDate: updatedTaskData.endDate,
                 timeElapsed: updatedTaskData.timeElapsed,
               };
+              
+              // Call the callback to notify parent component
+              if (onTaskUpdated) {
+                onTaskUpdated(updatedTask);
+              }
+              
+              return updatedTask;
             }
             return task;
           });
@@ -788,145 +967,6 @@ export function TasksSidebar({
     } catch (error) {
       console.error("Error updating next task:", error);
       throw error;
-    }
-  };
-
-  const handleTaskSubmit = async (taskData: Partial<Task>) => {
-    try {
-      // Make sure tags is always defined as an array
-      const processedTaskData = {
-        ...taskData,
-        tags: taskData.tags || [],
-      };
-
-      if (dialogMode === "create") {
-        // Create new task
-        const response = await fetch("/api/tasks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(processedTaskData),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Map from MongoDB _id to id for frontend consistency
-          const newTask: Task = {
-            id: result.data._id,
-            title: result.data.title,
-            owner: result.data.owner,
-            date: result.data.date,
-            requiredHours: result.data.requiredHours,
-            focusLevel: result.data.focusLevel,
-            joyLevel: result.data.joyLevel,
-            notes: result.data.notes,
-            tags: result.data.tags || [],
-            jobId: result.data.jobId,
-            completed: result.data.completed,
-            isNextTask: false,
-            createdDate: result.data.createdDate,
-            endDate: result.data.endDate,
-            timeElapsed: result.data.timeElapsed,
-          };
-
-          // Add task ID to job's tasks array
-          if (selectedJob) {
-            await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
-
-            // Trigger a refresh of the job progress since we added a new task
-            const event = new CustomEvent("job-progress-update", {
-              detail: { jobId: selectedJob.id },
-            });
-            window.dispatchEvent(event);
-          }
-
-          setTasks([...tasks, newTask]);
-          toast({
-            title: "Success",
-            description: "Task created successfully",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to create task",
-            variant: "destructive",
-          });
-        }
-      } else {
-        // Update existing task
-        if (!currentTask) return;
-
-        const response = await fetch(`/api/tasks/${currentTask.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(processedTaskData),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Map from MongoDB _id to id for frontend consistency
-          const updatedTask: Task = {
-            id: result.data._id,
-            title: result.data.title,
-            owner: result.data.owner,
-            date: result.data.date,
-            requiredHours: result.data.requiredHours,
-            focusLevel: result.data.focusLevel,
-            joyLevel: result.data.joyLevel,
-            notes: result.data.notes,
-            tags: result.data.tags || [],
-            jobId: result.data.jobId,
-            completed: result.data.completed,
-            isNextTask: result.data._id === nextTaskId,
-            createdDate: result.data.createdDate,
-            endDate: result.data.endDate,
-            timeElapsed: result.data.timeElapsed,
-
-          };
-
-          // If the task completion status changed, trigger a progress update
-          if (currentTask.completed !== updatedTask.completed && selectedJob) {
-            const event = new CustomEvent("job-progress-update", {
-              detail: { jobId: selectedJob.id },
-            });
-            window.dispatchEvent(event);
-          }
-
-           // Add this check: If the edited task is the next task, trigger a refresh
-          if (updatedTask.isNextTask && typeof onRefreshJobs === "function") {
-            onRefreshJobs();
-          }
-
-          setTasks(
-            tasks.map((task) =>
-              task.id === updatedTask.id ? updatedTask : task,
-            ),
-          );
-
-          toast({
-            title: "Success",
-            description: "Task updated successfully",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to update task",
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error submitting task:", error);
-      toast({
-        title: "Error",
-        description: "Failed to submit task",
-        variant: "destructive",
-      });
     }
   };
 
@@ -1600,8 +1640,8 @@ export function TasksSidebar({
         onOpenChange={setTaskDialogOpen}
         onSubmit={handleTaskSubmit}
         initialData={currentTask}
-        jobId={selectedJob?.id ?? ""}
         jobs={jobs}
+        jobId={selectedJob?.id}
       />
 
       {/* Task Details Sidebar */}

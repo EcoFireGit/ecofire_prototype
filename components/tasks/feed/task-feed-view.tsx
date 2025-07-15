@@ -24,6 +24,25 @@ import { Job } from "@/components/jobs/table/columns";
 import { Task } from "../types";
 
 import type { Jobs } from "@/lib/models/job.model";
+import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
+
+// Helper to map API Job to Job type
+function mapJobToSidebarJob(job: any): Job {
+  return {
+    id: job._id,
+    jobNumber: job.jobNumber ?? 0,
+    title: job.title,
+    notes: job.notes,
+    businessFunctionId: job.businessFunctionId,
+    businessFunctionName: job.businessFunctionName,
+    dueDate: job.dueDate ? (typeof job.dueDate === 'string' ? job.dueDate : new Date(job.dueDate).toISOString()) : undefined,
+    createdDate: job.createdDate ? (typeof job.createdDate === 'string' ? job.createdDate : new Date(job.createdDate).toISOString()) : new Date().toISOString(),
+    isDone: job.isDone,
+    nextTaskId: job.nextTaskId ?? undefined,
+    tasks: job.tasks ?? undefined,
+    impact: job.impact ?? undefined,
+  };
+}
 
 export default function TaskFeedView() {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -59,6 +78,8 @@ export default function TaskFeedView() {
 
   const [taskDetailsSidebarOpen, setTaskDetailsSidebarOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
+  const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
+  const [selectedJobForSidebar, setSelectedJobForSidebar] = useState<Job | null>(null);
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -397,6 +418,20 @@ export default function TaskFeedView() {
   // Fetch all necessary data when component mounts
   useEffect(() => {
     fetchData();
+
+    // Listen for job/task update events and trigger refresh
+    const handleJobProgressUpdate = (event: CustomEvent) => {
+      fetchData();
+    };
+    const handleForceJobsRefresh = (event: CustomEvent) => {
+      fetchData();
+    };
+    window.addEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+    window.addEventListener('force-jobs-refresh', handleForceJobsRefresh as EventListener);
+    return () => {
+      window.removeEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+      window.removeEventListener('force-jobs-refresh', handleForceJobsRefresh as EventListener);
+    };
   }, []);
 
   // Function to complete a task
@@ -922,6 +957,16 @@ const completeTask = async (jobid: string, id: string) => {
     return jobs[task.jobId].nextTaskId === task._id;
   };
 
+  const handleNavigateToJob = (jobId: string) => {
+    if (jobs[jobId]) {
+      setSelectedJobForSidebar(mapJobToSidebarJob(jobs[jobId]));
+      setTaskDetailsSidebarOpen(false);
+      setTimeout(() => {
+        setTasksSidebarOpen(true);
+      }, 200);
+    }
+  };
+
   return (
     <div className="p-4 w-full">
       <div className="flex gap-2">
@@ -982,6 +1027,7 @@ const completeTask = async (jobid: string, id: string) => {
         onSubmit={handleTaskSubmit}
         initialData={editingTask}
         jobs={jobs} // Pass the jobs object to TaskDialog
+        jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
       />
 
       {/* Task Details Sidebar - NEW */}
@@ -991,6 +1037,13 @@ const completeTask = async (jobid: string, id: string) => {
         selectedTask={selectedTaskForDetails}
         onTaskUpdated={handleTaskUpdated}
         onDeleteTask={handleDeleteTask}
+        onNavigateToJob={handleNavigateToJob}
+      />
+      <TasksSidebar
+        open={tasksSidebarOpen}
+        onOpenChange={setTasksSidebarOpen}
+        selectedJob={selectedJobForSidebar}
+        jobs={jobs}
       />
 
       {/* Task Completion Confirmation Dialog */}

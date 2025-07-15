@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -44,7 +44,6 @@ export function TaskCard({
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
     const { refreshJobProgress } = useTaskContext();
-    const [showDetails, setShowDetails] = useState(false);
 
     // Format the date
     const formatDate = (dateString?: string) => {
@@ -161,30 +160,30 @@ export function TaskCard({
                             <div className="flex items-center gap-10">
                                 {task.focusLevel && (
                                     <div className="flex items-center">
-                                        <span className="text-gray-500 mr-2">focus:</span>
-                                        <span className="text-sm">{task.focusLevel}</span>
+                                        <span className="text-sm text-gray-600">Focus:  <span className="text-sm font-bold">{task.focusLevel}</span></span>
+                                       
                                     </div>
                                 )}
                                 {task.joyLevel && (
                                     <div className="flex items-center">
-                                        <span className="text-gray-500 mr-2">Joy:</span>
-                                        <span className="text-sm">{task.joyLevel}</span>
+                                        <span className="text-sm text-gray-600">Joy: <span className="text-sm font-bold">{task.joyLevel}</span></span>
+                                        
                                     </div>
                                 )}
 
                                 {/* Date */}
                                 {task.date && (
                                     <div className="flex items-center">
-                                        <Calendar className="h-4 w-4 text-gray-500 mr-2" />
-                                        <span className="text-sm text-gray-600">{formatDate(task.date)}</span>
+                                        {/* <Calendar className="h-4 w-4 text-gray-500 mr-2" /> */}
+                                        <span className="text-sm text-gray-600">Do Date: <span className="text-sm font-bold">{formatDate(task.date)}</span></span>
                                     </div>
                                 )}
 
                                 {/* Required hours */}
                                 {task.requiredHours !== undefined && (
                                     <div className="flex items-center">
-                                        <Clock className="h-4 w-4 text-gray-500 mr-2" />
-                                        <span className="text-sm text-gray-600">{task.requiredHours} hrs</span>
+                                        {/* <Clock className="h-4 w-4 text-gray-500 mr-2" /> */}
+                                        <span className="text-sm text-gray-600">Hrs Reqd: <span className="text-sm font-bold">{task.requiredHours} hrs</span></span>
                                     </div>
                                 )}
                             </div>
@@ -203,51 +202,6 @@ export function TaskCard({
                                     </Badge>
                                 ))}
                             </div>
-                        )}
-                        {/* Time tracking details dropdown */}
-                        {(task.createdDate || task.endDate || task.timeElapsed) && (
-                        <div className="mt-3">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowDetails(!showDetails);
-                                }}
-                                className="flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
-                            >
-                                <Clock className="h-3 w-3 mr-1" />
-                                <span>Details</span>
-                                {showDetails ? (
-                                    <ChevronUp className="h-3 w-3 ml-1" />
-                                ) : (
-                                    <ChevronDown className="h-3 w-3 ml-1" />
-                                )}
-                            </button>
-                            
-                            {showDetails && (
-                            <div className="mt-2 p-2 rounded text-xs">
-                                <div className="flex items-center justify-between gap-4">
-                                {task.createdDate && (
-                                    <div className="flex items-center gap-1">
-                                    <span className="text-gray-500">Created:</span>
-                                    <span>{formatTimestamp(task.createdDate)}</span>
-                                    </div>
-                                )}
-                                {task.endDate && (
-                                    <div className="flex items-center gap-1">
-                                    <span className="text-gray-500">Completed:</span>
-                                    <span>{formatTimestamp(task.endDate)}</span>
-                                    </div>
-                                )}
-                                {task.timeElapsed && (
-                                    <div className="flex items-center gap-1">
-                                    <span className="text-gray-500">Duration:</span>
-                                    <span className="font-medium">{task.timeElapsed}</span>
-                                    </div>
-                                )}
-                                </div>
-                            </div>
-                            )}
-                        </div>
                         )}
                     </div>
 
