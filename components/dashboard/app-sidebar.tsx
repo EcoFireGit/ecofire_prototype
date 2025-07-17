@@ -60,6 +60,12 @@ const items = [
     icon: PawPrint,
     id: "jija",
   },
+  {
+    title: "My Notebook",
+    url: "/notebook",
+    icon: Clipboard,
+    id: "notebook",
+  },
 ];
 const dashboardItems = [
   {
