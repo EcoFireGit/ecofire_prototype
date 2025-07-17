@@ -118,7 +118,7 @@ export default function NotebookPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this note?")) return;
+    if (!window.confirm("Are you sure you want to delete this note? This cannot be undone.")) return;
     await fetch(`/api/notes/${id}`, { method: "DELETE" });
     fetchNotes();
     setSelectedId(null);
