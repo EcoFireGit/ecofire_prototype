@@ -338,19 +338,6 @@ export default function NotebookPage() {
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      onClick={() => editor.chain().focus().toggleStrike().run()}
-                      className={`rounded p-1 transition ${editor.isActive('strike') ? 'bg-gray-200 text-black line-through' : 'hover:bg-gray-100 text-gray-600'}`}
-                      aria-label="Strikethrough"
-                    >
-                      <Strikethrough className="w-5 h-5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Strikethrough</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
                       onClick={() => editor.chain().focus().toggleUnderline().run()}
                       className={`rounded p-1 transition ${editor.isActive('underline') ? 'bg-gray-200 text-black underline' : 'hover:bg-gray-100 text-gray-600'}`}
                       aria-label="Underline"
@@ -359,6 +346,19 @@ export default function NotebookPage() {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>Underline</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => editor.chain().focus().toggleStrike().run()}
+                      className={`rounded p-1 transition ${editor.isActive('strike') ? 'bg-gray-200 text-black line-through' : 'hover:bg-gray-100 text-gray-600'}`}
+                      aria-label="Strikethrough"
+                    >
+                      <Strikethrough className="w-5 h-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Strikethrough</TooltipContent>
                 </Tooltip>
                 <span className="mx-1 text-gray-300">|</span>
                 <Tooltip>
