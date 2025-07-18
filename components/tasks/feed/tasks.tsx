@@ -237,13 +237,18 @@ export function NextTasks({
                       className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(
-                          `/jija?jobTitle=${encodeURIComponent(task.title)}`,
-                        );
+                        const params = new URLSearchParams();
+                        params.set("source", "task");
+                        if (task.jobId) params.set("jobId", task.jobId);
+                        if (task.title) params.set("jobTitle", task.title);
+                        if (task._id) params.set("taskId", task._id);
+                        else if (task.id) params.set("taskId", task.id);
+                        router.push(`/jija?${params.toString()}`);
                       }}
                       title="Ask Jija about this task"
                     >
-                      <PawPrint className="h-4 w-4 mr-1 text-[#F05523] fill-[#F05523]" />
+                      <PawPrint className="h-4 w-4 mr-1" />
+                      Ask Jija
                     </Button>
 
                     {onDeleteTask && (

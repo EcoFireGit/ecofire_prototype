@@ -164,6 +164,8 @@ export function JobCard({
     };
   };
 
+  const jobId = currentJob.id || (currentJob as any)._id;
+
   return (
   <div
     style={{ width: "100%", minHeight: "180px" }}
@@ -246,9 +248,11 @@ export function JobCard({
           title="Ask Jija about this job"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(
-              `/jija?jobTitle=${encodeURIComponent(currentJob.title)}`,
-            );
+            const params = new URLSearchParams();
+            params.set("source", "job");
+            if (jobId) params.set("jobId", jobId);
+            if (currentJob.title) params.set("jobTitle", currentJob.title);
+            router.push(`/jija?${params.toString()}`);
           }}
         >
           <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />

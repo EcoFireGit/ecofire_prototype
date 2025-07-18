@@ -228,7 +228,12 @@ export function TaskCard({
                             title="Ask Jija about this task"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/jija?jobTitle=${encodeURIComponent(task.title)}`);
+                                const params = new URLSearchParams();
+                                params.set("source", "task");
+                                if (task.jobId) params.set("jobId", task.jobId);
+                                if (task.title) params.set("jobTitle", task.title);
+                                if (task.id) params.set("taskId", task.id);
+                                router.push(`/jija?${params.toString()}`);
                             }}
                         >
                             <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
