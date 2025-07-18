@@ -589,7 +589,12 @@ const cancelEditing = () => {
   };
 
   const handleAskJija = (task: TaskDetailsSidebarTask) => {
-    const jijaUrl = `/jija?jobTitle=${encodeURIComponent(task.title)}`;
+    const params = new URLSearchParams();
+    params.set("source", "task");
+    if (task.jobId) params.set("jobId", task.jobId);
+    if (task.title) params.set("jobTitle", task.title);
+    if (task.id) params.set("taskId", task.id);
+    const jijaUrl = `/jija?${params.toString()}`;
     window.location.href = jijaUrl;
   };
 

@@ -65,6 +65,9 @@ export default function Chat() {
   const LIMIT = 3;
   const { userId } = useAuth();
   const searchParams = useSearchParams();
+  const source = searchParams.get("source") || "sidepanel";
+  const jobId = searchParams.get("jobId") || undefined;
+  const taskId = searchParams.get("taskId") || undefined;
   const jobTitle = searchParams.get("jobTitle");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [hasAutoLoadedLatestChat, setHasAutoLoadedLatestChat] = useState(false);
@@ -476,7 +479,19 @@ export default function Chat() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="relative flex items-end gap-2 max-w-4xl mx-auto">
+          <form
+            onSubmit={e => {
+              handleSubmit(e, {
+                body: {
+                  source,
+                  jobId,
+                  taskId,
+                  jobTitle,
+                },
+              });
+            }}
+            className="relative flex items-end gap-2 max-w-4xl mx-auto"
+          >
             <div className="flex-1 relative">
               <TextareaAutosize
                 className="w-full p-3 pr-12 border border-gray-300 rounded-lg shadow-xl resize-none text-sm sm:text-base"
@@ -491,7 +506,14 @@ export default function Chat() {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     if (input.trim() && status === "ready") {
-                      handleSubmit(e);
+                      handleSubmit(e, {
+                        body: {
+                          source,
+                          jobId,
+                          taskId,
+                          jobTitle,
+                        },
+                      });
                     }
                   }
                 }}

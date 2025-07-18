@@ -56,7 +56,7 @@ import { usePathname } from "next/navigation";
 const items = [
   {
     title: "Jija",
-    url: "/jija",
+    url: "/jija?source=sidepanel",
     icon: PawPrint,
     id: "jija",
   },

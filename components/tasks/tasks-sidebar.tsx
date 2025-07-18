@@ -414,8 +414,11 @@ export function TasksSidebar({
 
   const handleAskJija = () => {
     if (!selectedJob) return;
-    
-    const jijaUrl = `/jija?jobTitle=${encodeURIComponent(selectedJob.title)}`;
+    const params = new URLSearchParams();
+    params.set("source", "job");
+    if (selectedJob.id) params.set("jobId", selectedJob.id);
+    if (selectedJob.title) params.set("jobTitle", selectedJob.title);
+    const jijaUrl = `/jija?${params.toString()}`;
     window.location.href = jijaUrl;
   };
 
