@@ -9,6 +9,7 @@ import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { useToast } from "@/hooks/use-toast";
+import sanitizeHtml from 'sanitize-html';
 
 export default function NotebookPage() {
   const { toast } = useToast();
@@ -180,13 +181,7 @@ export default function NotebookPage() {
               {notes
                 .filter((note: any) => {
                   const html = note.content || '';
-                  let plain = html.replace(/<[^>]+>/g, '').trim();
-                  plain = plain.replace(/&nbsp;/g, ' ')
-                               .replace(/&amp;/g, '&')
-                               .replace(/&lt;/g, '<')
-                               .replace(/&gt;/g, '>')
-                               .replace(/&quot;/g, '"')
-                               .replace(/&#39;/g, "'");
+                  const plain = sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).trim();
                   const searchLower = search.toLowerCase();
                   return (
                     note.title?.toLowerCase().includes(searchLower) ||
@@ -208,13 +203,7 @@ export default function NotebookPage() {
                         <span className="truncate flex-1">
                           {(() => {
                             const html = note.content || '';
-                            let plain = html.replace(/<[^>]+>/g, '').trim();
-                            plain = plain.replace(/&nbsp;/g, ' ')
-                                         .replace(/&amp;/g, '&')
-                                         .replace(/&lt;/g, '<')
-                                         .replace(/&gt;/g, '>')
-                                         .replace(/&quot;/g, '"')
-                                         .replace(/&#39;/g, "'");
+                            const plain = sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).trim();
                             if (!note.title && !plain) return <span className="italic text-gray-400">Untitled</span>;
                             if (!note.title) return <span className="italic text-gray-400">Untitled</span>;
                             return note.title;
@@ -230,13 +219,7 @@ export default function NotebookPage() {
                       <div className="text-xs text-gray-400 truncate px-4 pb-1 w-full rounded-b">
                         {(() => {
                           const html = note.content || '';
-                          let plain = html.replace(/<[^>]+>/g, '').trim();
-                          plain = plain.replace(/&nbsp;/g, ' ')
-                                       .replace(/&amp;/g, '&')
-                                       .replace(/&lt;/g, '<')
-                                       .replace(/&gt;/g, '>')
-                                       .replace(/&quot;/g, '"')
-                                       .replace(/&#39;/g, "'");
+                          const plain = sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).trim();
                           if (!plain) return <span className="italic text-gray-300">No content</span>;
                           return plain.length > 30 ? plain.slice(0, 30) + '...' : plain;
                         })()}
