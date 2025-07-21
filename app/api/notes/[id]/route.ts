@@ -3,30 +3,32 @@ import dbConnect from "@/lib/mongodb";
 import Note from "@/lib/models/note.model";
 import { validateAuth } from "@/lib/utils/auth-utils";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await dbConnect();
   const authResult = await validateAuth();
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
   const userId = authResult.userId;
-  const note = await Note.findOne({ _id: params.id, userId });
+  const { id } = await params;
+  const note = await Note.findOne({ _id: id, userId });
   if (!note) {
     return NextResponse.json({ success: false, error: "Note not found" }, { status: 404 });
   }
   return NextResponse.json({ success: true, data: note });
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await dbConnect();
   const authResult = await validateAuth();
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
   const userId = authResult.userId;
+  const { id } = await params;
   const { title, content } = await req.json();
 
-  const existingNote = await Note.findOne({ _id: params.id, userId });
+  const existingNote = await Note.findOne({ _id: id, userId });
   if (!existingNote) {
     return NextResponse.json({ success: false, error: "Note not found or not authorized" }, { status: 404 });
   }
@@ -36,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   const note = await Note.findOneAndUpdate(
-    { _id: params.id, userId },
+    { _id: id, userId },
     { title, content },
     { new: true }
   );
@@ -46,14 +48,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ success: true, data: note });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await dbConnect();
   const authResult = await validateAuth();
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
   const userId = authResult.userId;
-  const note = await Note.findOneAndDelete({ _id: params.id, userId });
+  const { id } = await params;
+  const note = await Note.findOneAndDelete({ _id: id, userId });
   if (!note) {
     return NextResponse.json({ success: false, error: "Note not found or not authorized" }, { status: 404 });
   }
