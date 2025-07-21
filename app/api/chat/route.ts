@@ -146,7 +146,7 @@ export async function POST(req: Request) {
           }).join("\n");
           connectionSection = `Job: ${job.title}\n- Outcome(s): ${outcomeNames}\n${outcomeDetails}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the outcome name(s) in bold as listed above. For example: \"This job, **${job.title}**, directly impacts the outcome${qboDetails.length > 1 ? 's' : ''} **${outcomeNames}**. By focusing on this job... <impact>\".`;
         } else {
-          connectionSection = `Job: ${job.title}\n- Outcome(s): None mapped to this job.\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the outcome name(s) as listed above.\n=== END CONNECTION ===`;
+          connectionSection = `Job: ${job.title}\n- Outcome(s): None mapped to this job.\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the outcome name(s) as listed above.`;
         }
         systemPrompt += connectionSection;
       }
