@@ -366,7 +366,11 @@ export default function NotebookPage() {
                           editor.chain().focus().extendMarkRange('link').unsetLink().run();
                           return;
                         }
-                        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+                        let finalUrl = url.trim();
+                        if (!/^https?:\/\//i.test(finalUrl)) {
+                          finalUrl = 'https://' + finalUrl;
+                        }
+                        editor.chain().focus().extendMarkRange('link').setLink({ href: finalUrl }).run();
                       }}
                       className={`rounded p-1 transition ${editor.isActive('link') ? 'bg-gray-200 text-blue-700 underline' : 'hover:bg-gray-100 text-gray-600'}`}
                       aria-label="Add/Edit Link"
