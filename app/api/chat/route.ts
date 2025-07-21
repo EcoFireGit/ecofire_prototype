@@ -90,26 +90,26 @@ export async function POST(req: Request) {
                 let detail = `- Outcome: ${qbo.name} (Target: ${qbo.targetValue}, Current: ${qbo.currentValue}, Notes: ${qbo.notes || "None"})`;
                 return detail;
               }).join("\n");
-              connectionSection = `\n\n=== Connection to Job(s) and Outcome(s) ===\n- Task: ${task.title}\n- Job: ${job.title}\n- Outcome(s): ${outcomeNames}\n${outcomeDetails}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the job name and the outcome name(s) as listed above. For example: \"This task is a part of the job **${job.title}** which directly affects the outcome${qboDetails.length > 1 ? 's' : ''} **${outcomeNames}**. Completing this task will... <impact>\".\n=== END CONNECTION ===`;
+              connectionSection = `Task: ${task.title}\n- Job: ${job.title}\n- Outcome(s): ${outcomeNames}\n${outcomeDetails}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the job name and the outcome name(s) as listed above. For example: \"This task is a part of the job **${job.title}** which directly affects the outcome${qboDetails.length > 1 ? 's' : ''} **${outcomeNames}**. Completing this task will... <impact>\".`;
             } else {
               outcomesLine = `Outcome(s): None mapped to this job.`;
-              connectionSection = `\n\n=== Connection to Job(s) and Outcome(s) ===\n- Task: ${task.title}\n- Job: ${job.title}\n- Outcome(s): None mapped to this job.\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.\n=== END CONNECTION ===`;
+              connectionSection = `Task: ${task.title}\n- Job: ${job.title}\n- Outcome(s): None mapped to this job.\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.`;
             }
           } else {
             jobLine = `Job: (not found)`;
             outcomesLine = `Outcome(s): (unknown)`;
-            connectionSection = `\n\n=== Connection to Job(s) and Outcome(s) ===\n- Task: ${task.title}\n- Job: (not found)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.\n=== END CONNECTION ===`;
+            connectionSection = `Task: ${task.title}\n- Job: (not found)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.`;
           }
         } else {
           jobLine = `Job: (none assigned)`;
           outcomesLine = `Outcome(s): (unknown)`;
-          connectionSection = `\n\n=== Connection to Job(s) and Outcome(s) ===\n- Task: ${task.title}\n- Job: (none assigned)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.\n=== END CONNECTION ===`;
+          connectionSection = `Task: ${task.title}\n- Job: (none assigned)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.`;
         }
         systemPrompt += connectionSection;
       }
     } catch (error) {
       console.error("Error enriching context for task:", error);
-      systemPrompt += `\n\n=== Connection to Job(s) and Outcome(s) ===\n- Task: (unknown)\n- Job: (unknown)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.\n=== END CONNECTION ===`;
+      systemPrompt += `Task: (unknown)\n- Job: (unknown)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the task, job, and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.`;
     }
   }
 
@@ -144,15 +144,15 @@ export async function POST(req: Request) {
             let detail = `- Outcome: ${qbo.name} (Target: ${qbo.targetValue}, Current: ${qbo.currentValue}, Notes: ${qbo.notes || "None"})`;
             return detail;
           }).join("\n");
-          connectionSection = `\n\n=== Connection to Job(s) and Outcome(s) ===\n- Job: ${job.title}\n- Outcome(s): ${outcomeNames}\n${outcomeDetails}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the outcome name(s) in bold as listed above. For example: \"This job, **${job.title}**, directly impacts the outcome${qboDetails.length > 1 ? 's' : ''} **${outcomeNames}**. By focusing on this job... <impact>\".\n=== END CONNECTION ===`;
+          connectionSection = `Job: ${job.title}\n- Outcome(s): ${outcomeNames}\n${outcomeDetails}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the outcome name(s) in bold as listed above. For example: \"This job, **${job.title}**, directly impacts the outcome${qboDetails.length > 1 ? 's' : ''} **${outcomeNames}**. By focusing on this job... <impact>\".`;
         } else {
-          connectionSection = `\n\n=== Connection to Job(s) and Outcome(s) ===\n- Job: ${job.title}\n- Outcome(s): None mapped to this job.\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the outcome name(s) as listed above.\n=== END CONNECTION ===`;
+          connectionSection = `Job: ${job.title}\n- Outcome(s): None mapped to this job.\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the outcome name(s) as listed above.\n=== END CONNECTION ===`;
         }
         systemPrompt += connectionSection;
       }
     } catch (error) {
       console.error("Error enriching context for job:", error);
-      systemPrompt += `\n\n=== HOW THIS JOB CONNECTS TO OUTCOMES ===\n- Job: (unknown)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the job and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.\n=== END OUTCOME CONNECTION ===`;
+      systemPrompt += `Job: (unknown)\n- Outcome(s): (unknown)\n\nIn your answer, address the user's question first, then clearly explain the connection between the job and outcome(s) as described above. When you explain the connection, you must explicitly mention the outcome(s) by name as listed above.`;
     }
   }
 
@@ -166,11 +166,11 @@ export async function POST(req: Request) {
       let connectionSection = '';
       const outcomeNames = allQBOs && allQBOs.length > 0 ? allQBOs.map((qbo: any) => qbo.name).join(", ") : "(none found)";
       const jobNames = allJobs && allJobs.length > 0 ? allJobs.map((job: any) => job.title).join(", ") : "(none found)";
-      connectionSection = `\n\n=== Connection to Job(s) and Outcome(s) in the Organization ===\n- Job(s): ${jobNames}\n- Outcome(s): ${outcomeNames}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the names of any jobs and outcome(s) from the lists above that are relevant to your answer, using their names in bold. Clearly explain the connection and impact on those jobs and outcomes.\n=== END CONNECTION ===`;
+      connectionSection = `Job(s): ${jobNames}\n- Outcome(s): ${outcomeNames}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the names of any jobs and outcome(s) from the lists above that are relevant to your answer, using their names in bold. Clearly explain the connection and impact on those jobs and outcomes.`;
       systemPrompt += connectionSection;
     } catch (error) {
       console.error("Error enriching context for org outcomes:", error);
-      systemPrompt += `\n\n=== Connection to Job(s) and Outcome(s) in the Organization ===\n- Job(s): (unknown)\n- Outcome(s): (unknown)\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the names of any jobs and outcome(s) from the lists above that are relevant to your answer, using their names in bold. Clearly explain the connection and impact on those jobs and outcomes.\n=== END CONNECTION ===`;
+      systemPrompt += `Job(s): (unknown)\n- Outcome(s): (unknown)\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the names of any jobs and outcome(s) from the lists above that are relevant to your answer, using their names in bold. Clearly explain the connection and impact on those jobs and outcomes.`;
     }
   }
   try {
