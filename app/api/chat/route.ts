@@ -15,7 +15,6 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   // Extract the data from the body of the request
   const body = await req.json();
-  console.log("[Jija Debug] /api/chat POST called. Body:", body);
   const { messages, id, source, jobId, taskId, jobTitle } = body;
   const chatId = id || crypto.randomUUID(); // Use provided ID or generate a new one
 
