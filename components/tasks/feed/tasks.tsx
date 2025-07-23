@@ -31,6 +31,7 @@ interface NextTasksProps {
   onEditTask?: (task: any) => void;
   onDeleteTask?: (id: string) => void;
   isNextTask: (task: any) => boolean;
+  onToggleMyDay?: (task: any, value: boolean) => void;
 }
 
 export function NextTasks({
@@ -45,7 +46,9 @@ export function NextTasks({
   onEditTask,
   onDeleteTask,
   isNextTask,
+  onToggleMyDay,
 }: NextTasksProps) {
+  console.log('Rendering NextTasks', { onComplete, onViewTask });
   const router = useRouter();
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({});
 
@@ -159,6 +162,7 @@ export function NextTasks({
     <div className="space-y-4 w-full">
       {tasks.map((task, index) => {
         const taskId = getTaskId(task, index);
+        const realId = task.id || task._id || taskId;
         const taskIsNext = isNextTask(task);
         return (
           <Card
@@ -166,18 +170,26 @@ export function NextTasks({
             className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
               taskIsNext ? "border-orange-500 border-2" : ""
             }`}
-            onClick={() => onViewTask(task)}
+            onClick={() => {
+              console.log('Card clicked, opening sidebar for task:', task);
+              onViewTask(task);
+            }}
           >
             <CardContent className="p-4">
               <div className="flex flex-col">
                 <div className="flex items-start gap-3 mb-3">
                   <div 
                     className="pt-1"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
                   >
                     <Checkbox
                       checked={task.completed === true}
-                      onCheckedChange={(value) => onComplete(taskId, !!value)}
+                      onCheckedChange={(value) => {
+                        console.log('Checkbox changed for task:', realId, 'completed:', !!value);
+                        onComplete(realId, !!value);
+                      }}
                       aria-label="Mark as completed"
                     />
                   </div>
@@ -200,6 +212,18 @@ export function NextTasks({
                           )}
                         </h3>
                       </div>
+                      {onToggleMyDay && (
+                        <Button
+                          variant={task.myDay ? "secondary" : "outline"}
+                          size="sm"
+                          onClick={e => {
+                            e.stopPropagation();
+                            onToggleMyDay(task, !task.myDay);
+                          }}
+                        >
+                          {task.myDay ? "Remove from My Day" : "Add to My Day"}
+                        </Button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">

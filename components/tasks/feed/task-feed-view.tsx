@@ -25,6 +25,7 @@ import { Task } from "../types";
 
 import type { Jobs } from "@/lib/models/job.model";
 import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
+import MyDayView from "./my-day-view";
 
 // Helper to map API Job to Job type
 function mapJobToSidebarJob(job: any): Job {
@@ -705,6 +706,35 @@ const completeTask = async (jobid: string, id: string) => {
     }
   };
 
+  // Handler to add/remove task from My Day
+  const handleToggleMyDay = async (task: Task, value: boolean) => {
+    const taskId = task.id || (task as any)._id;
+    if (!taskId) {
+      toast({ title: "Task ID missing", description: "Cannot update My Day for a task without an ID.", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/myday`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myDay: value }),
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        setTasks((prev) => prev.map((t) => ((t.id || (t as any)._id) === taskId ? { ...t, myDay: value } : t)));
+      } else {
+        toast({ title: "Failed to update My Day", description: result.error || "Unknown error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Failed to update My Day", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
+  // Filter tasks for My Day
+  const myDayTasks = tasks.filter((t) => t.myDay);
+  // Filter tasks for main feed (not in My Day)
+  const mainFeedTasks = filteredTasks.filter((t) => !t.myDay);
+
   const handleAddTask = () => {
     setDialogMode("create");
     setCurrentTask(undefined);
@@ -969,23 +999,13 @@ const completeTask = async (jobid: string, id: string) => {
 
   return (
     <div className="p-4 w-full">
-      <div className="flex gap-2">
-        <div className="w-full max-w-none">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Tasks</h1>
-
-            {/* Add the FilterComponent and TaskSortingComponent at the top */}
-
-            <div className="mb-4">
-              <Button onClick={handleAddTask}>
-                <Plus className="mr-2 h-4 w-4" /> Create Task
-              </Button>
-            </div>
-          </div>
-        </div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold mt-8">Tasks</h2>
+        <Button onClick={handleAddTask} className="mt-8">
+          <Plus className="mr-2 h-4 w-4" /> Create Task
+        </Button>
       </div>
-
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+      <div className="w-full flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <FilterComponent
           onFilterChange={handleFilterChange}
           businessFunctions={businessFunctions}
@@ -993,91 +1013,43 @@ const completeTask = async (jobid: string, id: string) => {
           tags={tags}
           initialFilters={activeFilters}
         />
-
         <TaskSortingComponent
           onSortChange={handleSortChange}
           tasks={filteredTasks}
           jobs={jobs}
         />
       </div>
-
-      <div className="grid gap-6 mt-4">
-        <div className="w-full">
+      <div className="flex flex-col xl:flex-row gap-8">
+        <div className="w-full xl:w-1/2">
           <NextTasks
-            tasks={sortedTasks}
+            tasks={mainFeedTasks}
             jobs={jobs}
             onComplete={handleCompleteTask}
             onViewTask={handleViewTask}
             onAddToCalendar={handleAddToCalendar}
             ownerMap={ownerMap}
+            businessFunctionMap={businessFunctionMap}
             loading={loading}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
+            isNextTask={isNextTask}
+            onToggleMyDay={handleToggleMyDay}
+          />
+        </div>
+        <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:pr-6 xl:border-l border-gray-200">
+          <h2 className="text-2xl font-bold mb-4 mt-8">My Day</h2>
+          <MyDayView
+            tasks={myDayTasks}
+            onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
+            onComplete={handleCompleteTask}
+            onViewTask={handleViewTask}
+            jobs={jobs}
+            ownerMap={ownerMap}
             businessFunctionMap={businessFunctionMap}
             isNextTask={isNextTask}
           />
         </div>
       </div>
-
-      {/* Task Dialog - Always render with proper mode and data */}
-      <TaskDialog
-        mode={dialogMode}
-        open={taskDialogOpen}
-        onOpenChange={setTaskDialogOpen}
-        onSubmit={handleTaskSubmit}
-        initialData={editingTask}
-        jobs={jobs} // Pass the jobs object to TaskDialog
-        jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
-      />
-
-      {/* Task Details Sidebar - NEW */}
-      <TaskDetailsSidebar
-        open={taskDetailsSidebarOpen}
-        onOpenChange={setTaskDetailsSidebarOpen}
-        selectedTask={selectedTaskForDetails}
-        onTaskUpdated={handleTaskUpdated}
-        onDeleteTask={handleDeleteTask}
-        onNavigateToJob={handleNavigateToJob}
-      />
-      <TasksSidebar
-        open={tasksSidebarOpen}
-        onOpenChange={setTasksSidebarOpen}
-        selectedJob={selectedJobForSidebar}
-        jobs={jobs}
-      />
-
-      {/* Task Completion Confirmation Dialog */}
-      <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Complete Task</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to mark this task as complete?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="font-medium">{taskToComplete?.title}</p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCompleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (taskToComplete) {
-                  completeTask(taskToComplete.jobId, taskToComplete.id);
-                  setCompleteDialogOpen(false);
-                }
-              }}
-            >
-              Complete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
