@@ -31,6 +31,7 @@ interface NextTasksProps {
   onEditTask?: (task: any) => void;
   onDeleteTask?: (id: string) => void;
   isNextTask: (task: any) => boolean;
+  onDuplicate?: (task: any) => void;
 }
 
 export function NextTasks({
@@ -45,6 +46,7 @@ export function NextTasks({
   onEditTask,
   onDeleteTask,
   isNextTask,
+  onDuplicate,
 }: NextTasksProps) {
   const router = useRouter();
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({});
@@ -250,6 +252,22 @@ export function NextTasks({
                       <PawPrint className="h-4 w-4 mr-1" />
                       Ask Jija
                     </Button>
+
+                    {onDuplicate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDuplicate(task);
+                        }}
+                        title="Duplicate task"
+                      >
+                        <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 16h8a2 2 0 0 0 2-2V8"/><rect width="16" height="16" x="4" y="4" rx="2"/></svg>
+                        Duplicate
+                      </Button>
+                    )}
 
                     {onDeleteTask && (
                       <Button

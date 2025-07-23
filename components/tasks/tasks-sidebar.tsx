@@ -42,6 +42,7 @@ import { TaskCard } from "./tasks-card";
 import { useTaskContext } from "@/hooks/task-context";
 import { useRouter } from "next/navigation";
 import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
+import { DuplicateTaskDialog } from "./duplicate-task-dialog";
 
 // DnD Kit imports
 import {
@@ -79,6 +80,7 @@ interface SortableTaskItemProps {
   ownerMap: Record<string, string>;
   onAddToCalendar?: (task: Task) => void;
   onOpenTaskDetails?: (task: Task) => void;
+  onDuplicate?: () => void;
 }
 type EditableJobField = 'title' | 'dueDate' | 'notes' | 'businessFunction';
 
@@ -91,6 +93,7 @@ function SortableTaskItem({
   ownerMap,
   onAddToCalendar,
   onOpenTaskDetails,
+  onDuplicate,
 }: SortableTaskItemProps) {
   const {
     attributes,
@@ -134,6 +137,7 @@ function SortableTaskItem({
             ownerMap={ownerMap}
             onAddToCalendar={onAddToCalendar}
             onOpenTaskDetails={onOpenTaskDetails}
+            onDuplicate={onDuplicate}
           />
         </div>
       </div>
@@ -177,6 +181,8 @@ export function TasksSidebar({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [taskDetailsSidebarOpen, setTaskDetailsSidebarOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
 
   // Job inline editing state
   const [editingJobField, setEditingJobField] = useState<EditableJobField | null>(null);
@@ -230,6 +236,7 @@ export function TasksSidebar({
   );
 
   const handleOpenTaskDetails = (task: Task) => {
+    if (duplicateDialogOpen) return; // Block opening details if duplicating
     setSelectedTaskForDetails(task);
     setTaskDetailsSidebarOpen(true);
   };
@@ -1598,6 +1605,10 @@ export function TasksSidebar({
                           ownerMap={ownerMap}
                           onAddToCalendar={handleAddToCalendar}
                           onOpenTaskDetails={handleOpenTaskDetails}
+                          onDuplicate={() => {
+                            setTaskToDuplicate(task);
+                            setDuplicateDialogOpen(true);
+                          }}
                         />
                       ))}
                     </SortableContext>
@@ -1655,6 +1666,42 @@ export function TasksSidebar({
         onTaskUpdated={handleTaskUpdated}
         onNavigateToJob={handleNavigateToJob}
         onDeleteTask={handleDeleteTask}
+      />
+
+      {/* Duplicate Task Dialog */}
+      <DuplicateTaskDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => {
+          setDuplicateDialogOpen(open);
+          if (!open) setTaskToDuplicate(null);
+        }}
+        sourceTask={taskToDuplicate as Task}
+        onSubmit={(newTask) => {
+          const mappedTask: Task = {
+            id: (newTask.id || (newTask as any)._id || Math.random().toString(36)) as string,
+            title: newTask.title || '',
+            owner: newTask.owner,
+            date: newTask.date,
+            requiredHours: newTask.requiredHours,
+            focusLevel: newTask.focusLevel,
+            joyLevel: newTask.joyLevel,
+            notes: newTask.notes,
+            tags: newTask.tags || [],
+            jobId: newTask.jobId || '',
+            completed: newTask.completed ?? false,
+            isNextTask: false,
+            createdDate: newTask.createdDate,
+            endDate: newTask.endDate,
+            timeElapsed: newTask.timeElapsed,
+            isRecurring: newTask.isRecurring,
+            recurrenceInterval: newTask.recurrenceInterval,
+          };
+          if (mappedTask.jobId === selectedJob?.id) {
+            setTasks((prev) => [mappedTask, ...prev]);
+          }
+          setDuplicateDialogOpen(false);
+          setTaskToDuplicate(null);
+        }}
       />
     </>
   );
