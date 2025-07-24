@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, PawPrint, Copy } from "lucide-react";
+import { Trash2, PawPrint, Copy, RefreshCcw } from "lucide-react";
 import { DuplicateJobDialog } from "./duplicate-job-dialog";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -200,7 +200,15 @@ export function JobCard({
         {/* Job title with job number */}
         <div className="mb-6 pl-6">
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold">{currentJob.title}</h3>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {currentJob.title}
+              {currentJob.isRecurring && currentJob.recurrenceInterval && (
+                <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                  <RefreshCcw className="h-4 w-4 inline" />
+                  {currentJob.recurrenceInterval}
+                </span>
+              )}
+            </h3>
           </div>
         </div>
 

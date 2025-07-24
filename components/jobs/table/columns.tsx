@@ -29,6 +29,8 @@ export type Job = {
   tasks?: string[];     // Added field to store task IDs
   // Owner field removed as it's now derived from next task
   impact?: number;
+  isRecurring?: boolean;
+  recurrenceInterval?: import("@/components/tasks/types").RecurrenceInterval;
 };
 
 export const columns = (

@@ -45,6 +45,8 @@ function convertJobsToTableData(
       nextTaskId: job.nextTaskId || undefined,
       tasks: job.tasks || [],
       impact: job.impact || 0,
+      isRecurring: job.isRecurring || false,
+      recurrenceInterval: job.recurrenceInterval || undefined,
       // Owner removed as it's now derived from the next task
     };
   });
@@ -419,6 +421,9 @@ export default function JobsPage() {
         title: "Success",
         description: "Selected jobs marked as complete",
       });
+
+      // Always refresh jobs to show new recurring instance
+      await fetchJobs();
     } catch (error) {
       console.error("Error marking jobs as done:", error);
       toast({
@@ -861,7 +866,7 @@ export default function JobsPage() {
   };
 
   const handleSidebarClose = (open: boolean) => {
-    if (!open && needsRefresh) {
+    if (!open) {
       fetchJobs();
     }
     setTasksSidebarOpen(open);
