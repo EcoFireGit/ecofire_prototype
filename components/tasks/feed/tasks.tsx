@@ -215,15 +215,15 @@ export function NextTasks({
                   <div className="flex-1">
                     <div className="mb-2 flex justify-between items-start">
                       <div className="flex items-center">
-                        <h3 className="text-base font-semibold hover:text-primary transition-colors flex items-center gap-2">
+                        <h3 className="text-base font-semibold hover:text-primary transition-colors flex items-start gap-2">
                           {task.title}
                           {taskIsNext && (
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300 mr-1 mt-1">
                               Next
                             </Badge>
                           )}
                           {task.isRecurring && task.recurrenceInterval && (
-                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal mr-2 mt-1.5">
                               <RefreshCcw className="h-4 w-4 inline" />
                               {task.recurrenceInterval}
                             </span>
