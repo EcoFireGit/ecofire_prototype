@@ -7,7 +7,7 @@ import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
 import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
 import FilterComponent from "@/components/filters/filter-component";
 import TaskSortingComponent from "@/components/sorting/task-sorting-component";
-import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
+import { Plus, PawPrint, Calendar, Briefcase, FileText, Sun } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1235,7 +1235,10 @@ export default function TaskFeedView() {
         <div className={myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full mb-8 min-w-0 transition-all duration-300"}>
           {!myDayMinimized && (
             <>
-              <h2 className="text-2xl font-bold mb-6">My Day</h2>
+              <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                <Sun className="h-5 w-5 text-orange-500" />
+                My Day
+              </h2>
               <MyDayView
                 tasks={myDayTasks}
                 onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
