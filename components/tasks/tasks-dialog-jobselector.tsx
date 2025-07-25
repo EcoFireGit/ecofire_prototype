@@ -72,6 +72,7 @@ export function TaskDialog({
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval | undefined>(undefined);
   const [recurrenceError, setRecurrenceError] = useState<string | null>(null);
+  const [addToMyDay, setAddToMyDay] = useState(false);
 
   const [owners, setOwners] = useState<Owner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
@@ -131,6 +132,7 @@ export function TaskDialog({
         setTags([]);
         setIsRecurring(false);
         setRecurrenceInterval(undefined);
+        setAddToMyDay(false);
         if (propJobId) {
           setJobId(propJobId);
         } else {
@@ -152,6 +154,7 @@ export function TaskDialog({
         setJobId(initialData.jobId);
         setIsRecurring(initialData.isRecurring || false);
         setRecurrenceInterval(initialData.recurrenceInterval);
+        setAddToMyDay(initialData.myDay || false);
       }
     }, 0);
 
@@ -294,6 +297,10 @@ export function TaskDialog({
         task.isRecurring = false;
         task.recurrenceInterval = undefined;
       }
+      if (addToMyDay) {
+        task.myDay = true;
+        task.myDayDate = new Date().toISOString().split('T')[0];
+      }
       await onSubmit(task);
 
       if (tags.length > 0) await saveTags(tags);
@@ -319,6 +326,7 @@ export function TaskDialog({
         setTags([]);
         setIsRecurring(false);
         setRecurrenceInterval(undefined);
+        setAddToMyDay(false);
         if (propJobId) {
           setJobId(propJobId);
         } else {
@@ -688,6 +696,21 @@ export function TaskDialog({
                   </div>
                 </div>
               )}
+
+              {/* Add to My Day */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="addToMyDay" className="text-right">
+                  My Day
+                </Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Checkbox
+                    id="addToMyDay"
+                    checked={addToMyDay}
+                    onCheckedChange={(checked) => setAddToMyDay(!!checked)}
+                  />
+                  <span className="text-sm">Add to My Day</span>
+                </div>
+              </div>
             </div>
 
             <DialogFooter>

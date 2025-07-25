@@ -304,31 +304,37 @@ export default function TaskFeedView() {
     }
   };
 
-  // Function to sort tasks - next tasks first, ordered by job impact score
+  // Function to sort tasks - earliest do-date first, then next tasks, then impact score
   const sortTasks = (tasks: any[], jobsMap: Record<string, any>) => {
     return [...tasks].sort((a, b) => {
-      // Check if task is a next task
+      // First sort by earliest do-date (ascending - earliest first)
+      if (a.date && b.date) {
+        const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+      } else if (a.date && !b.date) {
+        return -1; // Tasks with dates come before tasks without dates
+      } else if (!a.date && b.date) {
+        return 1;
+      }
+
+      // If dates are the same (or both null), check next task status
       const aIsNextTask = a.jobId && jobsMap[a.jobId]?.nextTaskId === a._id;
       const bIsNextTask = b.jobId && jobsMap[b.jobId]?.nextTaskId === b._id;
 
-      // First sort by next task status
       if (aIsNextTask && !bIsNextTask) return -1;
       if (!aIsNextTask && bIsNextTask) return 1;
 
-      // If both are next tasks, sort by job impact score (higher first)
+      // If both are next tasks (or both are not), sort by job impact score (higher first)
       if (aIsNextTask && bIsNextTask) {
         const aImpact = jobsMap[a.jobId]?.impact || 0;
         const bImpact = jobsMap[b.jobId]?.impact || 0;
         return bImpact - aImpact;
       }
 
-      // If neither are next tasks, sort by date
-      if (a.date && b.date) {
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      }
-
-      // Default fallback for sorting
-      return 0;
+      // For non-next tasks, also sort by impact score
+      const aImpact = jobsMap[a.jobId]?.impact || 0;
+      const bImpact = jobsMap[b.jobId]?.impact || 0;
+      return bImpact - aImpact;
     });
   };
 
@@ -1136,34 +1142,7 @@ export default function TaskFeedView() {
     <div className="p-4 w-full">
       <div className="flex gap-2">
         <div className="w-full max-w-none">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Tasks</h1>
-
-            {/* Add the FilterComponent and TaskSortingComponent at the top */}
-
-            <div className="mb-4">
-              <Button onClick={handleAddTask}>
-                <Plus className="mr-2 h-4 w-4" /> Create Task
-              </Button>
-            </div>
-          </div>
         </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-        <FilterComponent
-          onFilterChange={handleFilterChange}
-          businessFunctions={businessFunctions}
-          owners={owners}
-          tags={tags}
-          initialFilters={activeFilters}
-        />
-
-        <TaskSortingComponent
-          onSortChange={handleSortChange}
-          tasks={filteredTasks}
-          jobs={jobs}
-        />
       </div>
     </div>
     <div className="p-4 w-full relative" ref={splitContainerRef}>
@@ -1214,7 +1193,27 @@ export default function TaskFeedView() {
         <div className={mainMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"}>
           {!mainMinimized && (
             <>
-              <h2 className="text-2xl font-bold mb-6">All Tasks</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">All Tasks</h2>
+                <Button onClick={handleAddTask}>
+                  <Plus className="mr-2 h-4 w-4" /> Create Task
+                </Button>
+              </div>
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                <FilterComponent
+                  onFilterChange={handleFilterChange}
+                  businessFunctions={businessFunctions}
+                  owners={owners}
+                  tags={tags}
+                  initialFilters={activeFilters}
+                />
+
+                <TaskSortingComponent
+                  onSortChange={handleSortChange}
+                  tasks={filteredTasks}
+                  jobs={jobs}
+                />
+              </div>
               <NextTasks
                 tasks={mainFeedTasks}
                 jobs={jobs}
