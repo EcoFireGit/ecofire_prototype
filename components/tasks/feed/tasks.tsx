@@ -9,7 +9,8 @@ import {
   Smile,
   FileText,
   PawPrint,
-  Target
+  Target,
+  Copy
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -264,8 +265,7 @@ export function NextTasks({
                         }}
                         title="Duplicate task"
                       >
-                        <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M8 16h8a2 2 0 0 0 2-2V8"/><rect width="16" height="16" x="4" y="4" rx="2"/></svg>
-                        Duplicate
+                        <Copy className="h-4 w-4 mr-1" />
                       </Button>
                     )}
 
