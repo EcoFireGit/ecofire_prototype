@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
@@ -26,6 +26,7 @@ import { Task } from "../types";
 import type { Jobs } from "@/lib/models/job.model";
 import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
 import MyDayView from "./my-day-view";
+import Split from 'react-split';
 
 // Helper to map API Job to Job type
 function mapJobToSidebarJob(job: any): Job {
@@ -81,6 +82,77 @@ export default function TaskFeedView() {
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
   const [selectedJobForSidebar, setSelectedJobForSidebar] = useState<Job | null>(null);
+
+  // Add state for minimized panes
+  const [mainMinimized, setMainMinimized] = useState(false);
+  const [myDayMinimized, setMyDayMinimized] = useState(false);
+  const [splitSizes, setSplitSizes] = useState([50, 50]);
+  const [showTabs, setShowTabs] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const showTasksTabRef = useRef<HTMLButtonElement>(null);
+  const showMyDayTabRef = useRef<HTMLButtonElement>(null);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
+
+
+  // Handler for Split drag
+  const handleSplitDrag = useCallback((sizes: number[]) => {
+    setSplitSizes(sizes);
+  }, []);
+
+  // Handler for Split drag end
+  const handleSplitDragEnd = useCallback((sizes: number[]) => {
+    // Only allow resizing on desktop
+    if (isMobile) return;
+    
+    // If left pane is less than 40%, minimize it
+    if (sizes[0] < 40) {
+      setMainMinimized(true);
+      setMyDayMinimized(false);
+      setSplitSizes([0, 100]);
+      setShowTabs(false);
+      // Show tabs after animation completes
+      setTimeout(() => setShowTabs(true), 300);
+    } else if (sizes[1] < 40) {
+      setMainMinimized(false);
+      setMyDayMinimized(true);
+      setSplitSizes([100, 0]);
+      setShowTabs(false);
+      // Show tabs after animation completes
+      setTimeout(() => setShowTabs(true), 300);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes(sizes);
+      setShowTabs(false);
+    }
+  }, [isMobile]);
+
+  // Restore handlers
+  const restoreMain = () => {
+    if (isMobile) {
+      setMainMinimized(false);
+      setMyDayMinimized(true);
+      setSplitSizes([100, 0]);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes([50, 50]);
+      setShowTabs(false);
+    }
+  };
+  const restoreMyDay = () => {
+    if (isMobile) {
+      setMainMinimized(true);
+      setMyDayMinimized(false);
+      setSplitSizes([0, 100]);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes([50, 50]);
+      setShowTabs(false);
+    }
+  };
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -415,6 +487,33 @@ export default function TaskFeedView() {
     // Apply filters to the new tasks
     handleFilterChange(activeFilters);
   }, [tasks]);
+
+  // Check for mobile/tablet screens
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Set initial state based on screen size
+  useEffect(() => {
+    if (isMobile) {
+      setMainMinimized(false);
+      setMyDayMinimized(true);
+      setSplitSizes([100, 0]);
+      setShowTabs(true);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes([50, 50]);
+      setShowTabs(false);
+    }
+  }, [isMobile]);
 
   // Fetch all necessary data when component mounts
   useEffect(() => {
@@ -1025,179 +1124,242 @@ export default function TaskFeedView() {
   };
 
   return (
-    <>
-      <TaskDetailsSidebar
-        open={taskDetailsSidebarOpen}
-        onOpenChange={setTaskDetailsSidebarOpen}
-        selectedTask={selectedTaskForDetails}
-        onTaskUpdated={handleTaskUpdated}
-        onNavigateToJob={handleNavigateToJob}
-        onDeleteTask={handleDeleteTask}
-      />
-      <div className="p-4 w-full">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold mt-8">Tasks</h2>
-          <Button onClick={handleAddTask} className="mt-8">
-            <Plus className="mr-2 h-4 w-4" /> Create Task
-          </Button>
-        </div>
-        <div className="w-full flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-          <FilterComponent
-            onFilterChange={handleFilterChange}
-            businessFunctions={businessFunctions}
-            owners={owners}
-            tags={tags}
-            initialFilters={activeFilters}
-          />
-          <TaskSortingComponent
-            onSortChange={handleSortChange}
-            tasks={filteredTasks}
-            jobs={jobs}
-          />
-        </div>
-        <div className="flex flex-col xl:flex-row gap-8">
-          <div className="w-full xl:w-1/2">
-            <NextTasks
-              tasks={mainFeedTasks}
-              jobs={jobs}
-              onComplete={handleCompleteTask}
-              onViewTask={handleViewTask}
-              onAddToCalendar={handleAddToCalendar}
-              ownerMap={ownerMap}
-              businessFunctionMap={businessFunctionMap}
-              loading={loading}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteTask}
-              isNextTask={isNextTask}
-              onToggleMyDay={handleToggleMyDay}
-            />
-          </div>
-          <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:pr-6 xl:border-l border-gray-200">
-            <h2 className="text-2xl font-bold mb-4 mt-8">My Day</h2>
-            <MyDayView
-              tasks={myDayTasks}
-              onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
-              onComplete={async (id, completed) => {
-                // Optimistically update UI in-place
-                setTasks((prevTasks) =>
-                  prevTasks.map((task) =>
-                    (task._id === id || task.id === id)
-                      ? { ...task, completed }
-                      : task
-                )
-              );
-              setFilteredTasks((prevTasks) =>
-                prevTasks.map((task) =>
-                  (task._id === id || task.id === id)
-                    ? { ...task, completed }
-                    : task
-                )
-              );
-              setSortedTasks((prevTasks) =>
-                prevTasks.map((task) =>
-                  (task._id === id || task.id === id)
-                    ? { ...task, completed }
-                    : task
-                )
-              );
-              try {
-                const response = await fetch(`/api/tasks/${id}/myday`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
-                });
-                const result = await response.json();
-                if (!result.success) {
-                  throw new Error(result.error || "Failed to update task");
-                }
-                toast({
-                  title: completed ? "Task completed" : "Task reopened",
-                  description: completed ? "Great job!" : "Task has been reopened",
-                });
-                // Refresh tasks so new recurring instance appears
-                fetchData();
-              } catch (error) {
-                // Revert UI if backend call fails
-                setTasks((prevTasks) =>
-                  prevTasks.map((task) =>
-                    (task._id === id || task.id === id)
-                      ? { ...task, completed: !completed }
-                      : task
-                  )
-                );
-                setFilteredTasks((prevTasks) =>
-                  prevTasks.map((task) =>
-                    (task._id === id || task.id === id)
-                      ? { ...task, completed: !completed }
-                      : task
-                  )
-                );
-                setSortedTasks((prevTasks) =>
-                  prevTasks.map((task) =>
-                    (task._id === id || task.id === id)
-                      ? { ...task, completed: !completed }
-                      : task
-                  )
-                );
-                toast({
-                  title: "Error",
-                  description: "Failed to update task",
-                  variant: "destructive",
-                });
-              }
-            }}
-            onViewTask={handleViewTask}
-            jobs={jobs}
-            ownerMap={ownerMap}
-            businessFunctionMap={businessFunctionMap}
-            isNextTask={isNextTask}
-            onDeleteTask={handleDeleteTask}
-            onAddToCalendar={handleAddToCalendar}
-          />
+  <>
+    <TaskDetailsSidebar
+      open={taskDetailsSidebarOpen}
+      onOpenChange={setTaskDetailsSidebarOpen}
+      selectedTask={selectedTaskForDetails}
+      onTaskUpdated={handleTaskUpdated}
+      onNavigateToJob={handleNavigateToJob}
+      onDeleteTask={handleDeleteTask}
+    />
+    <div className="p-4 w-full">
+      <div className="flex gap-2">
+        <div className="w-full max-w-none">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Tasks</h1>
+
+            {/* Add the FilterComponent and TaskSortingComponent at the top */}
+
+            <div className="mb-4">
+              <Button onClick={handleAddTask}>
+                <Plus className="mr-2 h-4 w-4" /> Create Task
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-      {/* Task Completion Confirmation Dialog */}
-      <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Complete Task</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to mark this task as complete?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="font-medium">{taskToComplete?.title}</p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCompleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (taskToComplete) {
-                  handleCompleteTaskConfirmed(taskToComplete.id, true);
-                  setCompleteDialogOpen(false);
-                }
-              }}
-            >
-              Complete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <TaskDialog
-        mode={dialogMode}
-        open={taskDialogOpen}
-        onOpenChange={setTaskDialogOpen}
-        onSubmit={handleTaskSubmit}
-        initialData={editingTask}
-        jobs={jobs}
-        jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
-      />
-    </>
-  );
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+        <FilterComponent
+          onFilterChange={handleFilterChange}
+          businessFunctions={businessFunctions}
+          owners={owners}
+          tags={tags}
+          initialFilters={activeFilters}
+        />
+
+        <TaskSortingComponent
+          onSortChange={handleSortChange}
+          tasks={filteredTasks}
+          jobs={jobs}
+        />
+      </div>
+    </div>
+    <div className="p-4 w-full relative" ref={splitContainerRef}>
+      {/* Show Tasks tab */}
+      {mainMinimized && showTabs && (
+        <button
+          ref={showTasksTabRef}
+          onClick={restoreMain}
+          className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs rotate-180 origin-top-left hover:bg-orange-700 transition z-10"
+          style={{ 
+            writingMode: 'vertical-rl', 
+            textOrientation: 'mixed',
+            left: '18px',
+            top: '95px'
+          }}
+          aria-label="Show Tasks"
+        >
+          Show All Tasks
+        </button>
+      )}
+      {/* Show My Day tab */}
+      {myDayMinimized && !mainMinimized && showTabs && (
+        <button
+          ref={showMyDayTabRef}
+          onClick={restoreMyDay}
+          className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs origin-top-right hover:bg-orange-700 transition z-10"
+          style={{ 
+            writingMode: 'vertical-rl', 
+            textOrientation: 'mixed',
+            right: '0px',
+            top: '0px'
+          }}
+          aria-label="Show My Day"
+        >
+          <span>Show My Day</span>
+        </button>
+      )}
+      <div className="w-full overflow-hidden">
+        <Split
+          className={`w-full flex ${isMobile ? '' : 'gap-8'}`}
+          minSize={[mainMinimized ? 0 : 220, myDayMinimized ? 0 : 220]}
+          sizes={splitSizes}
+          gutterSize={isMobile ? 0 : 8}
+          direction="horizontal"
+          onDrag={isMobile ? undefined : handleSplitDrag}
+          onDragEnd={handleSplitDragEnd}
+        >
+        <div className={mainMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"}>
+          {!mainMinimized && (
+            <>
+              <h2 className="text-2xl font-bold mb-6">All Tasks</h2>
+              <NextTasks
+                tasks={mainFeedTasks}
+                jobs={jobs}
+                onComplete={handleCompleteTask}
+                onViewTask={handleViewTask}
+                onAddToCalendar={handleAddToCalendar}
+                ownerMap={ownerMap}
+                businessFunctionMap={businessFunctionMap}
+                loading={loading}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteTask}
+                isNextTask={isNextTask}
+                onToggleMyDay={handleToggleMyDay}
+              />
+            </>
+          )}
+        </div>
+        <div className={myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full mb-8 min-w-0 transition-all duration-300"}>
+          {!myDayMinimized && (
+            <>
+              <h2 className="text-2xl font-bold mb-6">My Day</h2>
+              <MyDayView
+                tasks={myDayTasks}
+                onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
+                onComplete={async (id, completed) => {
+                  setTasks((prevTasks) =>
+                    prevTasks.map((task) =>
+                      (task._id === id || task.id === id)
+                        ? { ...task, completed }
+                        : task
+                    )
+                  );
+                  setFilteredTasks((prevTasks) =>
+                    prevTasks.map((task) =>
+                      (task._id === id || task.id === id)
+                        ? { ...task, completed }
+                        : task
+                    )
+                  );
+                  setSortedTasks((prevTasks) =>
+                    prevTasks.map((task) =>
+                      (task._id === id || task.id === id)
+                        ? { ...task, completed }
+                        : task
+                    )
+                  );
+                  try {
+                    const response = await fetch(`/api/tasks/${id}/myday`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
+                    });
+                    const result = await response.json();
+                    if (!result.success) {
+                      throw new Error(result.error || "Failed to update task");
+                    }
+                    toast({
+                      title: completed ? "Task completed" : "Task reopened",
+                      description: completed ? "Great job!" : "Task has been reopened",
+                    });
+                    fetchData();
+                  } catch (error) {
+                    setTasks((prevTasks) =>
+                      prevTasks.map((task) =>
+                        (task._id === id || task.id === id)
+                          ? { ...task, completed: !completed }
+                          : task
+                      )
+                    );
+                    setFilteredTasks((prevTasks) =>
+                      prevTasks.map((task) =>
+                        (task._id === id || task.id === id)
+                          ? { ...task, completed: !completed }
+                          : task
+                      )
+                    );
+                    setSortedTasks((prevTasks) =>
+                      prevTasks.map((task) =>
+                        (task._id === id || task.id === id)
+                          ? { ...task, completed: !completed }
+                          : task
+                      )
+                    );
+                    toast({
+                      title: "Error",
+                      description: "Failed to update task",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                onViewTask={handleViewTask}
+                jobs={jobs}
+                ownerMap={ownerMap}
+                businessFunctionMap={businessFunctionMap}
+                isNextTask={isNextTask}
+                onDeleteTask={handleDeleteTask}
+                onAddToCalendar={handleAddToCalendar}
+              />
+            </>
+          )}
+        </div>
+      </Split>
+      </div>
+    </div>
+    {/* Task Completion Confirmation Dialog */}
+    <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Complete Task</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to mark this task as complete?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="font-medium">{taskToComplete?.title}</p>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setCompleteDialogOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (taskToComplete) {
+                handleCompleteTaskConfirmed(taskToComplete.id, true);
+                setCompleteDialogOpen(false);
+              }
+            }}
+          >
+            Complete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <TaskDialog
+      mode={dialogMode}
+      open={taskDialogOpen}
+      onOpenChange={setTaskDialogOpen}
+      onSubmit={handleTaskSubmit}
+      initialData={editingTask}
+      jobs={jobs}
+      jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
+    />
+  </>
+);
 }

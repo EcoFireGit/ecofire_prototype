@@ -73,6 +73,7 @@
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.2.0",
     "react-markdown": "9.0.1",
+    "react-split": "^2.0.14",
     "react-textarea-autosize": "^8.5.9",
     "remark": "^15.0.1",
     "remark-html": "^16.0.1",
