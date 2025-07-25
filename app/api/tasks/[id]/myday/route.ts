@@ -15,14 +15,28 @@ export async function PATCH(
     }
     const userId = authResult.userId;
     const { id } = await params;
-    const { myDay } = await request.json();
+    const { myDay, myDayDate, completed } = await request.json();
     if (typeof myDay !== 'boolean') {
       return NextResponse.json(
         { success: false, error: 'myDay must be a boolean' },
         { status: 400 }
       );
     }
-    const updatedTask = await taskService.updateTask(id, userId!, { myDay });
+    let updatedTask;
+    if (completed === true) {
+      updatedTask = await taskService.markCompleted(id, userId!, true);
+      if (updatedTask) {
+        await taskService.updateTask(id, userId!, { myDay, myDayDate });
+        updatedTask.myDay = myDay;
+        updatedTask.myDayDate = myDayDate;
+      }
+    } else {
+      const update: any = { myDay };
+      if (typeof myDayDate === 'string' || myDayDate === null) {
+        update.myDayDate = myDayDate;
+      }
+      updatedTask = await taskService.updateTask(id, userId!, update);
+    }
     if (!updatedTask) {
       return NextResponse.json(
         { success: false, error: 'Task not found' },

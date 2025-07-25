@@ -91,7 +91,8 @@ function SortableTaskItem({
   ownerMap,
   onAddToCalendar,
   onOpenTaskDetails,
-}: SortableTaskItemProps) {
+  onToggleMyDay,
+}: SortableTaskItemProps & { onToggleMyDay?: (task: Task, value: boolean) => void }) {
   const {
     attributes,
     listeners,
@@ -134,6 +135,7 @@ function SortableTaskItem({
             ownerMap={ownerMap}
             onAddToCalendar={onAddToCalendar}
             onOpenTaskDetails={onOpenTaskDetails}
+            onToggleMyDay={onToggleMyDay}
           />
         </div>
       </div>
@@ -542,6 +544,8 @@ export function TasksSidebar({
           timeElapsed: task.timeElapsed,
           isRecurring: task.isRecurring,
           recurrenceInterval: task.recurrenceInterval,
+          myDay: task.myDay,
+          myDayDate: task.myDayDate,
         }));
 
         // On initial load, sort tasks based on job.tasks array
@@ -1349,6 +1353,19 @@ export function TasksSidebar({
     });
   };
 
+  const handleToggleMyDay = async (task: Task, value: boolean) => {
+    const today = new Date().toLocaleDateString('en-CA');
+    try {
+      await fetch(`/api/tasks/${task.id || (task as any)._id}/myday`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myDay: value, myDayDate: value ? today : null }),
+      });
+      if (typeof fetchTasks === 'function') fetchTasks();
+    } catch (err) {
+    }
+  };
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -1598,6 +1615,7 @@ export function TasksSidebar({
                           ownerMap={ownerMap}
                           onAddToCalendar={handleAddToCalendar}
                           onOpenTaskDetails={handleOpenTaskDetails}
+                          onToggleMyDay={handleToggleMyDay}
                         />
                       ))}
                     </SortableContext>

@@ -38,6 +38,7 @@ export enum FocusLevel {
     isRecurring?: boolean;
     recurrenceInterval?: RecurrenceInterval;
     myDay?: boolean; // New property to mark task as part of My Day
+    myDayDate?: string;
   };
 
   

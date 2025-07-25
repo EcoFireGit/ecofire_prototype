@@ -213,7 +213,7 @@ export default function TaskFeedView() {
       // Remove any duplicate tasks and filter out completed tasks
       const uniqueTasks = Array.from(
         new Map(allTasks.map((task: any) => [task._id, task])).values(),
-      ).filter((task: any) => task.completed !== true);
+      );
 
       const sortedTasks = sortTasks(uniqueTasks, jobsMap);
 
@@ -435,106 +435,111 @@ export default function TaskFeedView() {
     };
   }, []);
 
-  // Function to complete a task
-const completeTask = async (jobid: string, id: string) => {
-  try {
-    const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        completed: true,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      const updatedTaskData = result.data;      
-      // Update local state
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === id
-            ? {
-                ...task,
-                completed: updatedTaskData.completed,
-                endDate: updatedTaskData.endDate,
-                timeElapsed: updatedTaskData.timeElapsed,
-              }
-            : task,
-        ),
-      );
-
-      // Also update filtered tasks
-      setFilteredTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === id
-            ? {
-                ...task,
-                completed: updatedTaskData.completed,
-                endDate: updatedTaskData.endDate,
-                timeElapsed: updatedTaskData.timeElapsed,
-              }
-            : task,
-        ),
-      );
-      setSortedTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === id
-            ? {
-                ...task,
-                completed: updatedTaskData.completed,
-                endDate: updatedTaskData.endDate,
-                timeElapsed: updatedTaskData.timeElapsed,
-              }
-            : task,
-        ),
-      );
-
-      // Filter out the task after a brief delay
-      setTimeout(() => {
-        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
-        setFilteredTasks((prevTasks) =>
-          prevTasks.filter((task) => task._id !== id),
-        );
-        setSortedTasks((prevTasks) =>
-          prevTasks.filter((task) => task._id !== id),
-        );
-      }, 500);
-      setTimeout(() => {
-        fetchData();
-      }, 1000);
-
-      toast({
-        title: "Task completed",
-        description: "Great job!",
-      });
-    } else {
-      throw new Error(result.error || "Failed to update task");
-    }
-  } catch (error) {
-    console.error("Error completing task:", error);
-    toast({
-      title: "Error",
-      description: "Failed to complete task",
-      variant: "destructive",
-    });
-  }
-};
-
-  // Handle checkbox change
   const handleCompleteTask = (id: string, completed: boolean) => {
     if (completed) {
-      // Find the task title for the confirmation dialog
-      const task = tasks.find((t) => t._id === id);
+      const task = tasks.find((t) => t._id === id || t.id === id);
       if (task) {
         setTaskToComplete({ id, jobId: task.jobId, title: task.title });
         setCompleteDialogOpen(true);
       }
     } else {
-      // Reopening a task doesn't need confirmation
-      reopenTask(id);
+      handleCompleteTaskConfirmed(id, false);
+    }
+  };
+
+  const handleCompleteTaskConfirmed = async (id: string, completed: boolean) => {
+    let removedTask: any = null;
+    setTasks((prevTasks) => {
+      if (completed) {
+        removedTask = prevTasks.find((task) => task._id === id || task.id === id);
+        return prevTasks.filter((task) => task._id !== id && task.id !== id);
+      } else {
+        return prevTasks.map((task) =>
+          (task._id === id || task.id === id)
+            ? { ...task, completed }
+            : task
+        );
+      }
+    });
+    setFilteredTasks((prevTasks) => {
+      if (completed) {
+        return prevTasks.filter((task) => task._id !== id && task.id !== id);
+      } else {
+        return prevTasks.map((task) =>
+          (task._id === id || task.id === id)
+            ? { ...task, completed }
+            : task
+        );
+      }
+    });
+    setSortedTasks((prevTasks) => {
+      if (completed) {
+        return prevTasks.filter((task) => task._id !== id && task.id !== id);
+      } else {
+        return prevTasks.map((task) =>
+          (task._id === id || task.id === id)
+            ? { ...task, completed }
+            : task
+        );
+      }
+    });
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          completed,
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update task");
+      }
+      toast({
+        title: completed ? "Task completed" : "Task reopened",
+        description: completed ? "Great job!" : "Task has been reopened",
+      });
+    } catch (error) {
+      setTasks((prevTasks) => {
+        if (completed && removedTask) {
+          return [removedTask, ...prevTasks];
+        } else {
+          return prevTasks.map((task) =>
+            (task._id === id || task.id === id)
+              ? { ...task, completed: !completed }
+              : task
+          );
+        }
+      });
+      setFilteredTasks((prevTasks) => {
+        if (completed && removedTask) {
+          return [removedTask, ...prevTasks];
+        } else {
+          return prevTasks.map((task) =>
+            (task._id === id || task.id === id)
+              ? { ...task, completed: !completed }
+              : task
+          );
+        }
+      });
+      setSortedTasks((prevTasks) => {
+        if (completed && removedTask) {
+          return [removedTask, ...prevTasks];
+        } else {
+          return prevTasks.map((task) =>
+            (task._id === id || task.id === id)
+              ? { ...task, completed: !completed }
+              : task
+          );
+        }
+      });
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive",
+      });
     }
   };
 
@@ -713,15 +718,16 @@ const completeTask = async (jobid: string, id: string) => {
       toast({ title: "Task ID missing", description: "Cannot update My Day for a task without an ID.", variant: "destructive" });
       return;
     }
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
     try {
       const res = await fetch(`/api/tasks/${taskId}/myday`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ myDay: value }),
+        body: JSON.stringify({ myDay: value, myDayDate: value ? today : null }),
       });
       const result = await res.json();
       if (result.success && result.data) {
-        setTasks((prev) => prev.map((t) => ((t.id || (t as any)._id) === taskId ? { ...t, myDay: value } : t)));
+        setTasks((prev) => prev.map((t) => ((t.id || (t as any)._id) === taskId ? { ...t, myDay: value, myDayDate: value ? today : undefined } : t)));
       } else {
         toast({ title: "Failed to update My Day", description: result.error || "Unknown error", variant: "destructive" });
       }
@@ -730,10 +736,31 @@ const completeTask = async (jobid: string, id: string) => {
     }
   };
 
-  // Filter tasks for My Day
-  const myDayTasks = tasks.filter((t) => t.myDay);
-  // Filter tasks for main feed (not in My Day)
-  const mainFeedTasks = filteredTasks.filter((t) => !t.myDay);
+  // On My Day page load, auto-reset tasks whose myDayDate !== today
+  useEffect(() => {
+    const today = new Date().toLocaleDateString('en-CA');
+    const expiredMyDayTasks = tasks.filter(t => t.myDay && t.myDayDate !== today);
+    if (expiredMyDayTasks.length > 0) {
+      // For each expired task, set myDay: false
+      Promise.all(expiredMyDayTasks.map(t =>
+        fetch(`/api/tasks/${t.id || t._id}/myday`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ myDay: false, myDayDate: null }),
+        })
+      )).then(() => {
+        // Refresh tasks after clearing
+        fetchData();
+      });
+    }
+  }, [tasks]);
+
+  // Filter tasks for My Day (include completed, sort incomplete first)
+  const myDayTasks = tasks
+    .filter((t) => t.myDay)
+    .sort((a, b) => Number(a.completed) - Number(b.completed));
+  // Filter tasks for main feed (not in My Day, not completed)
+  const mainFeedTasks = filteredTasks.filter((t) => !t.myDay && !t.completed);
 
   const handleAddTask = () => {
     setDialogMode("create");
@@ -998,58 +1025,179 @@ const completeTask = async (jobid: string, id: string) => {
   };
 
   return (
-    <div className="p-4 w-full">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold mt-8">Tasks</h2>
-        <Button onClick={handleAddTask} className="mt-8">
-          <Plus className="mr-2 h-4 w-4" /> Create Task
-        </Button>
-      </div>
-      <div className="w-full flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-        <FilterComponent
-          onFilterChange={handleFilterChange}
-          businessFunctions={businessFunctions}
-          owners={owners}
-          tags={tags}
-          initialFilters={activeFilters}
-        />
-        <TaskSortingComponent
-          onSortChange={handleSortChange}
-          tasks={filteredTasks}
-          jobs={jobs}
-        />
-      </div>
-      <div className="flex flex-col xl:flex-row gap-8">
-        <div className="w-full xl:w-1/2">
-          <NextTasks
-            tasks={mainFeedTasks}
+    <>
+      <TaskDetailsSidebar
+        open={taskDetailsSidebarOpen}
+        onOpenChange={setTaskDetailsSidebarOpen}
+        selectedTask={selectedTaskForDetails}
+        onTaskUpdated={handleTaskUpdated}
+        onNavigateToJob={handleNavigateToJob}
+        onDeleteTask={handleDeleteTask}
+      />
+      <div className="p-4 w-full">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold mt-8">Tasks</h2>
+          <Button onClick={handleAddTask} className="mt-8">
+            <Plus className="mr-2 h-4 w-4" /> Create Task
+          </Button>
+        </div>
+        <div className="w-full flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+          <FilterComponent
+            onFilterChange={handleFilterChange}
+            businessFunctions={businessFunctions}
+            owners={owners}
+            tags={tags}
+            initialFilters={activeFilters}
+          />
+          <TaskSortingComponent
+            onSortChange={handleSortChange}
+            tasks={filteredTasks}
             jobs={jobs}
-            onComplete={handleCompleteTask}
+          />
+        </div>
+        <div className="flex flex-col xl:flex-row gap-8">
+          <div className="w-full xl:w-1/2">
+            <NextTasks
+              tasks={mainFeedTasks}
+              jobs={jobs}
+              onComplete={handleCompleteTask}
+              onViewTask={handleViewTask}
+              onAddToCalendar={handleAddToCalendar}
+              ownerMap={ownerMap}
+              businessFunctionMap={businessFunctionMap}
+              loading={loading}
+              onEditTask={handleEditTask}
+              onDeleteTask={handleDeleteTask}
+              isNextTask={isNextTask}
+              onToggleMyDay={handleToggleMyDay}
+            />
+          </div>
+          <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:pr-6 xl:border-l border-gray-200">
+            <h2 className="text-2xl font-bold mb-4 mt-8">My Day</h2>
+            <MyDayView
+              tasks={myDayTasks}
+              onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
+              onComplete={async (id, completed) => {
+                // Optimistically update UI in-place
+                setTasks((prevTasks) =>
+                  prevTasks.map((task) =>
+                    (task._id === id || task.id === id)
+                      ? { ...task, completed }
+                      : task
+                )
+              );
+              setFilteredTasks((prevTasks) =>
+                prevTasks.map((task) =>
+                  (task._id === id || task.id === id)
+                    ? { ...task, completed }
+                    : task
+                )
+              );
+              setSortedTasks((prevTasks) =>
+                prevTasks.map((task) =>
+                  (task._id === id || task.id === id)
+                    ? { ...task, completed }
+                    : task
+                )
+              );
+              try {
+                const response = await fetch(`/api/tasks/${id}/myday`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
+                });
+                const result = await response.json();
+                if (!result.success) {
+                  throw new Error(result.error || "Failed to update task");
+                }
+                toast({
+                  title: completed ? "Task completed" : "Task reopened",
+                  description: completed ? "Great job!" : "Task has been reopened",
+                });
+                // Refresh tasks so new recurring instance appears
+                fetchData();
+              } catch (error) {
+                // Revert UI if backend call fails
+                setTasks((prevTasks) =>
+                  prevTasks.map((task) =>
+                    (task._id === id || task.id === id)
+                      ? { ...task, completed: !completed }
+                      : task
+                  )
+                );
+                setFilteredTasks((prevTasks) =>
+                  prevTasks.map((task) =>
+                    (task._id === id || task.id === id)
+                      ? { ...task, completed: !completed }
+                      : task
+                  )
+                );
+                setSortedTasks((prevTasks) =>
+                  prevTasks.map((task) =>
+                    (task._id === id || task.id === id)
+                      ? { ...task, completed: !completed }
+                      : task
+                  )
+                );
+                toast({
+                  title: "Error",
+                  description: "Failed to update task",
+                  variant: "destructive",
+                });
+              }
+            }}
             onViewTask={handleViewTask}
-            onAddToCalendar={handleAddToCalendar}
+            jobs={jobs}
             ownerMap={ownerMap}
             businessFunctionMap={businessFunctionMap}
-            loading={loading}
-            onEditTask={handleEditTask}
+            isNextTask={isNextTask}
             onDeleteTask={handleDeleteTask}
-            isNextTask={isNextTask}
-            onToggleMyDay={handleToggleMyDay}
+            onAddToCalendar={handleAddToCalendar}
           />
-        </div>
-        <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:pr-6 xl:border-l border-gray-200">
-          <h2 className="text-2xl font-bold mb-4 mt-8">My Day</h2>
-          <MyDayView
-            tasks={myDayTasks}
-            onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
-            onComplete={handleCompleteTask}
-            onViewTask={handleViewTask}
-            jobs={jobs}
-            ownerMap={ownerMap}
-            businessFunctionMap={businessFunctionMap}
-            isNextTask={isNextTask}
-          />
+          </div>
         </div>
       </div>
-    </div>
+      {/* Task Completion Confirmation Dialog */}
+      <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Complete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark this task as complete?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="font-medium">{taskToComplete?.title}</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCompleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (taskToComplete) {
+                  handleCompleteTaskConfirmed(taskToComplete.id, true);
+                  setCompleteDialogOpen(false);
+                }
+              }}
+            >
+              Complete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <TaskDialog
+        mode={dialogMode}
+        open={taskDialogOpen}
+        onOpenChange={setTaskDialogOpen}
+        onSubmit={handleTaskSubmit}
+        initialData={editingTask}
+        jobs={jobs}
+        jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
+      />
+    </>
   );
 }

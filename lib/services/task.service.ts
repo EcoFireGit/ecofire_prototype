@@ -403,4 +403,13 @@ export class TaskService {
       throw new Error("Error updating tasks order in database");
     }
   }
+
+  async resetMyDayForUser(userId: string): Promise<number> {
+    await dbConnect();
+    const result = await Task.updateMany(
+      { userId, myDay: true },
+      { $set: { myDay: false } }
+    );
+    return result.modifiedCount || 0;
+  }
 }

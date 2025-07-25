@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
+import { TaskCard } from "@/components/tasks/tasks-card";
 
 interface NextTasksProps {
   tasks: any[];
@@ -161,18 +162,36 @@ export function NextTasks({
   return (
     <div className="space-y-4 w-full">
       {tasks.map((task, index) => {
-        const taskId = getTaskId(task, index);
-        const realId = task.id || task._id || taskId;
+        const taskId = task.id || task._id;
+        const realId = taskId;
         const taskIsNext = isNextTask(task);
         return (
           <Card
             key={taskId}
             className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
               taskIsNext ? "border-orange-500 border-2" : ""
-            }`}
+            } ${task.completed ? "bg-gray-100 text-gray-400 opacity-60" : "bg-white"}`}
             onClick={() => {
-              console.log('Card clicked, opening sidebar for task:', task);
-              onViewTask(task);
+              onViewTask({
+                id: task.id || task._id,
+                title: task.title,
+                owner: task.owner,
+                date: task.date,
+                requiredHours: task.requiredHours,
+                focusLevel: task.focusLevel,
+                joyLevel: task.joyLevel,
+                notes: task.notes,
+                tags: task.tags || [],
+                jobId: task.jobId,
+                completed: task.completed,
+                isNextTask: taskIsNext,
+                createdDate: task.createdDate,
+                endDate: task.endDate,
+                timeElapsed: task.timeElapsed,
+                isRecurring: task.isRecurring,
+                recurrenceInterval: task.recurrenceInterval,
+                myDay: task.myDay,
+              });
             }}
           >
             <CardContent className="p-4">
@@ -187,7 +206,6 @@ export function NextTasks({
                     <Checkbox
                       checked={task.completed === true}
                       onCheckedChange={(value) => {
-                        console.log('Checkbox changed for task:', realId, 'completed:', !!value);
                         onComplete(realId, !!value);
                       }}
                       aria-label="Mark as completed"

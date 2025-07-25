@@ -37,6 +37,7 @@ export interface Task extends mongoose.Document {
   isRecurring?: boolean;
   recurrenceInterval?: RecurrenceInterval;
   myDay?: boolean; // New property to mark task as part of My Day
+  myDayDate?: string; // Date (YYYY-MM-DD) when task was added to My Day
   // nextTask: boolean; // New property to mark task as next
 }
 const TaskSchema = new mongoose.Schema<Task>({
@@ -131,6 +132,10 @@ const TaskSchema = new mongoose.Schema<Task>({
     type: Boolean,
     default: false,
     required: false,
+  },
+  myDayDate: {
+    type: String,
+    required: false
   },
 });
 
