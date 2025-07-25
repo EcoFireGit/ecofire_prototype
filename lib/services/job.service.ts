@@ -402,6 +402,36 @@ async createJob(jobData: Partial<Jobs>, userId: string): Promise<Jobs> {
               await this.updateJob(newJob._id, userId, { nextTaskId: newTaskIds[0] });
             }
           }
+
+          try {
+            const { MappingService } = require('./pi-job-mapping.service');
+            const mappingService = new MappingService();
+            const originalJobMappings = await mappingService.getMappingsByJobId(prevJob._id.toString());
+            if (originalJobMappings && originalJobMappings.length > 0) {
+              for (const mapping of originalJobMappings) {
+                const newMapping = {
+                  jobId: newJob._id,
+                  jobName: newJob.title,
+                  piId: mapping.piId,
+                  piName: mapping.piName,
+                  piImpactValue: mapping.piImpactValue,
+                  piTarget: mapping.piTarget || 0,
+                  notes: `Recurring instance from job: ${prevJob.title}`,
+                };
+                await mappingService.CreateMapping(newMapping, userId);
+              }
+            }
+          } catch (error) {
+            console.error('Error duplicating PI-job mappings for recurring job:', error);
+          }
+
+          try {
+            const { updateJobImpactValues } = await import("@/lib/services/job-impact.service");
+            await updateJobImpactValues(userId);
+          } catch (error) {
+            console.error("Error updating job impact values for recurring job:", error);
+          }
+
         } catch (err) {
           console.error('Error creating next recurring job instance:', err);
         }
