@@ -39,7 +39,8 @@ import {
   RefreshCcw,
   Tag,
   Edit,
-  ChevronRight
+  ChevronRight,
+  Sun
 } from "lucide-react";
 import { Task, RecurrenceInterval } from "@/components/tasks/types";
 import { JobDialog } from "@/components/jobs/job-dialog";
@@ -713,6 +714,29 @@ const cancelEditing = () => {
     setEditingTags(newTags);
   };
 
+  const handleToggleMyDay = async () => {
+    if (!taskDetails) return;
+    const today = new Date().toLocaleDateString('en-CA');
+    const value = !taskDetails.myDay;
+    try {
+      const res = await fetch(`/api/tasks/${taskDetails.id}/myday`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myDay: value, myDayDate: value ? today : null }),
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        setTaskDetails({ ...taskDetails, myDay: value, myDayDate: value ? today : undefined });
+        toast({ title: value ? "Added to My Day" : "Removed from My Day" });
+        if (onTaskUpdated) onTaskUpdated(result.data);
+      } else {
+        toast({ title: "Failed to update My Day", description: result.error || "Unknown error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Failed to update My Day", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
   const renderEditableField = (
     field: EditableField,
     currentValue: any,
@@ -901,6 +925,17 @@ const cancelEditing = () => {
     >
       <Check className="h-4 w-4" />
       {taskDetails.completed ? "Mark as incomplete" : "Mark as complete"}
+    </Button>
+    {/* My Day Toggle Button */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleToggleMyDay}
+      className={`flex items-center gap-2 ${taskDetails.myDay ? 'bg-gray-200' : ''}`}
+      title={taskDetails.myDay ? "Remove from My Day" : "Add to My Day"}
+    >
+      <Sun className={`h-4 w-4 ${taskDetails.myDay ? 'text-gray-600' : 'text-gray-600'}`} />
+      {taskDetails.myDay ? "Remove from My Day" : "Add to My Day"}
     </Button>
     
     <Button

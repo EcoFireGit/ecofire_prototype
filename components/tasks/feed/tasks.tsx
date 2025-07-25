@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
+import { TaskCard } from "@/components/tasks/tasks-card";
 
 interface NextTasksProps {
   tasks: any[];
@@ -31,6 +32,7 @@ interface NextTasksProps {
   onEditTask?: (task: any) => void;
   onDeleteTask?: (id: string) => void;
   isNextTask: (task: any) => boolean;
+  onToggleMyDay?: (task: any, value: boolean) => void;
 }
 
 export function NextTasks({
@@ -45,7 +47,9 @@ export function NextTasks({
   onEditTask,
   onDeleteTask,
   isNextTask,
+  onToggleMyDay,
 }: NextTasksProps) {
+  console.log('Rendering NextTasks', { onComplete, onViewTask });
   const router = useRouter();
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({});
 
@@ -158,26 +162,52 @@ export function NextTasks({
   return (
     <div className="space-y-4 w-full">
       {tasks.map((task, index) => {
-        const taskId = getTaskId(task, index);
+        const taskId = task.id || task._id;
+        const realId = taskId;
         const taskIsNext = isNextTask(task);
         return (
           <Card
             key={taskId}
             className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
               taskIsNext ? "border-orange-500 border-2" : ""
-            }`}
-            onClick={() => onViewTask(task)}
+            } ${task.completed ? "bg-gray-100 text-gray-400 opacity-60" : "bg-white"}`}
+            onClick={() => {
+              onViewTask({
+                id: task.id || task._id,
+                title: task.title,
+                owner: task.owner,
+                date: task.date,
+                requiredHours: task.requiredHours,
+                focusLevel: task.focusLevel,
+                joyLevel: task.joyLevel,
+                notes: task.notes,
+                tags: task.tags || [],
+                jobId: task.jobId,
+                completed: task.completed,
+                isNextTask: taskIsNext,
+                createdDate: task.createdDate,
+                endDate: task.endDate,
+                timeElapsed: task.timeElapsed,
+                isRecurring: task.isRecurring,
+                recurrenceInterval: task.recurrenceInterval,
+                myDay: task.myDay,
+              });
+            }}
           >
             <CardContent className="p-4">
               <div className="flex flex-col">
                 <div className="flex items-start gap-3 mb-3">
                   <div 
                     className="pt-1"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
                   >
                     <Checkbox
                       checked={task.completed === true}
-                      onCheckedChange={(value) => onComplete(taskId, !!value)}
+                      onCheckedChange={(value) => {
+                        onComplete(realId, !!value);
+                      }}
                       aria-label="Mark as completed"
                     />
                   </div>
@@ -185,21 +215,33 @@ export function NextTasks({
                   <div className="flex-1">
                     <div className="mb-2 flex justify-between items-start">
                       <div className="flex items-center">
-                        <h3 className="text-base font-semibold hover:text-primary transition-colors flex items-center gap-2">
+                        <h3 className="text-base font-semibold hover:text-primary transition-colors flex items-start gap-2">
                           {task.title}
                           {taskIsNext && (
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300 mr-1 mt-1">
                               Next
                             </Badge>
                           )}
                           {task.isRecurring && task.recurrenceInterval && (
-                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal mr-2 mt-1.5">
                               <RefreshCcw className="h-4 w-4 inline" />
                               {task.recurrenceInterval}
                             </span>
                           )}
                         </h3>
                       </div>
+                      {onToggleMyDay && (
+                        <Button
+                          variant={task.myDay ? "secondary" : "outline"}
+                          size="sm"
+                          onClick={e => {
+                            e.stopPropagation();
+                            onToggleMyDay(task, !task.myDay);
+                          }}
+                        >
+                          {task.myDay ? "Remove from My Day" : "Add to My Day"}
+                        </Button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">

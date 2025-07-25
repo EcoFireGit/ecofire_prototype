@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile, Sun, Moon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,6 +29,7 @@ interface TaskCardProps {
     onAddToCalendar?: (task: Task) => void;
     onOpenTaskDetails?: (task: Task) => void;
     onCloseSidebar?: () => void;
+    onToggleMyDay?: (task: Task, value: boolean) => void;
 }
 
 export function TaskCard({
@@ -40,6 +41,7 @@ export function TaskCard({
     onAddToCalendar,
     onOpenTaskDetails,
     onCloseSidebar,
+    onToggleMyDay,
 }: TaskCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
@@ -238,6 +240,20 @@ export function TaskCard({
                         >
                             <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
                         </Button>
+                        {onToggleMyDay && (
+                            <Button
+                                variant={task.myDay ? "secondary" : "outline"}
+                                size="sm"
+                                className={`h-8 w-8 flex items-center justify-center ${task.myDay ? 'text-yellow-600' : 'text-gray-500'}`}
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onToggleMyDay(task, !task.myDay);
+                                }}
+                                title={task.myDay ? "Remove from My Day" : "Add to My Day"}
+                            >
+                                <Sun className={`h-4 w-4 ${task.myDay ? 'text-gray-600' : 'text-gray-600'}`} />
+                            </Button>
+                        )}
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => e.stopPropagation()} title="Delete Task">
