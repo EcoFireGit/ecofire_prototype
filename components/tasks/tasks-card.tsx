@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile } from "lucide-react";
+import { useState, useRef } from "react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,10 +40,13 @@ export function TaskCard({
     onAddToCalendar,
     onOpenTaskDetails,
     onCloseSidebar,
-}: TaskCardProps) {
+    onDuplicate,
+}: TaskCardProps & { onDuplicate?: (task: Task) => void }) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
     const { refreshJobProgress } = useTaskContext();
+    const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+    const justClosedDuplicateRef = useRef(false);
 
     // Format the date
     const formatDate = (dateString?: string) => {
@@ -101,6 +104,9 @@ export function TaskCard({
     };
 
     const handleTaskClick = () => {
+        if (justClosedDuplicateRef.current) {
+            return;
+        }
         if (onOpenTaskDetails) {
             onOpenTaskDetails(task);
         }
@@ -237,6 +243,18 @@ export function TaskCard({
                             }}
                         >
                             <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Duplicate Task"
+                            onClick={e => {
+                                e.stopPropagation();
+                                if (onDuplicate) onDuplicate(task);
+                            }}
+                        >
+                            <Copy className="h-4 w-4" />
                         </Button>
                         <AlertDialog>
                             <AlertDialogTrigger asChild>

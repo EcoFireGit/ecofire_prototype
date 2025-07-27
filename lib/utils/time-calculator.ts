@@ -1,21 +1,14 @@
 export function calculateTimeElapsed(startDate: Date, endDate: Date): string {
-  console.log("=== calculateTimeElapsed Debug ===");
-  console.log("Start date:", startDate);
-  console.log("End date:", endDate);
-  console.log("Start date type:", typeof startDate);
-  console.log("End date type:", typeof endDate);
   
   const start = new Date(startDate);
   const end = new Date(endDate);
-  
-  console.log("Converted start:", start);
-  console.log("Converted end:", end);
+
   
   const diffMs = end.getTime() - start.getTime();
-  console.log("Difference in ms:", diffMs);
+
   
   const diffSeconds = Math.floor(diffMs / 1000);
-  console.log("Difference in seconds:", diffSeconds);
+
   
   if (diffSeconds < 60) {
     return `${diffSeconds} second${diffSeconds !== 1 ? 's' : ''}`;

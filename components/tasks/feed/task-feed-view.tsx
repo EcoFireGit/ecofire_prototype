@@ -25,6 +25,7 @@ import { Task } from "../types";
 
 import type { Jobs } from "@/lib/models/job.model";
 import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
+import { DuplicateTaskDialog } from "../duplicate-task-dialog";
 
 // Helper to map API Job to Job type
 function mapJobToSidebarJob(job: any): Job {
@@ -80,6 +81,8 @@ export default function TaskFeedView() {
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
   const [selectedJobForSidebar, setSelectedJobForSidebar] = useState<Job | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -1015,6 +1018,10 @@ const completeTask = async (jobid: string, id: string) => {
             onDeleteTask={handleDeleteTask}
             businessFunctionMap={businessFunctionMap}
             isNextTask={isNextTask}
+            onDuplicate={(task) => {
+              setTaskToDuplicate({ ...task, id: task.id || task._id });
+              setDuplicateDialogOpen(true);
+            }}
           />
         </div>
       </div>
@@ -1078,6 +1085,18 @@ const completeTask = async (jobid: string, id: string) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate Task Dialog */}
+      <DuplicateTaskDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        sourceTask={taskToDuplicate as Task}
+        onSubmit={async (newTask) => {
+          setDuplicateDialogOpen(false);
+          setTaskToDuplicate(null);
+          await fetchData();
+        }}
+      />
     </div>
   );
 }
