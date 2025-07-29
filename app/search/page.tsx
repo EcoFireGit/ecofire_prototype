@@ -40,7 +40,7 @@ const SearchPage = () => {
           const jobsMap: Record<string, any> = {};
           result.data.forEach((job: any) => {
             if (job._id) {
-              jobsMap[job._id] = job;
+              jobsMap[job._id] = { ...job, id: job._id };
             }
           });
           setJobs(jobsMap);
@@ -228,6 +228,14 @@ const SearchPage = () => {
     setNeedsRefresh(n => !n);
   };
 
+  const handleNavigateToJob = (jobId: string) => {
+    if (jobs[jobId]) {
+      setCurrentJob(jobs[jobId]);
+      setTaskSidebarOpen(true);
+      setSidebarOpen(false);
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="container mx-auto py-10">
@@ -279,15 +287,17 @@ const SearchPage = () => {
           selectedTask={currentItem}
           onTaskUpdated={handleTaskUpdated}
           onDeleteTask={handleDeleteItem}
+          onNavigateToJob={handleNavigateToJob}
         />
 
         {/* Tasks Sidebar - For jobs */}
         <TasksSidebar
           open={taskSidebarOpen}
           onOpenChange={handleTaskSidebarChange}
-          selectedJob={currentJob}
+          selectedJob={currentJob ? { ...currentJob, id: currentJob.id ?? currentJob._id } : null}
           onRefreshJobs={() => setNeedsRefresh(n => !n)}
           onDeleteJob={handleDeleteItem}
+          jobs={jobs}
         />
 
         {/* Task Edit Dialog */}
@@ -299,6 +309,7 @@ const SearchPage = () => {
             onSubmit={handleTaskSubmit}
             initialData={editingItem}
             jobs={jobs}
+            jobId={editingItem?.jobId}
           />
         )}
 

@@ -56,10 +56,16 @@ import { usePathname } from "next/navigation";
 const items = [
   {
     title: "Jija",
-    url: "/jija",
+    url: "/jija?source=sidepanel",
     icon: PawPrint,
     id: "jija",
   },
+    {
+    title: "My Notebook",
+    url: "/notebook",
+    icon: Clipboard,
+    id: "notebook",
+  }
 ];
 const dashboardItems = [
   {

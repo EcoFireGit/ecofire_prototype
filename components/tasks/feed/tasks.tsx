@@ -9,6 +9,7 @@ import {
   Smile,
   FileText,
   PawPrint,
+  Target
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -236,13 +237,18 @@ export function NextTasks({
                       className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(
-                          `/jija?jobTitle=${encodeURIComponent(task.title)}`,
-                        );
+                        const params = new URLSearchParams();
+                        params.set("source", "task");
+                        if (task.jobId) params.set("jobId", task.jobId);
+                        if (task.title) params.set("jobTitle", task.title);
+                        if (task._id) params.set("taskId", task._id);
+                        else if (task.id) params.set("taskId", task.id);
+                        router.push(`/jija?${params.toString()}`);
                       }}
                       title="Ask Jija about this task"
                     >
-                      <PawPrint className="h-4 w-4 mr-1 text-[#F05523] fill-[#F05523]" />
+                      <PawPrint className="h-4 w-4 mr-1" />
+                      Ask Jija
                     </Button>
 
                     {onDeleteTask && (
@@ -286,8 +292,8 @@ export function NextTasks({
                           )}`}
                           fill="currentColor"
                         />
-                        <span className="text-sm">
-                          Focus: {task.focusLevel}
+                        <span className="text-sm text-gray-600">
+                          Focus: <span className="text-sm font-bold">{task.focusLevel}</span>
                         </span>
                       </div>
                     )}
@@ -299,22 +305,22 @@ export function NextTasks({
                             task.joyLevel,
                           )}`}
                         />
-                        <span className="text-sm">Joy: {task.joyLevel}</span>
+                        <span className="text-sm text-gray-600">Joy: <span className="text-sm font-bold">{task.joyLevel}</span></span>
                       </div>
                     )}
 
                     {task.date && (
                       <div className="flex items-center text-muted-foreground">
                         <Calendar className="h-4 w-4 mr-1" />
-                        <span className="text-sm">{formatDate(task.date)}</span>
+                        <span className="text-sm text-gray-600">Do Date: <span className="text-sm font-bold">{formatDate(task.date)}</span></span>
                       </div>
                     )}
 
                     {task.requiredHours !== undefined && (
                       <div className="flex items-center text-muted-foreground">
                         <Clock className="h-4 w-4 mr-1" />
-                        <span className="text-sm">
-                          {task.requiredHours} hrs
+                        <span className="text-sm text-gray-600">
+                          Hrs Reqd: <span className="text-sm font-bold">{task.requiredHours} hrs</span>
                         </span>
                       </div>
                     )}

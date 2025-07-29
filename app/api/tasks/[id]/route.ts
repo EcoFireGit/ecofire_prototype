@@ -63,7 +63,14 @@ export async function PUT(
     
     const { id } = await params;
     const updateData = await request.json();
-    const updatedTask = await taskService.updateTask(id, userId!, updateData);
+
+    let updatedTask;
+    if (typeof updateData.completed === 'boolean') {
+      // Use markCompleted to ensure endDate and timeElapsed are set
+      updatedTask = await taskService.markCompleted(id, userId!, updateData.completed);
+    } else {
+      updatedTask = await taskService.updateTask(id, userId!, updateData);
+    }
    
     if (!updatedTask) {
       return NextResponse.json(
