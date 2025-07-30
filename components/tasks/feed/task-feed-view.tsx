@@ -1533,6 +1533,19 @@ export default function TaskFeedView() {
       jobs={jobs}
       jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
     />
+    {/* Render the TasksSidebar */}
+    {tasksSidebarOpen && selectedJobForSidebar && (
+      <TasksSidebar
+        open={tasksSidebarOpen}
+        onOpenChange={setTasksSidebarOpen}
+        selectedJob={selectedJobForSidebar}
+        jobs={jobs}
+        onRefreshJobs={fetchData}
+        onTaskCreated={handleTaskUpdated}
+        onTaskUpdated={handleTaskUpdated}
+        onTaskDeleted={handleDeleteTask}
+      />
+    )}
   </>
 );
 }

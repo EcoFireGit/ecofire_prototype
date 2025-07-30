@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Jobs } from "@/lib/models/job.model";
 import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
 import { Job, columns } from "@/components/jobs/table/columns";
@@ -84,6 +84,52 @@ export default function JobsPage() {
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  
+  // Define the event handler outside useEffect
+  const handleOpenTasksSidebarEvent = useCallback((event: CustomEvent) => {
+    const { jobId, jobData } = event.detail;
+    console.log('Job-feed-view received open-tasks-sidebar event for jobId:', jobId);
+    console.log('Job data provided in event:', jobData);
+    console.log('Available activeJobs:', activeJobs.map(j => ({ id: j.id, title: j.title })));
+    console.log('Available completedJobs:', completedJobs.map(j => ({ id: j.id, title: j.title })));
+    
+    // First try to use the job data provided in the event
+    if (jobData) {
+      console.log('Using job data from event:', jobData.title);
+      // Convert the job data to the format expected by handleOpenTasksSidebar
+      const convertedJob = {
+        id: jobData._id || jobData.id,
+        jobNumber: jobData.jobNumber,
+        title: jobData.title,
+        notes: jobData.notes,
+        businessFunctionId: jobData.businessFunctionId,
+        businessFunctionName: jobData.businessFunctionName,
+        dueDate: jobData.dueDate,
+        createdDate: jobData.createdDate,
+        isDone: jobData.isDone,
+        nextTaskId: jobData.nextTaskId,
+        tasks: jobData.tasks,
+        impact: jobData.impact,
+      };
+      handleOpenTasksSidebar(convertedJob);
+      return;
+    }
+    
+    // Fallback to finding the job in the arrays
+    let job = activeJobs.find(j => j.id === jobId) || completedJobs.find(j => j.id === jobId);
+    
+    if (job) {
+      console.log('Found job to open:', job.title);
+      handleOpenTasksSidebar(job);
+    } else {
+      console.log('Job not found in activeJobs or completedJobs');
+      console.log('Looking for jobId:', jobId);
+      console.log('Active jobs IDs:', activeJobs.map(j => j.id));
+      console.log('Completed jobs IDs:', completedJobs.map(j => j.id));
+      console.log('Job not found - this might be because the job data needs to be refreshed');
+    }
+  }, [activeJobs, completedJobs]);
+  
   const jobs = React.useMemo(() => {
     const jobsMap: Record<string, any> = {};
     
@@ -132,18 +178,22 @@ export default function JobsPage() {
       fetchJobs();
     };
 
+
+
     window.addEventListener("openJobDialog", handleOpenDialog);
     window.addEventListener("open-job-edit", handleEditJob);
     window.addEventListener("refreshJobsList", handleRefreshJobsList);
     window.addEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
+    window.addEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
 
     return () => {
       window.removeEventListener("openJobDialog", handleOpenDialog);
       window.removeEventListener("open-job-edit", handleEditJob);
       window.removeEventListener("refreshJobsList", handleRefreshJobsList);
       window.removeEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
+      window.removeEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
     };
-  }, []);
+  }, [handleOpenTasksSidebarEvent]);
 
   // New: Check for businessFunction in URL params for initial filtering
   useEffect(() => {

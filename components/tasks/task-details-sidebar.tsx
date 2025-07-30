@@ -528,12 +528,17 @@ const cancelEditing = () => {
   };
 
   const handleNavigateToJob = () => {
+    console.log('TaskDetailsSidebar handleNavigateToJob called');
+    console.log('jobInfo:', jobInfo);
     if (jobInfo && onNavigateToJob) {
+      console.log('Calling onNavigateToJob with jobId:', jobInfo.id);
       onOpenChange(false);
       
       setTimeout(() => {
         onNavigateToJob(jobInfo.id);
       }, 150);
+    } else {
+      console.log('No jobInfo or onNavigateToJob not provided');
     }
   };
 

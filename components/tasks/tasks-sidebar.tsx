@@ -258,7 +258,44 @@ export function TasksSidebar({
   };
 
   const handleNavigateToJob = (jobId: string) => {
-    setSelectedTaskForDetails(null);
+    console.log('TasksSidebar handleNavigateToJob called with jobId:', jobId);
+    console.log('Current selectedJob:', selectedJob?.id);
+    console.log('Available jobs in jobs map:', Object.keys(jobs || {}));
+    
+    // If the jobId is different from the current selected job, we need to navigate
+    if (selectedJob && jobId !== selectedJob.id) {
+      console.log('Navigating to different job:', jobId);
+      // Find the job in the jobs map
+      const targetJob = jobs?.[jobId];
+      if (targetJob) {
+        console.log('Found target job:', targetJob.title);
+        // Close the current sidebar and task details
+        setSelectedTaskForDetails(null);
+        onOpenChange(false);
+        
+        // Dispatch an event to open the tasks sidebar for the new job
+        // This will be handled by the parent component (job-feed-view)
+        const event = new CustomEvent('open-tasks-sidebar', {
+          detail: { jobId, jobData: targetJob }
+        });
+        window.dispatchEvent(event);
+        console.log('Dispatched open-tasks-sidebar event for jobId:', jobId);
+      } else {
+        console.log('Target job not found in jobs map');
+        console.log('Jobs map keys:', Object.keys(jobs || {}));
+        
+        // Fallback: try to dispatch the event anyway, let the parent handle it
+        const event = new CustomEvent('open-tasks-sidebar', {
+          detail: { jobId }
+        });
+        window.dispatchEvent(event);
+        console.log('Dispatched open-tasks-sidebar event without job data for jobId:', jobId);
+      }
+    } else {
+      console.log('Same job, just closing task details sidebar');
+      // Same job, just close the task details sidebar
+      setSelectedTaskForDetails(null);
+    }
   };
 
   const handleMarkJobComplete = async (completed: boolean) => {

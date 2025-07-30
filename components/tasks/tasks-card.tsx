@@ -206,78 +206,73 @@ export function TaskCard({
 
                     {/* Action buttons */}
                     <div className="flex flex-row gap-1 shrink-0">
-                        {/* First column: My Day and Calendar */}
-                        <div className="flex flex-col gap-1">
-                            {onToggleMyDay && (
-                                <Button
-                                    variant={task.myDay ? "secondary" : "outline"}
-                                    size="sm"
-                                    className={`h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center ${task.myDay ? 'text-yellow-600' : 'text-gray-500'}`}
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        onToggleMyDay(task, !task.myDay);
-                                    }}
-                                    title={task.myDay ? "Remove from My Day" : "Add to My Day"}
-                                >
-                                    <Sun className={`h-3 w-3 sm:h-4 sm:w-4 ${task.myDay ? 'text-gray-600' : 'text-gray-600'}`} />
-                                </Button>
-                            )}
-                            
-                            {onAddToCalendar && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 sm:h-8 sm:w-8"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAddToCalendar(task);
-                                    }}
-                                    title="Add to calendar"
-                                >
-                                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </Button>
-                            )}
-                        </div>
+                        {onToggleMyDay && (
+                            <Button
+                                variant={task.myDay ? "secondary" : "outline"}
+                                size="sm"
+                                className={`h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center ${task.myDay ? 'text-yellow-600' : 'text-gray-500'}`}
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onToggleMyDay(task, !task.myDay);
+                                }}
+                                title={task.myDay ? "Remove from My Day" : "Add to My Day"}
+                            >
+                                <Sun className={`h-3 w-3 sm:h-4 sm:w-4 ${task.myDay ? 'text-gray-600' : 'text-gray-600'}`} />
+                            </Button>
+                        )}
                         
-                        {/* Second column: Jija and Delete */}
-                        <div className="flex flex-col gap-1">
+                        {onAddToCalendar && (
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 sm:h-8 sm:w-8"
-                                title="Ask Jija about this task"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    const params = new URLSearchParams();
-                                    params.set("source", "task");
-                                    if (task.jobId) params.set("jobId", task.jobId);
-                                    if (task.title) params.set("jobTitle", task.title);
-                                    if (task.id) params.set("taskId", task.id);
-                                    router.push(`/jija?${params.toString()}`);
+                                    onAddToCalendar(task);
                                 }}
+                                title="Add to calendar"
                             >
-                                <PawPrint className="h-3 w-3 sm:h-4 sm:w-4 text-[#F05523] fill-[#F05523]" />
+                                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={e => e.stopPropagation()} title="Delete Task">
-                                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone. This will permanently delete the task.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel onClick={e => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
+                        )}
+                        
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 sm:h-8 sm:w-8"
+                            title="Ask Jija about this task"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const params = new URLSearchParams();
+                                params.set("source", "task");
+                                if (task.jobId) params.set("jobId", task.jobId);
+                                if (task.title) params.set("jobTitle", task.title);
+                                if (task.id) params.set("taskId", task.id);
+                                router.push(`/jija?${params.toString()}`);
+                            }}
+                        >
+                            <PawPrint className="h-3 w-3 sm:h-4 sm:w-4 text-[#F05523] fill-[#F05523]" />
+                        </Button>
+                        
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={e => e.stopPropagation()} title="Delete Task">
+                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the task.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={e => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
             </div>
