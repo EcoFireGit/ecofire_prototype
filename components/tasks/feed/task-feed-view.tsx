@@ -97,8 +97,10 @@ export default function TaskFeedView() {
 
   // Handler for Split drag
   const handleSplitDrag = useCallback((sizes: number[]) => {
+    // Only allow dragging on desktop
+    if (isMobile) return;
     setSplitSizes(sizes);
-  }, []);
+  }, [isMobile]);
 
   // Handler for Split drag end
   const handleSplitDragEnd = useCallback((sizes: number[]) => {
@@ -497,7 +499,10 @@ export default function TaskFeedView() {
   // Check for mobile/tablet screens
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+      // Use more appropriate breakpoints: mobile < 768px, tablet < 1024px
+      const isMobileDevice = window.innerWidth < 768;
+      const isTabletDevice = window.innerWidth < 1024;
+      setIsMobile(isMobileDevice || isTabletDevice);
     };
     
     checkScreenSize();
@@ -1139,186 +1144,351 @@ export default function TaskFeedView() {
       onNavigateToJob={handleNavigateToJob}
       onDeleteTask={handleDeleteTask}
     />
-    <div className="p-4 w-full">
-      <div className="flex gap-2">
-        <div className="w-full max-w-none">
+    <div className="h-full w-full flex flex-col overflow-hidden">
+      {/* Mobile/Tablet Tab Navigation */}
+      {isMobile && (
+        <div className="flex border-b border-gray-200 bg-white shrink-0">
+          <button
+            onClick={() => {
+              setMainMinimized(false);
+              setMyDayMinimized(true);
+              setSplitSizes([100, 0]);
+            }}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              !mainMinimized && myDayMinimized
+                ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            All Tasks
+          </button>
+          <button
+            onClick={() => {
+              setMainMinimized(true);
+              setMyDayMinimized(false);
+              setSplitSizes([0, 100]);
+            }}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              mainMinimized && !myDayMinimized
+                ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            My Day
+          </button>
         </div>
-      </div>
-    </div>
-    <div className="p-4 w-full relative" ref={splitContainerRef}>
-      {/* Show Tasks tab */}
-      {mainMinimized && showTabs && (
-        <button
-          ref={showTasksTabRef}
-          onClick={restoreMain}
-          className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs rotate-180 origin-top-left hover:bg-orange-700 transition z-10"
-          style={{ 
-            writingMode: 'vertical-rl', 
-            textOrientation: 'mixed',
-            left: '18px',
-            top: '95px'
-          }}
-          aria-label="Show Tasks"
-        >
-          Show All Tasks
-        </button>
       )}
-      {/* Show My Day tab */}
-      {myDayMinimized && !mainMinimized && showTabs && (
-        <button
-          ref={showMyDayTabRef}
-          onClick={restoreMyDay}
-          className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs origin-top-right hover:bg-orange-700 transition z-10"
-          style={{ 
-            writingMode: 'vertical-rl', 
-            textOrientation: 'mixed',
-            right: '0px',
-            top: '0px'
-          }}
-          aria-label="Show My Day"
-        >
-          <span>Show My Day</span>
-        </button>
-      )}
-      <div className="w-full overflow-hidden">
-        <Split
-          className={`w-full flex ${isMobile ? '' : 'gap-8'}`}
-          minSize={[mainMinimized ? 0 : 220, myDayMinimized ? 0 : 220]}
-          sizes={splitSizes}
-          gutterSize={isMobile ? 0 : 8}
-          direction="horizontal"
-          onDrag={isMobile ? undefined : handleSplitDrag}
-          onDragEnd={handleSplitDragEnd}
-        >
-        <div className={mainMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"}>
-          {!mainMinimized && (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">All Tasks</h2>
-                <Button onClick={handleAddTask}>
-                  <Plus className="mr-2 h-4 w-4" /> Create Task
-                </Button>
-              </div>
-              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-                <FilterComponent
-                  onFilterChange={handleFilterChange}
-                  businessFunctions={businessFunctions}
-                  owners={owners}
-                  tags={tags}
-                  initialFilters={activeFilters}
-                />
 
-                <TaskSortingComponent
-                  onSortChange={handleSortChange}
-                  tasks={filteredTasks}
+      {/* Main Content Container */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        {isMobile ? (
+          /* Mobile/Tablet Layout - Single Panel */
+          <div className="h-full overflow-auto">
+            {!mainMinimized && myDayMinimized && (
+              <div className="p-4 h-full">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-2">
+                  <h2 className="text-xl sm:text-2xl font-bold">All Tasks</h2>
+                  <Button onClick={handleAddTask} className="shrink-0">
+                    <Plus className="mr-2 h-4 w-4" /> Create Task
+                  </Button>
+                </div>
+                <div className="flex flex-col space-y-4 mb-4">
+                  <FilterComponent
+                    onFilterChange={handleFilterChange}
+                    businessFunctions={businessFunctions}
+                    owners={owners}
+                    tags={tags}
+                    initialFilters={activeFilters}
+                  />
+                  <TaskSortingComponent
+                    onSortChange={handleSortChange}
+                    tasks={filteredTasks}
+                    jobs={jobs}
+                  />
+                </div>
+                <NextTasks
+                  tasks={mainFeedTasks}
                   jobs={jobs}
+                  onComplete={handleCompleteTask}
+                  onViewTask={handleViewTask}
+                  onAddToCalendar={handleAddToCalendar}
+                  ownerMap={ownerMap}
+                  businessFunctionMap={businessFunctionMap}
+                  loading={loading}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteTask}
+                  isNextTask={isNextTask}
+                  onToggleMyDay={handleToggleMyDay}
                 />
               </div>
-              <NextTasks
-                tasks={mainFeedTasks}
-                jobs={jobs}
-                onComplete={handleCompleteTask}
-                onViewTask={handleViewTask}
-                onAddToCalendar={handleAddToCalendar}
-                ownerMap={ownerMap}
-                businessFunctionMap={businessFunctionMap}
-                loading={loading}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
-                isNextTask={isNextTask}
-                onToggleMyDay={handleToggleMyDay}
-              />
-            </>
-          )}
-        </div>
-        <div className={myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full mb-8 min-w-0 transition-all duration-300"}>
-          {!myDayMinimized && (
-            <>
-              <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                <Sun className="h-5 w-5 text-orange-500" />
-                My Day
-              </h2>
-              <MyDayView
-                tasks={myDayTasks}
-                onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
-                onComplete={async (id, completed) => {
-                  setTasks((prevTasks) =>
-                    prevTasks.map((task) =>
-                      (task._id === id || task.id === id)
-                        ? { ...task, completed }
-                        : task
-                    )
-                  );
-                  setFilteredTasks((prevTasks) =>
-                    prevTasks.map((task) =>
-                      (task._id === id || task.id === id)
-                        ? { ...task, completed }
-                        : task
-                    )
-                  );
-                  setSortedTasks((prevTasks) =>
-                    prevTasks.map((task) =>
-                      (task._id === id || task.id === id)
-                        ? { ...task, completed }
-                        : task
-                    )
-                  );
-                  try {
-                    const response = await fetch(`/api/tasks/${id}/myday`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
-                    });
-                    const result = await response.json();
-                    if (!result.success) {
-                      throw new Error(result.error || "Failed to update task");
-                    }
-                    toast({
-                      title: completed ? "Task completed" : "Task reopened",
-                      description: completed ? "Great job!" : "Task has been reopened",
-                    });
-                    fetchData();
-                  } catch (error) {
+            )}
+            {mainMinimized && !myDayMinimized && (
+              <div className="p-4 h-full">
+                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                  <Sun className="h-5 w-5 text-orange-500" />
+                  My Day
+                </h2>
+                <MyDayView
+                  tasks={myDayTasks}
+                  onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
+                  onComplete={async (id, completed) => {
                     setTasks((prevTasks) =>
                       prevTasks.map((task) =>
                         (task._id === id || task.id === id)
-                          ? { ...task, completed: !completed }
+                          ? { ...task, completed }
                           : task
                       )
                     );
                     setFilteredTasks((prevTasks) =>
                       prevTasks.map((task) =>
                         (task._id === id || task.id === id)
-                          ? { ...task, completed: !completed }
+                          ? { ...task, completed }
                           : task
                       )
                     );
                     setSortedTasks((prevTasks) =>
                       prevTasks.map((task) =>
                         (task._id === id || task.id === id)
-                          ? { ...task, completed: !completed }
+                          ? { ...task, completed }
                           : task
                       )
                     );
-                    toast({
-                      title: "Error",
-                      description: "Failed to update task",
-                      variant: "destructive",
-                    });
-                  }
+                    try {
+                      const response = await fetch(`/api/tasks/${id}/myday`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
+                      });
+                      const result = await response.json();
+                      if (!result.success) {
+                        throw new Error(result.error || "Failed to update task");
+                      }
+                      toast({
+                        title: completed ? "Task completed" : "Task reopened",
+                        description: completed ? "Great job!" : "Task has been reopened",
+                      });
+                      fetchData();
+                    } catch (error) {
+                      setTasks((prevTasks) =>
+                        prevTasks.map((task) =>
+                          (task._id === id || task.id === id)
+                            ? { ...task, completed: !completed }
+                            : task
+                        )
+                      );
+                      setFilteredTasks((prevTasks) =>
+                        prevTasks.map((task) =>
+                          (task._id === id || task.id === id)
+                            ? { ...task, completed: !completed }
+                            : task
+                        )
+                      );
+                      setSortedTasks((prevTasks) =>
+                        prevTasks.map((task) =>
+                          (task._id === id || task.id === id)
+                            ? { ...task, completed: !completed }
+                            : task
+                        )
+                      );
+                      toast({
+                        title: "Error",
+                        description: "Failed to update task",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  onViewTask={handleViewTask}
+                  jobs={jobs}
+                  ownerMap={ownerMap}
+                  businessFunctionMap={businessFunctionMap}
+                  isNextTask={isNextTask}
+                  onDeleteTask={handleDeleteTask}
+                  onAddToCalendar={handleAddToCalendar}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Desktop Layout - Split Panels */
+          <div className="h-full relative" ref={splitContainerRef}>
+            {/* Show All Tasks tab when main is minimized - positioned at left edge */}
+            {!isMobile && mainMinimized && showTabs && (
+              <button
+                ref={showTasksTabRef}
+                onClick={restoreMain}
+                className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs rotate-180 origin-top-left hover:bg-orange-700 transition"
+                style={{ 
+                  writingMode: 'vertical-rl', 
+                  textOrientation: 'mixed',
+                  left: '0px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 20
                 }}
-                onViewTask={handleViewTask}
-                jobs={jobs}
-                ownerMap={ownerMap}
-                businessFunctionMap={businessFunctionMap}
-                isNextTask={isNextTask}
-                onDeleteTask={handleDeleteTask}
-                onAddToCalendar={handleAddToCalendar}
-              />
-            </>
-          )}
-        </div>
-      </Split>
+                aria-label="Show Tasks"
+              >
+                Show All Tasks
+              </button>
+            )}
+            
+            <Split
+              className="h-full flex"
+              minSize={[mainMinimized ? 0 : 300, myDayMinimized ? 0 : 300]}
+              sizes={splitSizes}
+              gutterSize={8}
+              direction="horizontal"
+              onDrag={handleSplitDrag}
+              onDragEnd={handleSplitDragEnd}
+            >
+              <div className={`${mainMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"} h-full overflow-auto relative`}>
+                {!mainMinimized && (
+                  <div className="p-4">
+                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-2">
+                      <h2 className="text-2xl font-bold">All Tasks</h2>
+                      <Button onClick={handleAddTask} className="shrink-0">
+                        <Plus className="mr-2 h-4 w-4" /> Create Task
+                      </Button>
+                    </div>
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
+                      <FilterComponent
+                        onFilterChange={handleFilterChange}
+                        businessFunctions={businessFunctions}
+                        owners={owners}
+                        tags={tags}
+                        initialFilters={activeFilters}
+                      />
+                      <TaskSortingComponent
+                        onSortChange={handleSortChange}
+                        tasks={filteredTasks}
+                        jobs={jobs}
+                      />
+                    </div>
+                    <NextTasks
+                      tasks={mainFeedTasks}
+                      jobs={jobs}
+                      onComplete={handleCompleteTask}
+                      onViewTask={handleViewTask}
+                      onAddToCalendar={handleAddToCalendar}
+                      ownerMap={ownerMap}
+                      businessFunctionMap={businessFunctionMap}
+                      loading={loading}
+                      onEditTask={handleEditTask}
+                      onDeleteTask={handleDeleteTask}
+                      isNextTask={isNextTask}
+                      onToggleMyDay={handleToggleMyDay}
+                    />
+                  </div>
+                )}
+                {/* Show My Day tab when My Day is minimized */}
+                {!isMobile && myDayMinimized && !mainMinimized && showTabs && (
+                  <button
+                    ref={showMyDayTabRef}
+                    onClick={restoreMyDay}
+                    className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs origin-top-right hover:bg-orange-700 transition"
+                    style={{ 
+                      writingMode: 'vertical-rl', 
+                      textOrientation: 'mixed',
+                      right: '0px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      zIndex: 20
+                    }}
+                    aria-label="Show My Day"
+                  >
+                    <span>Show My Day</span>
+                  </button>
+                )}
+              </div>
+              <div className={`${myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"} h-full overflow-auto relative`}>
+                {!myDayMinimized && (
+                  <div className="p-4">
+                    <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                      <Sun className="h-5 w-5 text-orange-500" />
+                      My Day
+                    </h2>
+                    <MyDayView
+                      tasks={myDayTasks}
+                      onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
+                      onComplete={async (id, completed) => {
+                        setTasks((prevTasks) =>
+                          prevTasks.map((task) =>
+                            (task._id === id || task.id === id)
+                              ? { ...task, completed }
+                              : task
+                          )
+                        );
+                        setFilteredTasks((prevTasks) =>
+                          prevTasks.map((task) =>
+                            (task._id === id || task.id === id)
+                              ? { ...task, completed }
+                              : task
+                          )
+                        );
+                        setSortedTasks((prevTasks) =>
+                          prevTasks.map((task) =>
+                            (task._id === id || task.id === id)
+                              ? { ...task, completed }
+                              : task
+                          )
+                        );
+                        try {
+                          const response = await fetch(`/api/tasks/${id}/myday`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
+                          });
+                          const result = await response.json();
+                          if (!result.success) {
+                            throw new Error(result.error || "Failed to update task");
+                          }
+                          toast({
+                            title: completed ? "Task completed" : "Task reopened",
+                            description: completed ? "Great job!" : "Task has been reopened",
+                          });
+                          fetchData();
+                        } catch (error) {
+                          setTasks((prevTasks) =>
+                            prevTasks.map((task) =>
+                              (task._id === id || task.id === id)
+                                ? { ...task, completed: !completed }
+                                : task
+                            )
+                          );
+                          setFilteredTasks((prevTasks) =>
+                            prevTasks.map((task) =>
+                              (task._id === id || task.id === id)
+                                ? { ...task, completed: !completed }
+                                : task
+                            )
+                          );
+                          setSortedTasks((prevTasks) =>
+                            prevTasks.map((task) =>
+                              (task._id === id || task.id === id)
+                                ? { ...task, completed: !completed }
+                                : task
+                            )
+                          );
+                          toast({
+                            title: "Error",
+                            description: "Failed to update task",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      onViewTask={handleViewTask}
+                      jobs={jobs}
+                      ownerMap={ownerMap}
+                      businessFunctionMap={businessFunctionMap}
+                      isNextTask={isNextTask}
+                      onDeleteTask={handleDeleteTask}
+                      onAddToCalendar={handleAddToCalendar}
+                    />
+                  </div>
+                )}
+              </div>
+            </Split>
+          </div>
+        )}
       </div>
     </div>
     {/* Task Completion Confirmation Dialog */}
