@@ -17,12 +17,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Task, FocusLevel, JoyLevel, RecurrenceInterval } from "./types";
 import { TagInput } from "@/components/tasks/tag-input";
 import { saveTags } from "@/lib/services/task-tags.service";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Define Owner interface to match MongoDB document
 interface Owner {
@@ -85,6 +100,7 @@ export function TaskDialog({
   const [jobId, setJobId] = useState<string | undefined>(undefined);
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [jobComboboxOpen, setJobComboboxOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -131,6 +147,7 @@ export function TaskDialog({
         setTags([]);
         setIsRecurring(false);
         setRecurrenceInterval(undefined);
+        setJobComboboxOpen(false);
         if (propJobId) {
           setJobId(propJobId);
         } else {
@@ -166,6 +183,13 @@ export function TaskDialog({
       setJobsList(jobs);
     }
   }, [jobs]);
+
+  // Filter jobs based on search term
+  const filteredJobs = Object.entries(jobsList)
+    .filter(([id, job]: [string, any]) => !job.isDone);
+
+  // Get the selected job title for display
+  const selectedJobTitle = jobId ? jobsList[jobId]?.title : "";
 
   const handleNewJobSubmit = async (jobData: any) => {
     try {
@@ -319,6 +343,7 @@ export function TaskDialog({
         setTags([]);
         setIsRecurring(false);
         setRecurrenceInterval(undefined);
+        setJobComboboxOpen(false);
         if (propJobId) {
           setJobId(propJobId);
         } else {
@@ -363,40 +388,66 @@ export function TaskDialog({
                 />
               </div>
 
-              {/* Job Selection - Always show the dropdown */}
+              {/* Job Selection - Combobox with search */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="job" className="text-right">
                   Job <span className="text-red-500">*</span>
                 </Label>
                 <div className="col-span-3 space-y-2">
-                  <Select
-                    value={jobId || "none"}
-                    required
-                    onValueChange={(value) => {
-                      setJobError(null);
-                      if (value === "create") {
-                        setIsJobDialogOpen(true);
-                      } else {
-                        setJobId(value === "none" ? undefined : value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a job" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {Object.entries(jobsList)
-                      .filter(([id, job]: [string, any]) => !job.isDone)
-                      .map(([id, job]: [string, any]) => (
-                          <SelectItem key={id} value={id}>
-                            {job.title}
-                          </SelectItem>
-                        ),
-                      )}
-                      <SelectItem value="create">+ Create New Job</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover open={jobComboboxOpen} onOpenChange={setJobComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={jobComboboxOpen}
+                        className="w-full justify-between"
+                        onClick={() => setJobError(null)}
+                      >
+                        {selectedJobTitle || "Select a job..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search jobs..." 
+                        />
+                        <CommandList>
+                          <CommandEmpty>No jobs found.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredJobs.map(([id, job]: [string, any]) => (
+                              <CommandItem
+                                key={id}
+                                value={job.title}
+                                onSelect={(currentValue) => {
+                                  setJobId(currentValue === jobId ? undefined : id);
+                                  setJobComboboxOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    jobId === id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {job.title}
+                              </CommandItem>
+                            ))}
+                            <CommandItem
+                              value="Create New Job"
+                              onSelect={() => {
+                                setIsJobDialogOpen(true);
+                                setJobComboboxOpen(false);
+                              }}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Create New Job
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   {jobError && (
                     <p className="text-sm text-red-500 mt-1">{jobError}</p>
                   )}
