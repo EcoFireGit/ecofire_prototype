@@ -3,13 +3,14 @@ import {
   Calendar,
   Clock,
   Briefcase,
-  ChevronRight,
   Edit,
   Trash2,
   Circle,
   Smile,
   FileText,
   PawPrint,
+  Target,
+  Copy
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import { RefreshCcw } from "lucide-react";
 
 interface NextTasksProps {
   tasks: any[];
@@ -30,6 +32,7 @@ interface NextTasksProps {
   onEditTask?: (task: any) => void;
   onDeleteTask?: (id: string) => void;
   isNextTask: (task: any) => boolean;
+  onDuplicate?: (task: any) => void;
 }
 
 export function NextTasks({
@@ -44,6 +47,7 @@ export function NextTasks({
   onEditTask,
   onDeleteTask,
   isNextTask,
+  onDuplicate,
 }: NextTasksProps) {
   const router = useRouter();
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({});
@@ -64,6 +68,16 @@ export function NextTasks({
       day: "numeric",
     });
   };
+
+  const formatTimestamp = (dateString?: Date | string) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+};
 
   const getOwnerName = (ownerId?: string) => {
     if (!ownerId) return "Unassigned";
@@ -151,15 +165,19 @@ export function NextTasks({
         const taskIsNext = isNextTask(task);
         return (
           <Card
-            key={taskId} // Use just the taskId, which now includes index as fallback
-            className={`overflow-hidden hover:shadow-md transition-shadow w-full ${
+            key={taskId}
+            className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
               taskIsNext ? "border-orange-500 border-2" : ""
             }`}
+            onClick={() => onViewTask(task)}
           >
             <CardContent className="p-4">
               <div className="flex flex-col">
-                <div className="flex items-start gap-3 mb-5">
-                  <div className="pt-1">
+                <div className="flex items-start gap-3 mb-3">
+                  <div 
+                    className="pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Checkbox
                       checked={task.completed === true}
                       onCheckedChange={(value) => onComplete(taskId, !!value)}
@@ -167,25 +185,24 @@ export function NextTasks({
                     />
                   </div>
 
-                  <div
-                    className="flex-1 cursor-pointer group"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewTask(task);
-                    }}
-                  >
-                    <div className="mb-3 flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="mb-2 flex justify-between items-start">
                       <div className="flex items-center">
-                        <h3 className="text-base font-semibold group-hover:text-primary transition-colors">
+                        <h3 className="text-base font-semibold hover:text-primary transition-colors flex items-center gap-2">
                           {task.title}
                           {taskIsNext && (
-                            <Badge className="ml-2 bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
                               Next
                             </Badge>
                           )}
+                          {task.isRecurring && task.recurrenceInterval && (
+                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                              <RefreshCcw className="h-4 w-4 inline" />
+                              {task.recurrenceInterval}
+                            </span>
+                          )}
                         </h3>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -196,86 +213,82 @@ export function NextTasks({
                     </div>
                   </div>
 
-                  <div className="flex">
+                  {/* Compact action buttons - all in one horizontal row */}
+                  <div 
+                    className="flex gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {onAddToCalendar && (
                       <Button
                         variant="ghost"
-                        size="default"
-                        className="h-8 mr-2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        size="sm"
+                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
                           onAddToCalendar(task);
                         }}
                         title="Add to calendar"
                       >
-                        <Calendar className="h-4 w-4" /> Add to Calendar
+                        <Calendar className="h-4 w-4 mr-1" />
+                        Add to Calendar
                       </Button>
                     )}
-                    <div className="flex flex-col gap-2">
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const params = new URLSearchParams();
+                        params.set("source", "task");
+                        if (task.jobId) params.set("jobId", task.jobId);
+                        if (task.title) params.set("jobTitle", task.title);
+                        if (task._id) params.set("taskId", task._id);
+                        else if (task.id) params.set("taskId", task.id);
+                        router.push(`/jija?${params.toString()}`);
+                      }}
+                      title="Ask Jija about this task"
+                    >
+                      <PawPrint className="h-4 w-4 mr-1" />
+                      Ask Jija
+                    </Button>
+
+                    {onDuplicate && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onViewTask(task);
+                          onDuplicate(task);
                         }}
-                        title="View notes"
+                        title="Duplicate task"
                       >
-                        <FileText className="h-4 w-4" />
+                        <Copy className="h-4 w-4 mr-1" />
                       </Button>
+                    )}
 
-                      {onEditTask && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditTask(task);
-                          }}
-                          title="Edit task"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-
+                    {onDeleteTask && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(
-                            `/jija?jobTitle=${encodeURIComponent(task.title)}`,
-                          );
+                          if (
+                            window.confirm(
+                              "Are you sure you want to delete this task?",
+                            )
+                          ) {
+                            onDeleteTask(taskId);
+                          }
                         }}
-                        title="Ask Jija about this task"
+                        title="Delete task"
                       >
-                        <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-
-                      {onDeleteTask && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (
-                              window.confirm(
-                                "Are you sure you want to delete this task?",
-                              )
-                            ) {
-                              onDeleteTask(taskId);
-                            }
-                          }}
-                          title="Delete task"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -297,8 +310,8 @@ export function NextTasks({
                           )}`}
                           fill="currentColor"
                         />
-                        <span className="text-sm">
-                          Focus: {task.focusLevel}
+                        <span className="text-sm text-gray-600">
+                          Focus: <span className="text-sm font-bold">{task.focusLevel}</span>
                         </span>
                       </div>
                     )}
@@ -310,22 +323,22 @@ export function NextTasks({
                             task.joyLevel,
                           )}`}
                         />
-                        <span className="text-sm">Joy: {task.joyLevel}</span>
+                        <span className="text-sm text-gray-600">Joy: <span className="text-sm font-bold">{task.joyLevel}</span></span>
                       </div>
                     )}
 
                     {task.date && (
                       <div className="flex items-center text-muted-foreground">
                         <Calendar className="h-4 w-4 mr-1" />
-                        <span className="text-sm">{formatDate(task.date)}</span>
+                        <span className="text-sm text-gray-600">Do Date: <span className="text-sm font-bold">{formatDate(task.date)}</span></span>
                       </div>
                     )}
 
                     {task.requiredHours !== undefined && (
                       <div className="flex items-center text-muted-foreground">
                         <Clock className="h-4 w-4 mr-1" />
-                        <span className="text-sm">
-                          {task.requiredHours} hrs
+                        <span className="text-sm text-gray-600">
+                          Hrs Reqd: <span className="text-sm font-bold">{task.requiredHours} hrs</span>
                         </span>
                       </div>
                     )}
@@ -362,8 +375,8 @@ function NextTasksSkeletonLoader() {
               <div className="flex items-start gap-3">
                 <Skeleton className="h-5 w-5 rounded-sm mt-1" />
                 <div className="flex-1">
-                  <Skeleton className="h-6 w-3/4 mb-3" />
-                  <Skeleton className="h-5 w-1/2 mb-3" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-5 w-1/2 mb-2" />
                   <div className="flex flex-wrap gap-4">
                     <Skeleton className="h-6 w-24" />
                     <Skeleton className="h-6 w-16" />
@@ -371,9 +384,9 @@ function NextTasksSkeletonLoader() {
                     <Skeleton className="h-6 w-28" />
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Skeleton className="h-8 w-8" />
-                  <Skeleton className="h-8 w-8" />
+                <div className="flex gap-1">
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-8 w-16" />
                   <Skeleton className="h-8 w-8" />
                 </div>
               </div>

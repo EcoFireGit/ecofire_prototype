@@ -2,6 +2,9 @@ import Task from "../models/task.model";
 import { Task as TaskInterface } from "../models/task.model";
 import dbConnect from "../mongodb";
 import Job from "../models/job.model"; // Import the Job model
+import { calculateTimeElapsed } from "../utils/time-calculator";
+import { start } from "repl";
+import { RecurrenceInterval } from "../models/task.model";
 
 export class TaskService {
   /**
@@ -109,7 +112,14 @@ export class TaskService {
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
-      return JSON.parse(JSON.stringify(tasks));
+      // Ensure active tasks never have an endDate or timeElapsed
+      const sanitizedTasks = tasks.map(task => {
+        if (task.completed === false) {
+          return { ...task, endDate: null, timeElapsed: null };
+        }
+        return task;
+      });
+      return JSON.parse(JSON.stringify(sanitizedTasks));
     } catch (error) {
       throw new Error("Error fetching tasks from database");
     }
@@ -135,9 +145,29 @@ export class TaskService {
   ): Promise<TaskInterface> {
     try {
       await dbConnect();
+      
+      // Check if this is a recurring task and if the job is complete
+      if (taskData.isRecurring && taskData.jobId) {
+        try {
+          const job = await Job.findOne({ _id: taskData.jobId });
+          if (job && job.isDone) {
+            console.log(`Job ${taskData.jobId} is marked as complete, not allowing recurring task creation`);
+            // Override the recurring properties to prevent recurring task creation for completed jobs
+            taskData.isRecurring = false;
+            taskData.recurrenceInterval = undefined;
+          }
+        } catch (jobError) {
+          console.error("Error checking job status for recurring task creation:", jobError);
+          // If we can't check the job status, don't allow recurring tasks to be safe
+          taskData.isRecurring = false;
+          taskData.recurrenceInterval = undefined;
+        }
+      }
+      
       const task = new Task({
         ...taskData,
         userId,
+        createdDate: new Date(),
       });
       const savedTask = await task.save();
       return JSON.parse(JSON.stringify(savedTask));
@@ -205,12 +235,160 @@ export class TaskService {
     isCompleted: boolean
   ): Promise<TaskInterface | null> {
     try {
-      const updateData = {
+      await dbConnect();
+      const updateData: Partial<TaskInterface> = {
         completed: isCompleted,
       };
-      return this.updateTask(id, userId, updateData);
+      let newRecurringTask = null;
+      if (isCompleted) {
+        const now = new Date();
+        updateData.endDate = now;
+        const existingTask = await this.getTaskById(id, userId);
+        if (existingTask?.createdDate) {
+          try {
+            let startDate: Date;
+            const createdDate = new Date(existingTask.createdDate);
+            if (existingTask.date) {
+              const taskDueDate = new Date(existingTask.date);
+              if (now >= taskDueDate) {
+                startDate = taskDueDate;
+              } else {
+                startDate = createdDate;
+              }
+            } else {
+              startDate = createdDate;
+            }
+            const timeElapsed = calculateTimeElapsed(startDate, now);
+            updateData.timeElapsed = timeElapsed;
+          } catch (timeError) {
+            console.error("Error calculating time elapsed:", timeError);
+            updateData.timeElapsed = null;
+          }
+        } else {
+          updateData.timeElapsed = null;
+        }
+        // Recurring task logic
+        if (existingTask && existingTask.isRecurring && existingTask.recurrenceInterval) {
+          // Check if the job is marked as complete - if so, don't create new recurring instances
+          if (existingTask.jobId) {
+            try {
+              const job = await Job.findOne({ _id: existingTask.jobId });
+              if (job && job.isDone) {
+                console.log(`Job ${existingTask.jobId} is marked as complete, not creating new recurring task instance`);
+                // Set the current task's recurring properties to false since the job is complete
+                updateData.isRecurring = false;
+                updateData.recurrenceInterval = undefined;
+              } else {
+                // Job is not complete, proceed with creating new recurring instance
+                // Calculate next date
+                // Use do-date if set, otherwise use createdDate as the reference
+                let lastDate: Date;
+                if (existingTask.date) {
+                  lastDate = new Date(existingTask.date);
+                } else if (existingTask.createdDate) {
+                  lastDate = new Date(existingTask.createdDate);
+                } else {
+                  lastDate = now;
+                }
+                let nextDate = new Date(lastDate);
+                switch (existingTask.recurrenceInterval) {
+                  case RecurrenceInterval.Daily:
+                    nextDate.setDate(nextDate.getDate() + 1);
+                    break;
+                  case RecurrenceInterval.Weekly:
+                    nextDate.setDate(nextDate.getDate() + 7);
+                    break;
+                  case RecurrenceInterval.Biweekly:
+                    nextDate.setDate(nextDate.getDate() + 14);
+                    break;
+                  case RecurrenceInterval.Monthly:
+                    nextDate.setMonth(nextDate.getMonth() + 1);
+                    break;
+                  case RecurrenceInterval.Quarterly:
+                    nextDate.setMonth(nextDate.getMonth() + 3);
+                    break;
+                  case RecurrenceInterval.Annually:
+                    nextDate.setFullYear(nextDate.getFullYear() + 1);
+                    break;
+                  default:
+                    break;
+                }
+                // Create new task instance
+                const newTaskData: Partial<TaskInterface> = {
+                  title: existingTask.title,
+                  jobId: existingTask.jobId,
+                  userId: existingTask.userId,
+                  owner: existingTask.owner,
+                  requiredHours: existingTask.requiredHours,
+                  focusLevel: existingTask.focusLevel,
+                  joyLevel: existingTask.joyLevel,
+                  notes: existingTask.notes,
+                  tags: existingTask.tags,
+                  isRecurring: existingTask.isRecurring,
+                  recurrenceInterval: existingTask.recurrenceInterval,
+                  completed: false,
+                  endDate: null,
+                  timeElapsed: null,
+                  createdDate: new Date(),
+                  date: nextDate,
+                  isDeleted: false,
+                };
+                // Actually create the new task
+                try {
+                  console.log("Creating new recurring task with data:", {
+                    title: newTaskData.title,
+                    jobId: newTaskData.jobId,
+                    date: newTaskData.date,
+                    isRecurring: newTaskData.isRecurring,
+                    recurrenceInterval: newTaskData.recurrenceInterval
+                  });
+                  const newTask = await this.createTask(newTaskData, userId);
+                  console.log(`Successfully created new recurring task for interval: ${existingTask.recurrenceInterval}`);
+                  
+                  // Add the new task to the job's tasks array
+                  if (newTask && existingTask.jobId) {
+                    try {
+                      const job = await Job.findOne({ _id: existingTask.jobId });
+                      if (job) {
+                        const currentTasks = job.tasks || [];
+                        if (!currentTasks.includes(newTask._id)) {
+                          job.tasks = [...currentTasks, newTask._id];
+                          await job.save();
+                          console.log(`Added new recurring task ${newTask._id} to job ${existingTask.jobId}`);
+                        }
+                      }
+                    } catch (jobUpdateError) {
+                      console.error("Error updating job tasks array:", jobUpdateError);
+                      // Don't throw - the task was created successfully
+                    }
+                  }
+                } catch (createError) {
+                  console.error("Error creating new recurring task:", createError);
+                  // Don't throw the error - just log it so the original task completion still succeeds
+                  // The user can manually create the next instance if needed
+                }
+              }
+            } catch (jobError) {
+              console.error("Error checking job status for recurring task:", jobError);
+              // If we can't check the job status, don't create new recurring instances to be safe
+              updateData.isRecurring = false;
+              updateData.recurrenceInterval = undefined;
+            }
+          }
+        }
+      } else {
+        updateData.endDate = null;
+        updateData.timeElapsed = null;
+      }
+      const result = await this.updateTask(id, userId, updateData);
+      return result;
     } catch (error) {
-      throw new Error("Error setting task status");
+      console.error("=== markCompleted ERROR ===");
+      console.error("Error details:", error);
+      const err = error as Error;
+      console.error("Error message:", err.message);
+      console.error("Error stack:", err.stack);
+      throw new Error("Error setting task status: " + err.message);
     }
   }
 

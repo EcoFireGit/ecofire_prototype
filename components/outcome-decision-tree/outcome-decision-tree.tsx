@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, ArrowDownRight } from 'lucide-react';
+import { TasksSidebar } from '@/components/tasks/tasks-sidebar';
+import { TaskDetailsSidebar } from '@/components/tasks/task-details-sidebar';
+import type { Job as TableJob } from '@/components/jobs/table/columns';
+import { useRouter } from 'next/navigation';
 
 interface QBO {
   _id: string;
@@ -26,6 +30,8 @@ interface Job {
   jobNumber?: number;
   dueDate?: Date;
   notes?: string;
+  isDone: boolean;
+
 }
 
 interface Task {
@@ -78,6 +84,33 @@ interface SelectedItem {
   type: ItemType;
 }
 
+// Helper to map API Job to Table Job type
+function mapJobToSidebarJob(job: any): TableJob {
+  return {
+    id: job._id,
+    jobNumber: job.jobNumber ?? 0,
+    title: job.title,
+    notes: job.notes,
+    businessFunctionId: job.businessFunctionId,
+    businessFunctionName: job.businessFunctionName,
+    dueDate: job.dueDate ? (typeof job.dueDate === 'string' ? job.dueDate : new Date(job.dueDate).toISOString()) : undefined,
+    createdDate: job.createdDate ? (typeof job.createdDate === 'string' ? job.createdDate : new Date(job.createdDate).toISOString()) : new Date().toISOString(),
+    isDone: job.isDone,
+    nextTaskId: (job as any).nextTaskId ?? undefined,
+    tasks: (job as any).tasks ?? undefined,
+    impact: (job as any).impact ?? undefined,
+  };
+}
+
+// Helper to adapt a Task for TaskDetailsSidebar
+function toSidebarTask(task: Task): any {
+  return {
+    ...task,
+    id: task._id,
+    isNextTask: (task as any).isNextTask ?? false,
+  };
+}
+
 const OutcomeDecisionTree = () => {
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +130,89 @@ const OutcomeDecisionTree = () => {
     enableTableView: false,
   });
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
+  const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
+  const [sidebarJob, setSidebarJob] = useState<TableJob | null>(null);
+  const [jobsMap, setJobsMap] = useState<Record<string, any>>({});
+  const [taskDetailsSidebarOpen, setTaskDetailsSidebarOpen] = useState(false);
+  const [sidebarTask, setSidebarTask] = useState<Task | null>(null);
+  const router = useRouter();
+
+  // Callback functions for partial updates
+  const handleTaskCreated = (newTask: any) => {
+    // Update allTasks
+    setAllTasks(prev => [...prev, newTask]);
+
+    // Update jobsMap if needed
+    if (newTask.jobId && jobsMap[newTask.jobId]) {
+      setJobsMap(prev => ({
+        ...prev,
+        [newTask.jobId]: {
+          ...prev[newTask.jobId],
+          tasks: [...(prev[newTask.jobId].tasks || []), newTask]
+        }
+      }));
+    }
+
+    // Update jobs state to reflect the new task count
+    setJobs(prev => prev.map(job => {
+      if (job._id === newTask.jobId) {
+        return { ...job };
+      }
+      return job;
+    }));
+  };
+
+  const handleTaskUpdated = (updatedTask: any) => {
+    // Update allTasks
+    setAllTasks(prev => prev.map(task =>
+      (task._id === updatedTask._id || task._id === updatedTask.id) ? { ...task, ...updatedTask } : task
+    ));
+
+    // Update jobsMap if needed
+    if (updatedTask.jobId && jobsMap[updatedTask.jobId]) {
+      setJobsMap(prev => ({
+        ...prev,
+        [updatedTask.jobId]: {
+          ...prev[updatedTask.jobId],
+          tasks: (prev[updatedTask.jobId].tasks || []).map((task: any) =>
+            (task._id === (updatedTask._id || updatedTask.id)) ? updatedTask : task
+          )
+        }
+      }));
+    }
+
+    // Update jobs state to reflect the updated task
+    setJobs(prev => prev.map(job => {
+      if (job._id === updatedTask.jobId) {
+        return { ...job };
+      }
+      return job;
+    }));
+  };
+
+  const handleTaskDeleted = (deletedTaskId: string, jobId?: string) => {
+    // Remove from allTasks
+    setAllTasks(prev => prev.filter(task => task._id !== deletedTaskId));
+
+    // Update jobsMap if needed
+    if (jobId && jobsMap[jobId]) {
+      setJobsMap(prev => ({
+        ...prev,
+        [jobId]: {
+          ...prev[jobId],
+          tasks: (prev[jobId].tasks || []).filter((task: any) => (task._id !== deletedTaskId))
+        }
+      }));
+    }
+
+    // Update jobs state to reflect the deleted task
+    setJobs(prev => prev.map(job => {
+      if (job._id === jobId) {
+        return { ...job };
+      }
+      return job;
+    }));
+  };
 
   const fetchData = async () => {
     try {
@@ -234,6 +350,45 @@ const OutcomeDecisionTree = () => {
     fetchBusinessInfo();
   }, []);
 
+  // After jobs are loaded, build jobsMap for sidebar
+  useEffect(() => {
+    const map: Record<string, any> = {};
+    jobs.forEach(job => {
+      map[job._id] = {
+        _id: job._id,
+        title: job.title,
+        jobNumber: job.jobNumber,
+        businessFunctionId: (job as any).businessFunctionId ?? undefined,
+        businessFunctionName: (job as any).businessFunctionName ?? undefined,
+        dueDate: job.dueDate,
+        isDone: job.isDone,
+        nextTaskId: (job as any).nextTaskId ?? undefined,
+        tasks: (job as any).tasks ?? undefined,
+        impact: (job as any).impact ?? undefined,
+        notes: job.notes,
+        createdDate: (job as any).createdDate ?? undefined,
+      };
+    });
+    setJobsMap(map);
+  }, [jobs]);
+
+  // Listen for job/task update events and trigger partial refresh
+  useEffect(() => {
+    const handleJobProgressUpdate = (event: CustomEvent) => {
+      // Optionally, you could do a more targeted update, but for now, re-fetch all data
+      fetchData();
+    };
+    const handleForceJobsRefresh = (event: CustomEvent) => {
+      fetchData();
+    };
+    window.addEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+    window.addEventListener('force-jobs-refresh', handleForceJobsRefresh as EventListener);
+    return () => {
+      window.removeEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+      window.removeEventListener('force-jobs-refresh', handleForceJobsRefresh as EventListener);
+    };
+  }, []);
+
   const getTasksForSelection = (selectedId: string, selectedType: ItemType): Task[] => {
     if (selectedType === 'job') {
       return allTasks.filter(task => task.jobId === selectedId);
@@ -334,10 +489,9 @@ const OutcomeDecisionTree = () => {
   };
 
   const isJobCompleted = (jobId: string): boolean => {
-    const jobTasks = allTasks.filter(task => task.jobId === jobId);
-    if (jobTasks.length === 0) return false;
-    
-    return jobTasks.every(task => task.completed);
+
+    const job = jobs.find(job => job._id === jobId);
+    return job ? job.isDone : false;
   };
 
   const getItemStyle = (id: string, type: ItemType): string => {
@@ -395,6 +549,15 @@ const OutcomeDecisionTree = () => {
     const completedTasks = selectedTasks.filter(task => task.completed);
     return { activeTasks, completedTasks };
   };
+
+  useEffect(() => {
+    if (selectedItem) {
+      const tasks = getTasksForSelection(selectedItem.id, selectedItem.type);
+      setSelectedTasks(tasks);
+    } else {
+      setSelectedTasks([]);
+    }
+  }, [allTasks, selectedItem, jobPiMappings, piQboMappings]);
 
   if (loading) {
     return (
@@ -546,6 +709,7 @@ const OutcomeDecisionTree = () => {
                     key={job._id}
                     className={getItemStyle(job._id, 'job')}
                     onClick={() => handleItemClick(job._id, 'job')}
+                    style={{ position: 'relative' }}
                   >
                     <div className="font-medium text-sm">{job.title}</div>
                     {job.dueDate && (
@@ -556,6 +720,33 @@ const OutcomeDecisionTree = () => {
                     <div className="text-xs text-gray-500 mt-1">
                       {getJobTaskStatus(job._id)}
                     </div>
+                    {/* Arrow at bottom right */}
+                    <button
+                      type="button"
+                      aria-label="Show job tasks"
+                      style={{
+                        position: 'absolute',
+                        bottom: 8,
+                        right: 8,
+                        background: 'white',
+                        borderRadius: '50%',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                        padding: 2,
+                        zIndex: 2,
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        setSidebarJob(mapJobToSidebarJob(job));
+                        setTasksSidebarOpen(true);
+                      }}
+                    >
+                      <ArrowDownRight className="h-4 w-4 text-purple-700" />
+                    </button>
                   </div>
                 ))}
 
@@ -616,6 +807,7 @@ const OutcomeDecisionTree = () => {
                 <div
                   key={task._id}
                   className={getTaskStyle(task)}
+                  style={{ position: 'relative' }}
                 >
                   <div className="font-medium text-sm">{task.title}</div>
                   {task.date && (
@@ -623,6 +815,33 @@ const OutcomeDecisionTree = () => {
                       Do Date: {formatDate(task.date)}
                     </div>
                   )}
+                  {/* Arrow icon to open task details sidebar */}
+                  <button
+                    type="button"
+                    aria-label="Show task details"
+                    style={{
+                      position: 'absolute',
+                      bottom: 8,
+                      right: 8,
+                      background: 'white',
+                      borderRadius: '50%',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                      padding: 2,
+                      zIndex: 2,
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onClick={e => {
+                      e.stopPropagation();
+                      setSidebarTask(toSidebarTask(task));
+                      setTaskDetailsSidebarOpen(true);
+                    }}
+                  >
+                    <ArrowDownRight className="h-4 w-4 text-orange-700" />
+                  </button>
                 </div>
               ))}
 
@@ -646,6 +865,7 @@ const OutcomeDecisionTree = () => {
                         <div
                           key={task._id}
                           className={getTaskStyle(task)}
+                          style={{ position: 'relative' }}
                         >
                           <div className="font-medium text-sm">{task.title}</div>
                           {task.date && (
@@ -656,6 +876,33 @@ const OutcomeDecisionTree = () => {
                           <div className="text-xs text-green-600 mt-1 font-medium">
                             ✓ Completed
                           </div>
+                          {/* Arrow icon to open task details sidebar */}
+                          <button
+                            type="button"
+                            aria-label="Show task details"
+                            style={{
+                              position: 'absolute',
+                              bottom: 8,
+                              right: 8,
+                              background: 'white',
+                              borderRadius: '50%',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                              padding: 2,
+                              zIndex: 2,
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onClick={e => {
+                              e.stopPropagation();
+                              setSidebarTask(toSidebarTask(task));
+                              setTaskDetailsSidebarOpen(true);
+                            }}
+                          >
+                            <ArrowDownRight className="h-4 w-4 text-orange-700" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -666,6 +913,36 @@ const OutcomeDecisionTree = () => {
           </div>
         )}
       </div>
+      {/* Render the TasksSidebar */}
+      {tasksSidebarOpen && sidebarJob && (
+        <TasksSidebar
+          open={tasksSidebarOpen}
+          onOpenChange={setTasksSidebarOpen}
+          selectedJob={sidebarJob}
+          jobs={jobsMap}
+          onTaskCreated={handleTaskCreated}
+          onTaskUpdated={handleTaskUpdated}
+          onTaskDeleted={handleTaskDeleted}
+        />
+      )}
+      {/* Render the TaskDetailsSidebar */}
+      {taskDetailsSidebarOpen && sidebarTask && (
+        <TaskDetailsSidebar
+          open={taskDetailsSidebarOpen}
+          onOpenChange={setTaskDetailsSidebarOpen}
+          selectedTask={toSidebarTask(sidebarTask)}
+          onNavigateToJob={jobId => {
+            setTaskDetailsSidebarOpen(false);
+            // Find the job in jobs or jobsMap and always use mapJobToSidebarJob
+            const jobRaw = jobs.find(j => j._id === jobId) || jobsMap[jobId];
+            if (jobRaw) {
+              const job = mapJobToSidebarJob(jobRaw);
+              setSidebarJob(job);
+              setTasksSidebarOpen(true);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

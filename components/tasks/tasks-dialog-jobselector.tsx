@@ -17,11 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Task, FocusLevel, JoyLevel } from "./types";
+import { Task, FocusLevel, JoyLevel, RecurrenceInterval } from "./types";
 import { TagInput } from "@/components/tasks/tag-input";
 import { saveTags } from "@/lib/services/task-tags.service";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Define Owner interface to match MongoDB document
 interface Owner {
@@ -61,14 +62,16 @@ export function TaskDialog({
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
-  // Use string for clearable date input
-  const [date, setDate] = useState<string>(""); 
+  const [date, setDate] = useState<string>("");
   const [requiredHours, setRequiredHours] = useState<number | undefined>(undefined);
   const [focusLevel, setFocusLevel] = useState<FocusLevel | undefined>(undefined);
   const [joyLevel, setJoyLevel] = useState<JoyLevel | undefined>(undefined);
   const [notes, setNotes] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval | undefined>(undefined);
+  const [recurrenceError, setRecurrenceError] = useState<string | null>(null);
 
   const [owners, setOwners] = useState<Owner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
@@ -87,10 +90,10 @@ export function TaskDialog({
 
   // Initialize jobId from props
   useEffect(() => {
-    if (propJobId) {
+    if (propJobId && mode === "create" && open) {
       setJobId(propJobId);
     }
-  }, [propJobId]);
+  }, [propJobId, mode, open]);
 
   useEffect(() => {
     const fetchOwners = async () => {
@@ -116,33 +119,43 @@ export function TaskDialog({
   }, [open]);
 
   useEffect(() => {
-    if (mode === "create") {
-      setTitle("");
-      setOwner("none");
-      setDate("");
-      setRequiredHours(0);
-      setFocusLevel(FocusLevel.None);
-      setJoyLevel(JoyLevel.None);
-      setNotes(undefined);
-      setTags([]);
-      if (!propJobId) {
-        setJobId(undefined);
+    const timeoutId = setTimeout(() => {
+      if (mode === "create") {
+        setTitle("");
+        setOwner("none");
+        setDate("");
+        setRequiredHours(0);
+        setFocusLevel(FocusLevel.None);
+        setJoyLevel(JoyLevel.None);
+        setNotes(undefined);
+        setTags([]);
+        setIsRecurring(false);
+        setRecurrenceInterval(undefined);
+        if (propJobId) {
+          setJobId(propJobId);
+        } else {
+          setJobId(undefined);
+        }
+      } else if (initialData) {
+        setTitle(initialData.title);
+        setOwner(initialData.owner);
+        if (initialData.date) {
+          setDate(new Date(initialData.date).toISOString().split("T")[0]);
+        } else {
+          setDate("");
+        }
+        setRequiredHours(initialData.requiredHours);
+        setFocusLevel(initialData.focusLevel);
+        setJoyLevel(initialData.joyLevel);
+        setNotes(initialData.notes);
+        setTags(initialData.tags || []);
+        setJobId(initialData.jobId);
+        setIsRecurring(initialData.isRecurring || false);
+        setRecurrenceInterval(initialData.recurrenceInterval);
       }
-    } else if (initialData) {
-      setTitle(initialData.title);
-      setOwner(initialData.owner);
-      if (initialData.date) {
-        setDate(new Date(initialData.date).toISOString().split("T")[0]);
-      } else {
-        setDate(""); // use empty string
-      }
-      setRequiredHours(initialData.requiredHours);
-      setFocusLevel(initialData.focusLevel);
-      setJoyLevel(initialData.joyLevel);
-      setNotes(initialData.notes);
-      setTags(initialData.tags || []);
-      setJobId(initialData.jobId);
-    }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [mode, initialData, open, propJobId]);
 
   const [jobsList, setJobsList] = useState<Record<string, any>>(jobs || {});
@@ -176,6 +189,7 @@ export function TaskDialog({
         [newJobId]: {
           _id: newJobId,
           title: jobData.title || createdJob.data?.title || "New Job",
+          isDone: false, // New jobs are not done
           ...createdJob.data,
         },
       }));
@@ -247,7 +261,12 @@ export function TaskDialog({
     } else {
       setJobError(null);
     }
-
+    if (isRecurring && !recurrenceInterval) {
+      setRecurrenceError("Please select a recurrence interval.");
+      return;
+    } else {
+      setRecurrenceError(null);
+    }
     setIsSubmitting(true);
 
     try {
@@ -258,62 +277,29 @@ export function TaskDialog({
       if (jobId) task.jobId = jobId;
 
       if (owner) task.owner = owner;
-      // Due date clearable logic
       if (date) {
         task.date = `${date}T00:00:00.000Z`;
       } else {
-        task.date = ""; // Explicitly clear date if empty
+        task.date = "";
       }
       if (requiredHours !== undefined) task.requiredHours = requiredHours;
       if (focusLevel) task.focusLevel = focusLevel;
       if (joyLevel) task.joyLevel = joyLevel;
       if (notes) task.notes = notes;
       if (tags.length > 0) task.tags = tags;
-
-      // For task creation with a job ID specified via props, handle it here
-      // to avoid double task creation
-      if (mode === "create" && propJobId) {
-        try {
-          // Direct API call to create task
-          const response = await fetch("/api/tasks", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(task),
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to create task");
-          }
-
-          const result: TaskResponse = await response.json();
-
-          if (result.success && result.data?._id) {
-            // Update the job's tasks array with the new task ID
-            await updateJobTasks(jobId!, result.data._id);
-
-            // Here we call onSubmit with the created task for UI updates,
-            // but we don't await it since we don't want it to create another task
-            onSubmit({ ...task, id: result.data._id });
-          }
-        } catch (error) {
-          console.error("Error in task creation:", error);
-          throw error;
-        }
+      if (isRecurring) {
+        task.isRecurring = true;
+        task.recurrenceInterval = recurrenceInterval;
       } else {
-        // For editing tasks or creating tasks without a job ID from props,
-        // let the parent handle it
-        await onSubmit(task);
+        task.isRecurring = false;
+        task.recurrenceInterval = undefined;
       }
+      await onSubmit(task);
 
-      // Save tags if any
       if (tags.length > 0) await saveTags(tags);
 
-      // Close the dialog
       onOpenChange(false);
 
-      // Show success toast
       toast({
         title: "Success",
         description:
@@ -322,7 +308,6 @@ export function TaskDialog({
             : "Task updated successfully",
       });
 
-      // Reset form if creating new task
       if (mode === "create") {
         setTitle("");
         setOwner("none");
@@ -332,7 +317,11 @@ export function TaskDialog({
         setJoyLevel(JoyLevel.None);
         setNotes(undefined);
         setTags([]);
-        if (!propJobId) {
+        setIsRecurring(false);
+        setRecurrenceInterval(undefined);
+        if (propJobId) {
+          setJobId(propJobId);
+        } else {
           setJobId(undefined);
         }
       }
@@ -374,58 +363,45 @@ export function TaskDialog({
                 />
               </div>
 
-              {/* Job Selection - only show if no jobId was provided via props */}
-              {!propJobId && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="job" className="text-right">
-                    Job <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="col-span-3 space-y-2">
-                    <Select
-                      value={jobId || "none"}
-                      required
-                      onValueChange={(value) => {
-                        setJobError(null);
-                        if (value === "create") {
-                          setIsJobDialogOpen(true);
-                        } else {
-                          setJobId(value === "none" ? undefined : value);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a job" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {Object.entries(jobsList).map(
-                          ([id, job]: [string, any]) => (
-                            <SelectItem key={id} value={id}>
-                              {job.title}
-                            </SelectItem>
-                          ),
-                        )}
-                        <SelectItem value="create">+ Create New Job</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {jobError && (
-                      <p className="text-sm text-red-500 mt-1">{jobError}</p>
-                    )}
-                  </div>
+              {/* Job Selection - Always show the dropdown */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="job" className="text-right">
+                  Job <span className="text-red-500">*</span>
+                </Label>
+                <div className="col-span-3 space-y-2">
+                  <Select
+                    value={jobId || "none"}
+                    required
+                    onValueChange={(value) => {
+                      setJobError(null);
+                      if (value === "create") {
+                        setIsJobDialogOpen(true);
+                      } else {
+                        setJobId(value === "none" ? undefined : value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a job" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {Object.entries(jobsList)
+                      .filter(([id, job]: [string, any]) => !job.isDone)
+                      .map(([id, job]: [string, any]) => (
+                          <SelectItem key={id} value={id}>
+                            {job.title}
+                          </SelectItem>
+                        ),
+                      )}
+                      <SelectItem value="create">+ Create New Job</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {jobError && (
+                    <p className="text-sm text-red-500 mt-1">{jobError}</p>
+                  )}
                 </div>
-              )}
-
-              {/* Display selected job name if jobId is provided via props */}
-              {propJobId && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right">Job</Label>
-                  <div className="col-span-3">
-                    <p className="text-sm font-medium">
-                      {jobsList[propJobId]?.title || "Selected Job"}
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* Owner */}
               <div className="grid grid-cols-4 items-center gap-4">
@@ -532,7 +508,7 @@ export function TaskDialog({
                 </div>
               </div>
 
-              {/* Date - clearable just like task-dialog.tsx */}
+              {/* Date */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">
                   Do Date
@@ -655,6 +631,55 @@ export function TaskDialog({
                   placeholder="Add any notes for this task..."
                 />
               </div>
+
+              {/* Recurring Task */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="isRecurring" className="text-right">
+                  Recurring Task
+                </Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Checkbox
+                    id="isRecurring"
+                    checked={isRecurring}
+                    onCheckedChange={(checked) => setIsRecurring(!!checked)}
+                  />
+                  <span className="text-sm">Set as recurring</span>
+                </div>
+              </div>
+              {isRecurring && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="recurrenceInterval" className="text-right">
+                    Recurrence Interval
+                  </Label>
+                  <div className="col-span-3">
+                    <Select
+                      value={recurrenceInterval || "none"}
+                      onValueChange={(value) => {
+                        setRecurrenceError(null);
+                        value === "none"
+                          ? setRecurrenceInterval(undefined)
+                          : setRecurrenceInterval(value as RecurrenceInterval);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select interval" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value={RecurrenceInterval.Daily}>Daily</SelectItem>
+                        <SelectItem value={RecurrenceInterval.Weekly}>Weekly</SelectItem>
+                        <SelectItem value={RecurrenceInterval.Biweekly}>Biweekly</SelectItem>
+                        <SelectItem value={RecurrenceInterval.Monthly}>Monthly</SelectItem>
+                        <SelectItem value={RecurrenceInterval.Quarterly}>Quarterly</SelectItem>
+                        <SelectItem value={RecurrenceInterval.Annually}>Annually</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {recurrenceError && (
+                      <p className="text-sm text-red-500 mt-1">{recurrenceError}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter>
@@ -662,8 +687,8 @@ export function TaskDialog({
                 {isSubmitting
                   ? "Saving..."
                   : mode === "create"
-                    ? "Add Task"
-                    : "Save Changes"}
+                  ? "Add Task"
+                  : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, PawPrint, Copy } from "lucide-react";
+import { Trash2, PawPrint, Copy, RefreshCcw } from "lucide-react";
 import { DuplicateJobDialog } from "./duplicate-job-dialog";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -164,6 +164,8 @@ export function JobCard({
     };
   };
 
+  const jobId = currentJob.id || (currentJob as any)._id;
+
   return (
   <div
     style={{ width: "100%", minHeight: "180px" }}
@@ -198,7 +200,15 @@ export function JobCard({
         {/* Job title with job number */}
         <div className="mb-6 pl-6">
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold">{currentJob.title}</h3>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {currentJob.title}
+              {currentJob.isRecurring && currentJob.recurrenceInterval && (
+                <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                  <RefreshCcw className="h-4 w-4 inline" />
+                  {currentJob.recurrenceInterval}
+                </span>
+              )}
+            </h3>
           </div>
         </div>
 
@@ -228,6 +238,7 @@ export function JobCard({
       </div>
       <div className="flex">
         <Button
+          title="Duplicate job"
           variant="ghost"
           size="icon"
           className="h-8 w-8"
@@ -246,9 +257,11 @@ export function JobCard({
           title="Ask Jija about this job"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(
-              `/jija?jobTitle=${encodeURIComponent(currentJob.title)}`,
-            );
+            const params = new URLSearchParams();
+            params.set("source", "job");
+            if (jobId) params.set("jobId", jobId);
+            if (currentJob.title) params.set("jobTitle", currentJob.title);
+            router.push(`/jija?${params.toString()}`);
           }}
         >
           <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />
@@ -256,7 +269,7 @@ export function JobCard({
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button title="Delete job" variant="ghost" size="icon" className="h-8 w-8">
               <Trash2 className="h-4 w-4" />
             </Button>
           </AlertDialogTrigger>

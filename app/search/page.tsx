@@ -3,10 +3,12 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SearchResultCard } from "@/components/search/search-card";
-import { TasksSidebar } from "@/components/search/search-sidebar";
+import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
+import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
 import { useToast } from "@/hooks/use-toast";
-import { TaskDialog } from "@/components/tasks/tasks-dialog";
+import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
 import { JobDialog } from "@/components/jobs/job-dialog";
+import { Task } from "@/components/tasks/types";
 
 const SearchPage = () => {
   const searchParams = useSearchParams();
@@ -15,16 +17,41 @@ const SearchPage = () => {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [taskSidebarOpen, setTaskSidebarOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState<any>(null);
+  const [currentJob, setCurrentJob] = useState<any>(null);
   const [taskOwnerMap, setTaskOwnerMap] = useState<Record<string, string>>({});
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [jobDialogOpen, setJobDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [needsRefresh, setNeedsRefresh] = useState(false);
+  const [jobs, setJobs] = useState<Record<string, any>>({});
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const response = await fetch("/api/jobs");
+        const result = await response.json();
+        
+        if (result.success) {
+          const jobsMap: Record<string, any> = {};
+          result.data.forEach((job: any) => {
+            if (job._id) {
+              jobsMap[job._id] = { ...job, id: job._id };
+            }
+          });
+          setJobs(jobsMap);
+        }
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+      }
+    };
+
+    fetchJobs();
+  }, []);
 
   // Fetch search results on query change
   useEffect(() => {
@@ -56,8 +83,41 @@ const SearchPage = () => {
   }, [query, needsRefresh]);
 
   const handleOpenSidebar = (item: any) => {
-    setCurrentItem(item);
-    setSidebarOpen(true);
+    if (item.type?.toLowerCase() === 'task') {
+      const formattedTask: Task = {
+        id: item._id || item.id,
+        title: item.title,
+        owner: item.owner,
+        date: item.date,
+        requiredHours: item.requiredHours,
+        focusLevel: item.focusLevel,
+        joyLevel: item.joyLevel,
+        notes: item.notes,
+        tags: item.tags || [],
+        jobId: item.jobId,
+        completed: item.completed,
+        isNextTask: false,
+      };
+      
+      setCurrentItem(formattedTask);
+      setSidebarOpen(true);
+    } else if (item.type?.toLowerCase() === 'job') {
+      const formattedJob = {
+        id: item._id || item.id,
+        title: item.title,
+        jobNumber: item.jobNumber,
+        businessFunctionName: item.businessFunctionName,
+        businessFunctionId: item.businessFunctionId,
+        dueDate: item.dueDate,
+        notes: item.notes,
+        tasks: item.tasks || [],
+        nextTaskId: item.nextTaskId,
+        impact: item.impact,
+      };
+      
+      setCurrentJob(formattedJob);
+      setTaskSidebarOpen(true);
+    }
   };
 
   const handleEditItem = (item: any) => {
@@ -127,11 +187,6 @@ const SearchPage = () => {
       const result = await response.json();
       if (result.success) {
         setResults(results.filter(r => (r.id !== id && r._id !== id)));
-        if (selectedResults.has(id)) {
-          const newSelected = new Set(selectedResults);
-          newSelected.delete(id);
-          setSelectedResults(newSelected);
-        }
         toast({ title: "Success", description: `${item.type} deleted successfully` });
       } else {
         toast({ title: "Error", description: `Failed to delete ${item.type}`, variant: "destructive" });
@@ -147,6 +202,38 @@ const SearchPage = () => {
       setNeedsRefresh(n => !n);
     }
     setSidebarOpen(open);
+  };
+
+  const handleTaskSidebarChange = (open: boolean) => {
+    if (!open && needsRefresh) {
+      setNeedsRefresh(n => !n);
+    }
+    setTaskSidebarOpen(open);
+  };
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    setResults(prevResults => 
+      prevResults.map(result => {
+        if ((result._id || result.id) === updatedTask.id) {
+          return {
+            ...result,
+            ...updatedTask,
+            _id: result._id || updatedTask.id,
+          };
+        }
+        return result;
+      })
+    );
+    
+    setNeedsRefresh(n => !n);
+  };
+
+  const handleNavigateToJob = (jobId: string) => {
+    if (jobs[jobId]) {
+      setCurrentJob(jobs[jobId]);
+      setTaskSidebarOpen(true);
+      setSidebarOpen(false);
+    }
   };
 
   return (
@@ -165,25 +252,13 @@ const SearchPage = () => {
 
         {error && <div className="error text-red-500 mb-4">{error}</div>}
 
-        {selectedResults.size > 0 && (
-          <div className="mb-4 p-2 bg-blue-50 rounded-md flex justify-between items-center">
-            <span>{selectedResults.size} items selected</span>
-            <button
-              className="text-sm px-2 py-1 border rounded border-gray-300"
-              onClick={() => setSelectedResults(new Set())}
-            >
-              Clear selection
-            </button>
-          </div>
-        )}
-
         {/* Search Results */}
         <div className="search-results">
           {loading ? (
             <p className="text-center py-8 text-gray-500">Searching...</p>
           ) : results.length > 0 ? (
             <div className="flex justify-center">
-              <div className="flex flex-col space-y-4 ml-48">
+              <div className="flex flex-col space-y-4 items-center">
                 {results.map((result, index) => (
                   <SearchResultCard
                     key={result.id || result._id || index}
@@ -192,8 +267,8 @@ const SearchPage = () => {
                     onOpenTasksSidebar={handleOpenSidebar}
                     onEdit={handleEditItem}
                     onDelete={handleDeleteItem}
-                    isSelected={selectedResults.has(result.id || result._id)}
                     taskOwnerMap={taskOwnerMap}
+                    jobs={jobs}
                   />
                 ))}
               </div>
@@ -205,12 +280,24 @@ const SearchPage = () => {
           )}
         </div>
 
-        {/* Tasks Sidebar */}
-        <TasksSidebar
+        {/* Task Details Sidebar - For tasks */}
+        <TaskDetailsSidebar
           open={sidebarOpen}
           onOpenChange={handleSidebarChange}
-          selectedItem={currentItem}
+          selectedTask={currentItem}
+          onTaskUpdated={handleTaskUpdated}
+          onDeleteTask={handleDeleteItem}
+          onNavigateToJob={handleNavigateToJob}
+        />
+
+        {/* Tasks Sidebar - For jobs */}
+        <TasksSidebar
+          open={taskSidebarOpen}
+          onOpenChange={handleTaskSidebarChange}
+          selectedJob={currentJob ? { ...currentJob, id: currentJob.id ?? currentJob._id } : null}
           onRefreshJobs={() => setNeedsRefresh(n => !n)}
+          onDeleteJob={handleDeleteItem}
+          jobs={jobs}
         />
 
         {/* Task Edit Dialog */}
@@ -221,7 +308,8 @@ const SearchPage = () => {
             onOpenChange={setTaskDialogOpen}
             onSubmit={handleTaskSubmit}
             initialData={editingItem}
-            jobId={editingItem.jobId || ''}
+            jobs={jobs}
+            jobId={editingItem?.jobId}
           />
         )}
 
