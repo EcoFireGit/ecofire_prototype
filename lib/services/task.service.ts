@@ -57,29 +57,67 @@ export class TaskService {
   }
 
   /**
-   * Updates ALL tasks for a user, overwriting filter fields regardless of their previous state.
-   * Sets owner, focusLevel, joyLevel, tags to "none" and requiredHours to 0 for every task.
+   * Migrates tasks for filtering by unassigned.
+   * Only updates fields if they are currently null or do not exist.
+   * This preserves any already-set values.
+   * 
+   * @description
+   * - Connects to the database using dbConnect()
+   * - Sets filter fields to "none" or 0 only if missing/null
+   * - Logs migration progress to console for monitoring
+   * - Runs automatically before fetching tasks to ensure data consistency
    */
-  async migrateTaskForFilteringByUnassgined(userId: string): Promise<void>{
+  async migrateTaskForFilteringByUnassgined(userId: string): Promise<void> {
     console.log("Testing Entrance");
-    try{
+    try {
       await dbConnect();
 
       const unassignedValueForFilters = "none";
-      const result = await Task.updateMany(
-        { userId },
-        { 
-          $set: { 
-            owner: unassignedValueForFilters,
-            focusLevel: unassignedValueForFilters,
-            joyLevel: unassignedValueForFilters,
-            tags: unassignedValueForFilters,
-            requiredHours: 0
-          }
+      // Find all tasks where at least one field is missing or null
+      const tasksToUpdate = await Task.find({
+        userId,
+        $or: [
+          { owner: { $exists: false } },
+          { owner: null },
+          { focusLevel: { $exists: false } },
+          { focusLevel: null },
+          { joyLevel: { $exists: false } },
+          { joyLevel: null },
+          { tags: { $exists: false } },
+          { tags: null },
+          { requiredHours: { $exists: false } },
+          { requiredHours: null }
+        ]
+      }).lean();
+
+      let count = 0;
+
+      for (const task of tasksToUpdate) {
+        const update: any = {};
+        // Only set each field if currently missing or null
+        if (task.owner === undefined || task.owner === null) {
+          update.owner = unassignedValueForFilters;
         }
-      );
+        if (task.focusLevel === undefined || task.focusLevel === null) {
+          update.focusLevel = unassignedValueForFilters;
+        }
+        if (task.joyLevel === undefined || task.joyLevel === null) {
+          update.joyLevel = unassignedValueForFilters;
+        }
+        if (task.tags === undefined || task.tags === null) {
+          update.tags = unassignedValueForFilters;
+        }
+        if (task.requiredHours === undefined || task.requiredHours === null) {
+          update.requiredHours = 0;
+        }
+        // Only update if there's something to change
+        if (Object.keys(update).length > 0) {
+          await Task.updateOne({ _id: task._id }, { $set: update });
+          count++;
+        }
+      }
       
-      console.log(`Migrated ${result.modifiedCount} tasks with correct filter setting for user ${userId}`);
+      console.log(`Migrated ${count} tasks with correct filter setting for user ${userId}`);
 
     }
     catch (error) {
@@ -98,7 +136,6 @@ export class TaskService {
      
       await this.migrateTasksForTimeTracking(userId);
     
-      await this.migrateTaskForFilteringByUnassgined(userId);
       const tasks = await Task.find({
         jobId,
         userId,
@@ -121,6 +158,8 @@ export class TaskService {
   async getTaskById(id: string, userId: string): Promise<TaskInterface | null> {
     try {
       await dbConnect();
+      await this.migrateTaskForFilteringByUnassgined(userId);
+
       const task = await Task.findOne({
         _id: id,
         userId,
@@ -176,10 +215,6 @@ export class TaskService {
   ): Promise<TaskInterface | null> {
     try {
       await dbConnect();
-    // If requiredHours is not set or is null, default it to 0
-    // if (updateData.requiredHours === undefined || updateData.requiredHours === null) {
-    //   updateData.requiredHours = 0;
-    // }      
       const updatedTask = await Task.findOneAndUpdate(
         { _id: id, userId },
         { $set: updateData },
