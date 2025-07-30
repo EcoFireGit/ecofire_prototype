@@ -111,14 +111,14 @@ export default function TaskFeedView() {
     if (sizes[0] < 40) {
       setMainMinimized(true);
       setMyDayMinimized(false);
-      setSplitSizes([0, 100]);
+      setSplitSizes([2.8, 100]);
       setShowTabs(false);
       // Show tabs after animation completes
       setTimeout(() => setShowTabs(true), 300);
     } else if (sizes[1] < 40) {
       setMainMinimized(false);
       setMyDayMinimized(true);
-      setSplitSizes([100, 0]);
+      setSplitSizes([97, 3]);
       setShowTabs(false);
       // Show tabs after animation completes
       setTimeout(() => setShowTabs(true), 300);
@@ -516,7 +516,7 @@ export default function TaskFeedView() {
     if (isMobile) {
       setMainMinimized(false);
       setMyDayMinimized(true);
-      setSplitSizes([100, 0]);
+      setSplitSizes([97, 3]);
       setShowTabs(true);
     } else {
       setMainMinimized(false);
@@ -1152,7 +1152,7 @@ export default function TaskFeedView() {
             onClick={() => {
               setMainMinimized(false);
               setMyDayMinimized(true);
-              setSplitSizes([100, 0]);
+              setSplitSizes([97, 3]);
             }}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               !mainMinimized && myDayMinimized
@@ -1321,13 +1321,33 @@ export default function TaskFeedView() {
                   writingMode: 'vertical-rl', 
                   textOrientation: 'mixed',
                   left: '0px',
-                  top: '50%',
+                  top: '70px',
                   transform: 'translateY(-50%)',
                   zIndex: 20
                 }}
                 aria-label="Show Tasks"
               >
                 Show All Tasks
+              </button>
+            )}
+            
+            {/* Show My Day tab when My Day is minimized - positioned with gap from right edge */}
+            {!isMobile && myDayMinimized && !mainMinimized && showTabs && (
+              <button
+                ref={showMyDayTabRef}
+                onClick={restoreMyDay}
+                className="absolute bg-orange-600 text-white px-3 py-2 rounded-r-lg shadow-lg font-semibold text-xs origin-top-right hover:bg-orange-700 transition"
+                style={{ 
+                  writingMode: 'vertical-lr', 
+                  textOrientation: 'mixed',
+                  right: '8px',
+                  top: '70px',
+                  transform: 'translateY(-50%)',
+                  zIndex: 20
+                }}
+                aria-label="Show My Day"
+              >
+                <span>Show My Day</span>
               </button>
             )}
             
@@ -1378,25 +1398,6 @@ export default function TaskFeedView() {
                       onToggleMyDay={handleToggleMyDay}
                     />
                   </div>
-                )}
-                {/* Show My Day tab when My Day is minimized */}
-                {!isMobile && myDayMinimized && !mainMinimized && showTabs && (
-                  <button
-                    ref={showMyDayTabRef}
-                    onClick={restoreMyDay}
-                    className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs origin-top-right hover:bg-orange-700 transition"
-                    style={{ 
-                      writingMode: 'vertical-rl', 
-                      textOrientation: 'mixed',
-                      right: '0px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      zIndex: 20
-                    }}
-                    aria-label="Show My Day"
-                  >
-                    <span>Show My Day</span>
-                  </button>
                 )}
               </div>
               <div className={`${myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"} h-full overflow-auto relative`}>
