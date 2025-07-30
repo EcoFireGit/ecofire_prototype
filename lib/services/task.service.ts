@@ -56,29 +56,18 @@ export class TaskService {
     }
   }
 
+  /**
+   * Updates ALL tasks for a user, overwriting filter fields regardless of their previous state.
+   * Sets owner, focusLevel, joyLevel, tags to "none" and requiredHours to 0 for every task.
+   */
   async migrateTaskForFilteringByUnassgined(userId: string): Promise<void>{
-    console.log("Testing Enterance");
+    console.log("Testing Entrance");
     try{
       await dbConnect();
 
       const unassignedValueForFilters = "none";
       const result = await Task.updateMany(
-        { 
-          userId,
-          $or: [
-            { owner: { $exists: false } },
-            { owner: null },
-            {focusLevel: { $exists: false}},
-            { focusLevel: null },
-            {joyLevel: { $exists: false}},
-            { joyLevel: null },
-            {tags: { $exists: false}},
-            { tags: null },
-            {requiredHours: { $exists: false}},
-            { requiredHours: null },
-          ]
-
-        },
+        { userId },
         { 
           $set: { 
             owner: unassignedValueForFilters,
@@ -104,8 +93,11 @@ export class TaskService {
     userId: string
   ): Promise<TaskInterface[]> {
     try {
+      
       await dbConnect();
+     
       await this.migrateTasksForTimeTracking(userId);
+    
       await this.migrateTaskForFilteringByUnassgined(userId);
       const tasks = await Task.find({
         jobId,
@@ -113,6 +105,7 @@ export class TaskService {
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       // Ensure active tasks never have an endDate or timeElapsed
+      console.log("HEY");
       const sanitizedTasks = tasks.map(task => {
         if (task.completed === false) {
           return { ...task, endDate: null, timeElapsed: null };

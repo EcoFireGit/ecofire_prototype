@@ -348,7 +348,7 @@ const cancelEditing = () => {
           updateData.title = editingValue;
           break;
         case 'owner':
-          updateData.owner = editingValue === 'none' ? null : editingValue;
+          updateData.owner = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'date':
           updateData.date = editingValue ? `${editingValue}T00:00:00.000Z` : null;
@@ -357,10 +357,10 @@ const cancelEditing = () => {
           updateData.requiredHours = editingValue ? parseFloat(editingValue) : null;
           break;
         case 'focusLevel':
-          updateData.focusLevel = editingValue === 'none' ? null : editingValue;
+          updateData.focusLevel = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'joyLevel':
-          updateData.joyLevel = editingValue === 'none' ? null : editingValue;
+          updateData.joyLevel = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'notes':
           updateData.notes = editingValue;
