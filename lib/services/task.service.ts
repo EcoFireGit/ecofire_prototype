@@ -68,10 +68,8 @@ export class TaskService {
    * - Runs automatically before fetching tasks to ensure data consistency
    */
   async migrateTaskForFilteringByUnassgined(userId: string): Promise<void> {
-    console.log("Testing Entrance");
     try {
       await dbConnect();
-
       const unassignedValueForFilters = "none";
       // Find all tasks where at least one field is missing or null
       const tasksToUpdate = await Task.find({
@@ -142,7 +140,7 @@ export class TaskService {
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       // Ensure active tasks never have an endDate or timeElapsed
-      console.log("HEY");
+
       const sanitizedTasks = tasks.map(task => {
         if (task.completed === false) {
           return { ...task, endDate: null, timeElapsed: null };
@@ -158,7 +156,7 @@ export class TaskService {
   async getTaskById(id: string, userId: string): Promise<TaskInterface | null> {
     try {
       await dbConnect();
-      await this.migrateTaskForFilteringByUnassgined(userId);
+    //  await this.migrateTaskForFilteringByUnassgined(userId);
 
       const task = await Task.findOne({
         _id: id,
@@ -424,6 +422,8 @@ export class TaskService {
     try {
       await dbConnect();
       // Find all tasks for this user that are marked as next tasks
+      await this.migrateTaskForFilteringByUnassgined(userId);
+
       const tasks = await Task.find({
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
