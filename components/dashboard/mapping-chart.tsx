@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown } from "lucide-react";
 
 interface MappingData {
   jobs: Array<{
@@ -57,6 +58,8 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     enableBackstage: false,
     enableTableView: false,
   });
+  const [activeTab, setActiveTab] = useState("job-outcome");
+  const [sortOrder, setSortOrder] = useState<"high-to-low" | "low-to-high">("high-to-low");
   const { toast } = useToast();
 
   const fetchUserPreferences = async () => {
@@ -196,7 +199,14 @@ const MappingChart: React.FC<MappingChartProps> = () => {
         outcomes,
         totalImpact: totalImpactPercentage
       };
-    }).filter(job => job.outcomes.length > 0); // Re-add the filter
+    }).filter(job => job.outcomes.length > 0)
+    .sort((a, b) => {
+      if (sortOrder === "high-to-low") {
+        return b.totalImpact - a.totalImpact;
+      } else {
+        return a.totalImpact - b.totalImpact;
+      }
+    });
 
     return (
       <div className="space-y-4">
@@ -352,7 +362,14 @@ const MappingChart: React.FC<MappingChartProps> = () => {
         }),
         totalImpact: totalImpactPercentage
       };
-    }).filter(job => job.outputs.length > 0);
+    }).filter(job => job.outputs.length > 0)
+    .sort((a, b) => {
+      if (sortOrder === "high-to-low") {
+        return b.totalImpact - a.totalImpact;
+      } else {
+        return a.totalImpact - b.totalImpact;
+      }
+    });
 
     return (
       <div className="space-y-4">
@@ -460,7 +477,14 @@ const MappingChart: React.FC<MappingChartProps> = () => {
         }),
         totalImpact: totalImpactPercentage
       };
-    }).filter(output => output.outcomes.length > 0);
+    }).filter(output => output.outcomes.length > 0)
+    .sort((a, b) => {
+      if (sortOrder === "high-to-low") {
+        return b.totalImpact - a.totalImpact;
+      } else {
+        return a.totalImpact - b.totalImpact;
+      }
+    });
 
     return (
       <div className="space-y-4">
@@ -541,65 +565,94 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     );
   }
 
+  const getTabDescription = (tab: string) => {
+    switch (tab) {
+      case "job-outcome":
+        return "Shows the impact relationships between jobs and outcomes in your organization.";
+      case "job-output":
+        return "Shows the impact relationships between jobs and outputs in your organization.";
+      case "output-outcome":
+        return "Shows the impact relationships between outputs and outcomes in your organization.";
+      default:
+        return "Shows the impact relationships between jobs and outcomes in your organization.";
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{userPreferences.enableBackstage ? "Job-Output-Outcome Mapping" : "Job-Outcome Mapping"}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="job-outcome" className="w-full">
-                  <TabsList className={`grid w-full ${userPreferences.enableBackstage ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
-          <TabsTrigger value="job-outcome">Job → Outcome</TabsTrigger>
-          {userPreferences.enableBackstage && (
-            <>
-              <TabsTrigger value="job-output">Job → Output</TabsTrigger>
-              <TabsTrigger value="output-outcome">Output → Outcome</TabsTrigger>
-            </>
-          )}
-        </TabsList>
+              <CardContent>
+          <Tabs defaultValue="job-outcome" className="w-full" onValueChange={setActiveTab}>
+            <div className="flex items-center justify-between mb-4">
+              <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                <TabsTrigger value="job-outcome" className="px-4 py-2">Job → Outcome</TabsTrigger>
+                {userPreferences.enableBackstage && (
+                  <>
+                    <TabsTrigger value="job-output" className="px-4 py-2">Job → Output</TabsTrigger>
+                    <TabsTrigger value="output-outcome" className="px-4 py-2">Output → Outcome</TabsTrigger>
+                  </>
+                )}
+              </TabsList>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground mr-2">Sort by:</span>
+                <Select
+                  value={sortOrder}
+                  onValueChange={(value: "high-to-low" | "low-to-high") => setSortOrder(value)}
+                >
+                  <SelectTrigger className="w-[220px] h-9">
+                    <SelectValue>
+                      <div className="flex items-center">
+                        {sortOrder === "high-to-low" ? (
+                          <ArrowUp className="h-4 w-4 mr-2" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4 mr-2" />
+                        )}
+                        {sortOrder === "high-to-low" ? "Total Impact (high to low)" : "Total Impact (low to high)"}
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high-to-low">
+                      <div className="flex items-center">
+                        <ArrowUp className="h-4 w-4 mr-2" />
+                        Total Impact (high to low)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="low-to-high">
+                      <div className="flex items-center">
+                        <ArrowDown className="h-4 w-4 mr-2" />
+                        Total Impact (low to high)
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <TabsContent value="job-outcome" className="mt-6">
+              {renderJobOutcomeChart()}
+            </TabsContent>
+            
+            {userPreferences.enableBackstage && (
+              <>
+                <TabsContent value="job-output" className="mt-6">
+                  {renderJobOutputChart()}
+                </TabsContent>
+                
+                <TabsContent value="output-outcome" className="mt-6">
+                  {renderOutputOutcomeChart()}
+                </TabsContent>
+              </>
+            )}
+          </Tabs>
           
           <div className="mt-4 text-sm text-gray-600">
-            <p>{userPreferences.enableBackstage 
-              ? "Shows the impact relationships between jobs, outputs, and outcomes in your organization."
-              : "Shows the impact relationships between jobs and outcomes in your organization."
-            }</p>
-            <div className="mt-2 flex items-center space-x-4 text-xs">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-600 rounded mr-1"></div>
-                <span>Job → Outcome Impact</span>
-              </div>
-              {userPreferences.enableBackstage && (
-                <>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-600 rounded mr-1"></div>
-                    <span>Job → Output Impact</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-purple-600 rounded mr-1"></div>
-                    <span>Output → Outcome Impact</span>
-                  </div>
-                </>
-              )}
-            </div>
+            <p>{getTabDescription(activeTab)}</p>
           </div>
-          
-          <TabsContent value="job-outcome" className="mt-6">
-            {renderJobOutcomeChart()}
-          </TabsContent>
-          
-          {userPreferences.enableBackstage && (
-            <>
-              <TabsContent value="job-output" className="mt-6">
-                {renderJobOutputChart()}
-              </TabsContent>
-              
-              <TabsContent value="output-outcome" className="mt-6">
-                {renderOutputOutcomeChart()}
-              </TabsContent>
-            </>
-          )}
-        </Tabs>
-      </CardContent>
+        </CardContent>
     </Card>
   );
 };
