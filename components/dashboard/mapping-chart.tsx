@@ -632,6 +632,10 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               </div>
             </div>
             
+            <div className="mt-4 text-sm text-gray-600">
+              <p>{getTabDescription(activeTab)}</p>
+            </div>
+            
             <TabsContent value="job-outcome" className="mt-6">
               {renderJobOutcomeChart()}
             </TabsContent>
@@ -648,10 +652,6 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               </>
             )}
           </Tabs>
-          
-          <div className="mt-4 text-sm text-gray-600">
-            <p>{getTabDescription(activeTab)}</p>
-          </div>
         </CardContent>
     </Card>
   );
