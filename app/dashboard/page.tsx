@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import QBOProgressChart from "@/components/dashboard/qbo-progress-chart";
+import MappingChart from "@/components/dashboard/mapping-chart";
 import { QBOs } from "@/lib/models/qbo.model";
 import { Job } from "@/components/jobs/table/columns";
 import { JobCard } from "@/components/jobs/job-card";
@@ -279,6 +280,11 @@ export default function Dashboard() {
               />
             </div>
           )}
+        </section>
+
+        {/* Mapping Chart */}
+        <section className="w-full max-w-none" style={{ minWidth: "100%" }}>
+          <MappingChart />
         </section>
 
         {/* Top 5 Recommended Jobs */}
