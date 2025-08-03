@@ -69,30 +69,36 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
 
     switch (option) {
       case "recommended":
-        // Sort by next tasks first, then by job impact score (higher first)
+        // Sort by earliest do-date first, then next tasks, then impact score
         sortedTasks.sort((a, b) => {
-          // Check if task is a next task
+          // First sort by earliest do-date (ascending - earliest first)
+          if (a.date && b.date) {
+            const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+            if (dateComparison !== 0) return dateComparison;
+          } else if (a.date && !b.date) {
+            return -1; // Tasks with dates come before tasks without dates
+          } else if (!a.date && b.date) {
+            return 1;
+          }
+
+          // If dates are the same (or both null), check next task status
           const aIsNextTask = a.jobId && jobs[a.jobId]?.nextTaskId === a._id;
           const bIsNextTask = b.jobId && jobs[b.jobId]?.nextTaskId === b._id;
 
-          // First sort by next task status
           if (aIsNextTask && !bIsNextTask) return -1;
           if (!aIsNextTask && bIsNextTask) return 1;
 
-          // If both are next tasks, sort by job impact score (higher first)
+          // If both are next tasks (or both are not), sort by job impact score (higher first)
           if (aIsNextTask && bIsNextTask) {
             const aImpact = jobs[a.jobId]?.impact || 0;
             const bImpact = jobs[b.jobId]?.impact || 0;
             return bImpact - aImpact;
           }
 
-          // If neither are next tasks, sort by date
-          if (a.date && b.date) {
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
-          }
-
-          // Default fallback for sorting
-          return 0;
+          // For non-next tasks, also sort by impact score
+          const aImpact = jobs[a.jobId]?.impact || 0;
+          const bImpact = jobs[b.jobId]?.impact || 0;
+          return bImpact - aImpact;
         });
         break;
 

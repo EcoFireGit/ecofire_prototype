@@ -2,12 +2,14 @@ import mongoose from "mongoose";
 export enum FocusLevel {
   High = "High",
   Medium = "Medium",
-  Low = "Low"
+  Low = "Low",
+  None = "none"
 }
 export enum JoyLevel {
   High = "High",
   Medium = "Medium",
-  Low = "Low"
+  Low = "Low",
+  None = "none"
 }
 export enum RecurrenceInterval {
   Daily = "daily",
@@ -36,6 +38,8 @@ export interface Task extends mongoose.Document {
   timeElapsed?: string | null;
   isRecurring?: boolean;
   recurrenceInterval?: RecurrenceInterval;
+  myDay?: boolean; // New property to mark task as part of My Day
+  myDayDate?: string; // Date (YYYY-MM-DD) when task was added to My Day
   // nextTask: boolean; // New property to mark task as next
 }
 const TaskSchema = new mongoose.Schema<Task>({
@@ -60,11 +64,13 @@ const TaskSchema = new mongoose.Schema<Task>({
   focusLevel: {
     type: String,
     enum: Object.values(FocusLevel),
+    default: FocusLevel.None,
     required: false,
   },
   joyLevel: {
     type: String,
     enum: Object.values(JoyLevel),
+    default: JoyLevel.None,
     required: false,
   },
   notes: {
@@ -125,6 +131,15 @@ const TaskSchema = new mongoose.Schema<Task>({
     enum: Object.values(RecurrenceInterval),
     required: false,
     default: undefined
+  },
+  myDay: {
+    type: Boolean,
+    default: false,
+    required: false,
+  },
+  myDayDate: {
+    type: String,
+    required: false
   },
 });
 

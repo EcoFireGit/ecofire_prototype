@@ -56,20 +56,91 @@ export class TaskService {
     }
   }
 
+  /**
+   * Migrates tasks for filtering by unassigned.
+   * Only updates fields if they are currently null or do not exist.
+   * This preserves any already-set values.
+   * 
+   * @description
+   * - Connects to the database using dbConnect()
+   * - Sets filter fields to "none" or 0 only if missing/null
+   * - Logs migration progress to console for monitoring
+   * - Runs automatically before fetching tasks to ensure data consistency
+   */
+  async migrateTaskForFilteringByUnassgined(userId: string): Promise<void> {
+    try {
+      await dbConnect();
+      const unassignedValueForFilters = "none";
+      // Find all tasks where at least one field is missing or null
+      const tasksToUpdate = await Task.find({
+        userId,
+        $or: [
+          { owner: { $exists: false } },
+          { owner: null },
+          { focusLevel: { $exists: false } },
+          { focusLevel: null },
+          { joyLevel: { $exists: false } },
+          { joyLevel: null },
+          { tags: { $exists: false } },
+          { tags: null },
+          { requiredHours: { $exists: false } },
+          { requiredHours: null }
+        ]
+      }).lean();
+
+      let count = 0;
+
+      for (const task of tasksToUpdate) {
+        const update: any = {};
+        // Only set each field if currently missing or null
+        if (task.owner === undefined || task.owner === null) {
+          update.owner = unassignedValueForFilters;
+        }
+        if (task.focusLevel === undefined || task.focusLevel === null) {
+          update.focusLevel = unassignedValueForFilters;
+        }
+        if (task.joyLevel === undefined || task.joyLevel === null) {
+          update.joyLevel = unassignedValueForFilters;
+        }
+        if (task.tags === undefined || task.tags === null) {
+          update.tags = unassignedValueForFilters;
+        }
+        if (task.requiredHours === undefined || task.requiredHours === null) {
+          update.requiredHours = 0;
+        }
+        // Only update if there's something to change
+        if (Object.keys(update).length > 0) {
+          await Task.updateOne({ _id: task._id }, { $set: update });
+          count++;
+        }
+      }
+      
+      console.log(`Migrated ${count} tasks with correct filter setting for user ${userId}`);
+
+    }
+    catch (error) {
+      console.error('Error migrating task filter settings:', error);
+      throw error;
+    }
+  }
+
   async getTasksByJobId(
     jobId: string,
     userId: string
   ): Promise<TaskInterface[]> {
     try {
-      await dbConnect();
-      await this.migrateTasksForTimeTracking(userId);
       
+      await dbConnect();
+     
+      await this.migrateTasksForTimeTracking(userId);
+    
       const tasks = await Task.find({
         jobId,
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       // Ensure active tasks never have an endDate or timeElapsed
+
       const sanitizedTasks = tasks.map(task => {
         if (task.completed === false) {
           return { ...task, endDate: null, timeElapsed: null };
@@ -85,6 +156,8 @@ export class TaskService {
   async getTaskById(id: string, userId: string): Promise<TaskInterface | null> {
     try {
       await dbConnect();
+    //  await this.migrateTaskForFilteringByUnassgined(userId);
+
       const task = await Task.findOne({
         _id: id,
         userId,
@@ -140,10 +213,6 @@ export class TaskService {
   ): Promise<TaskInterface | null> {
     try {
       await dbConnect();
-    // If requiredHours is not set or is null, default it to 0
-    // if (updateData.requiredHours === undefined || updateData.requiredHours === null) {
-    //   updateData.requiredHours = 0;
-    // }      
       const updatedTask = await Task.findOneAndUpdate(
         { _id: id, userId },
         { $set: updateData },
@@ -353,6 +422,8 @@ export class TaskService {
     try {
       await dbConnect();
       // Find all tasks for this user that are marked as next tasks
+      await this.migrateTaskForFilteringByUnassgined(userId);
+
       const tasks = await Task.find({
         userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
@@ -402,5 +473,14 @@ export class TaskService {
       console.error("Error updating tasks order:", error);
       throw new Error("Error updating tasks order in database");
     }
+  }
+
+  async resetMyDayForUser(userId: string): Promise<number> {
+    await dbConnect();
+    const result = await Task.updateMany(
+      { userId, myDay: true },
+      { $set: { myDay: false } }
+    );
+    return result.modifiedCount || 0;
   }
 }

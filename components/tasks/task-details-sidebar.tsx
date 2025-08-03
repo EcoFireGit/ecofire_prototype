@@ -20,6 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { 
   Calendar, 
   Clock, 
@@ -39,8 +52,11 @@ import {
   RefreshCcw,
   Tag,
   Edit,
-  ChevronRight
+  ChevronRight,
+  Sun,
+  ChevronsUpDown
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Task, RecurrenceInterval } from "@/components/tasks/types";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -101,12 +117,22 @@ export function TaskDetailsSidebar({
   const [isSaving, setIsSaving] = useState(false);
 
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
+  const [jobComboboxOpen, setJobComboboxOpen] = useState(false);
   const [recurringEdit, setRecurringEdit] = useState<{
     isEditing: boolean;
     interval: RecurrenceInterval | undefined;
   }>({ isEditing: false, interval: undefined });
 
   const { toast } = useToast();
+
+  // Filter jobs based on search term (for combobox)
+  const filteredJobs = Object.entries(jobs)
+    .filter(([id, job]: [string, any]) => !job.isDone);
+
+  // Get the selected job title for display
+  const selectedJobTitle = editingField === 'job' && editingValue && editingValue !== 'none' 
+    ? jobs[editingValue]?.title 
+    : jobInfo?.title;
 
   useEffect(() => {
     const fetchOwners = async () => {
@@ -348,7 +374,7 @@ const cancelEditing = () => {
           updateData.title = editingValue;
           break;
         case 'owner':
-          updateData.owner = editingValue === 'none' ? null : editingValue;
+          updateData.owner = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'date':
           updateData.date = editingValue ? `${editingValue}T00:00:00.000Z` : null;
@@ -357,10 +383,10 @@ const cancelEditing = () => {
           updateData.requiredHours = editingValue ? parseFloat(editingValue) : null;
           break;
         case 'focusLevel':
-          updateData.focusLevel = editingValue === 'none' ? null : editingValue;
+          updateData.focusLevel = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'joyLevel':
-          updateData.joyLevel = editingValue === 'none' ? null : editingValue;
+          updateData.joyLevel = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'notes':
           updateData.notes = editingValue;
@@ -509,6 +535,7 @@ const cancelEditing = () => {
       }));
 
       setEditingValue(newJobId);
+      setJobComboboxOpen(false);
 
       setIsJobDialogOpen(false);
 
@@ -527,12 +554,17 @@ const cancelEditing = () => {
   };
 
   const handleNavigateToJob = () => {
+    console.log('TaskDetailsSidebar handleNavigateToJob called');
+    console.log('jobInfo:', jobInfo);
     if (jobInfo && onNavigateToJob) {
+      console.log('Calling onNavigateToJob with jobId:', jobInfo.id);
       onOpenChange(false);
       
       setTimeout(() => {
         onNavigateToJob(jobInfo.id);
       }, 150);
+    } else {
+      console.log('No jobInfo or onNavigateToJob not provided');
     }
   };
 
@@ -589,7 +621,12 @@ const cancelEditing = () => {
   };
 
   const handleAskJija = (task: TaskDetailsSidebarTask) => {
-    const jijaUrl = `/jija?jobTitle=${encodeURIComponent(task.title)}`;
+    const params = new URLSearchParams();
+    params.set("source", "task");
+    if (task.jobId) params.set("jobId", task.jobId);
+    if (task.title) params.set("jobTitle", task.title);
+    if (task.id) params.set("taskId", task.id);
+    const jijaUrl = `/jija?${params.toString()}`;
     window.location.href = jijaUrl;
   };
 
@@ -706,6 +743,29 @@ const cancelEditing = () => {
 
   const handleTagsChange = (newTags: string[]) => {
     setEditingTags(newTags);
+  };
+
+  const handleToggleMyDay = async () => {
+    if (!taskDetails) return;
+    const today = new Date().toLocaleDateString('en-CA');
+    const value = !taskDetails.myDay;
+    try {
+      const res = await fetch(`/api/tasks/${taskDetails.id}/myday`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myDay: value, myDayDate: value ? today : null }),
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        setTaskDetails({ ...taskDetails, myDay: value, myDayDate: value ? today : undefined });
+        toast({ title: value ? "Added to My Day" : "Removed from My Day" });
+        if (onTaskUpdated) onTaskUpdated(result.data);
+      } else {
+        toast({ title: "Failed to update My Day", description: result.error || "Unknown error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Failed to update My Day", description: (err as Error).message, variant: "destructive" });
+    }
   };
 
   const renderEditableField = (
@@ -897,6 +957,17 @@ const cancelEditing = () => {
       <Check className="h-4 w-4" />
       {taskDetails.completed ? "Mark as incomplete" : "Mark as complete"}
     </Button>
+    {/* My Day Toggle Button */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleToggleMyDay}
+      className={`flex items-center gap-2 ${taskDetails.myDay ? 'bg-gray-200' : ''}`}
+      title={taskDetails.myDay ? "Remove from My Day" : "Add to My Day"}
+    >
+      <Sun className={`h-4 w-4 ${taskDetails.myDay ? 'text-gray-600' : 'text-gray-600'}`} />
+      {taskDetails.myDay ? "Remove from My Day" : "Add to My Day"}
+    </Button>
     
     <Button
       variant="outline"
@@ -1084,31 +1155,59 @@ const cancelEditing = () => {
                     <div className="pl-6">
                       {editingField === 'job' ? (
                         <div className="flex items-center gap-2">
-                          <Select 
-                            value={editingValue} 
-                            onValueChange={(value) => {
-                              if (value === "create") {
-                                setIsJobDialogOpen(true);
-                              } else {
-                                setEditingValue(value);
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No job</SelectItem>
-                              {Object.entries(jobs)
-                                .filter(([id, job]: [string, any]) => !job.isDone)
-                                .map(([id, job]: [string, any]) => (
-                                <SelectItem key={id} value={id}>
-                                  {job.title}
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="create">+ Create New Job</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Popover open={jobComboboxOpen} onOpenChange={setJobComboboxOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={jobComboboxOpen}
+                                className="h-8 text-sm justify-between flex-1"
+                              >
+                                {selectedJobTitle || "Select a job..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                              <Command>
+                                <CommandInput 
+                                  placeholder="Search jobs..." 
+                                />
+                                <CommandList>
+                                  <CommandEmpty>No jobs found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {filteredJobs.map(([id, job]: [string, any]) => (
+                                      <CommandItem
+                                        key={id}
+                                        value={job.title}
+                                        onSelect={(currentValue) => {
+                                          setEditingValue(currentValue === editingValue ? 'none' : id);
+                                          setJobComboboxOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            editingValue === id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {job.title}
+                                      </CommandItem>
+                                    ))}
+                                    <CommandItem
+                                      value="Create New Job"
+                                      onSelect={() => {
+                                        setIsJobDialogOpen(true);
+                                        setJobComboboxOpen(false);
+                                      }}
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Create New Job
+                                    </CommandItem>
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           
                           <Button
                             size="sm"

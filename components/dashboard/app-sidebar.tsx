@@ -56,9 +56,15 @@ import { usePathname } from "next/navigation";
 const items = [
   {
     title: "Jija",
-    url: "/jija",
+    url: "/jija?source=sidepanel",
     icon: PawPrint,
     id: "jija",
+  },
+  {
+    title: "My Notebook",
+    url: "/notebook",
+    icon: Clipboard,
+    id: "notebook",
   },
 ];
 const dashboardItems = [
@@ -307,6 +313,34 @@ export function AppSidebar() {
                 )}
               </Collapsible>
 
+              {/* Jobs */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  size={"lg"}
+                  asChild
+                  className="flex items-center"
+                >
+                  <Link href="/jobs">
+                    <Calendar
+                      className={`${isJobsSectionActive() ? "text-[#F05523]" : ""} ${
+                        !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
+                      }`}
+                    />
+                    <span
+                      className={`${
+                        !isMobile && effectiveState === "collapsed" ? "hidden" : ""
+                      } ${
+                        isJobsSectionActive()
+                          ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
+                          : ""
+                      }`}
+                    >
+                      Jobs
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               {/* Regular menu items */}
               {items.map((item) => {
                 const active = isActive(item.url);
@@ -341,34 +375,6 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
-
-              {/* Jobs */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  size={"lg"}
-                  asChild
-                  className="flex items-center"
-                >
-                  <Link href="/jobs">
-                    <Calendar
-                      className={`${isJobsSectionActive() ? "text-[#F05523]" : ""} ${
-                        !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
-                      }`}
-                    />
-                    <span
-                      className={`${
-                        !isMobile && effectiveState === "collapsed" ? "hidden" : ""
-                      } ${
-                        isJobsSectionActive()
-                          ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
-                          : ""
-                      }`}
-                    >
-                      Jobs
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
 
               {/* Backstage Collapsible Group - Only shown if enabled in preferences */}
               {userPreferences.enableBackstage && (

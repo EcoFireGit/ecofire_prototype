@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
 import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
 import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
 import FilterComponent from "@/components/filters/filter-component";
 import TaskSortingComponent from "@/components/sorting/task-sorting-component";
-import { Plus, PawPrint, Calendar, Briefcase, FileText } from "lucide-react";
+import { Plus, PawPrint, Calendar, Briefcase, FileText, Sun } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,9 @@ import { Task } from "../types";
 
 import type { Jobs } from "@/lib/models/job.model";
 import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
+import MyDayView from "./my-day-view";
+import Split from 'react-split';
+import { DuplicateTaskDialog } from "../duplicate-task-dialog";
 
 // Helper to map API Job to Job type
 function mapJobToSidebarJob(job: any): Job {
@@ -80,6 +83,81 @@ export default function TaskFeedView() {
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
   const [selectedJobForSidebar, setSelectedJobForSidebar] = useState<Job | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
+  // Add state for minimized panes
+  const [mainMinimized, setMainMinimized] = useState(false);
+  const [myDayMinimized, setMyDayMinimized] = useState(false);
+  const [splitSizes, setSplitSizes] = useState([50, 50]);
+  const [showTabs, setShowTabs] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const showTasksTabRef = useRef<HTMLButtonElement>(null);
+  const showMyDayTabRef = useRef<HTMLButtonElement>(null);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
+
+
+  // Handler for Split drag
+  const handleSplitDrag = useCallback((sizes: number[]) => {
+    // Only allow dragging on desktop
+    if (isMobile) return;
+    setSplitSizes(sizes);
+  }, [isMobile]);
+
+  // Handler for Split drag end
+  const handleSplitDragEnd = useCallback((sizes: number[]) => {
+    // Only allow resizing on desktop
+    if (isMobile) return;
+    
+    // If left pane is less than 40%, minimize it
+    if (sizes[0] < 40) {
+      setMainMinimized(true);
+      setMyDayMinimized(false);
+      setSplitSizes([2.8, 100]);
+      setShowTabs(false);
+      // Show tabs after animation completes
+      setTimeout(() => setShowTabs(true), 300);
+    } else if (sizes[1] < 40) {
+      setMainMinimized(false);
+      setMyDayMinimized(true);
+      setSplitSizes([97, 3]);
+      setShowTabs(false);
+      // Show tabs after animation completes
+      setTimeout(() => setShowTabs(true), 300);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes(sizes);
+      setShowTabs(false);
+    }
+  }, [isMobile]);
+
+  // Restore handlers
+  const restoreMain = () => {
+    if (isMobile) {
+      setMainMinimized(false);
+      setMyDayMinimized(true);
+      setSplitSizes([100, 0]);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes([50, 50]);
+      setShowTabs(false);
+    }
+  };
+  const restoreMyDay = () => {
+    if (isMobile) {
+      setMainMinimized(true);
+      setMyDayMinimized(false);
+      setSplitSizes([0, 100]);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes([50, 50]);
+      setShowTabs(false);
+    }
+  };
+
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -212,7 +290,7 @@ export default function TaskFeedView() {
       // Remove any duplicate tasks and filter out completed tasks
       const uniqueTasks = Array.from(
         new Map(allTasks.map((task: any) => [task._id, task])).values(),
-      ).filter((task: any) => task.completed !== true);
+      );
 
       const sortedTasks = sortTasks(uniqueTasks, jobsMap);
 
@@ -231,31 +309,37 @@ export default function TaskFeedView() {
     }
   };
 
-  // Function to sort tasks - next tasks first, ordered by job impact score
+  // Function to sort tasks - earliest do-date first, then next tasks, then impact score
   const sortTasks = (tasks: any[], jobsMap: Record<string, any>) => {
     return [...tasks].sort((a, b) => {
-      // Check if task is a next task
+      // First sort by earliest do-date (ascending - earliest first)
+      if (a.date && b.date) {
+        const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+      } else if (a.date && !b.date) {
+        return -1; // Tasks with dates come before tasks without dates
+      } else if (!a.date && b.date) {
+        return 1;
+      }
+
+      // If dates are the same (or both null), check next task status
       const aIsNextTask = a.jobId && jobsMap[a.jobId]?.nextTaskId === a._id;
       const bIsNextTask = b.jobId && jobsMap[b.jobId]?.nextTaskId === b._id;
 
-      // First sort by next task status
       if (aIsNextTask && !bIsNextTask) return -1;
       if (!aIsNextTask && bIsNextTask) return 1;
 
-      // If both are next tasks, sort by job impact score (higher first)
+      // If both are next tasks (or both are not), sort by job impact score (higher first)
       if (aIsNextTask && bIsNextTask) {
         const aImpact = jobsMap[a.jobId]?.impact || 0;
         const bImpact = jobsMap[b.jobId]?.impact || 0;
         return bImpact - aImpact;
       }
 
-      // If neither are next tasks, sort by date
-      if (a.date && b.date) {
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      }
-
-      // Default fallback for sorting
-      return 0;
+      // For non-next tasks, also sort by impact score
+      const aImpact = jobsMap[a.jobId]?.impact || 0;
+      const bImpact = jobsMap[b.jobId]?.impact || 0;
+      return bImpact - aImpact;
     });
   };
 
@@ -372,29 +456,41 @@ export default function TaskFeedView() {
           case "businessFunctionId":
             if (!job || job.businessFunctionId !== value) matches = false;
             break;
-          case "tags":
-            if (!Array.isArray(value) || value.length === 0) break;
-
-            if (!task.tags || !Array.isArray(task.tags)) {
-              matches = false;
+            case "tags":
+              if (!Array.isArray(value)) break;
+            
+              // If "none" is selected, show only tasks with no tags
+              if (value.includes("none")) {
+                if (task.tags && Array.isArray(task.tags) && task.tags.length > 0) {
+                  matches = false;
+                }
+                // If task.tags is undefined or empty, matches remains true
+                break;
+              }
+            
+              // If nothing is selected, don't filter by tags
+              if (value.length === 0) break;
+            
+              // Otherwise, filter by selected tags
+              if (!task.tags || !Array.isArray(task.tags)) {
+                matches = false;
+                break;
+              }
+            
+              // Convert selected tag IDs to tag names
+              const selectedTagNames = value
+                .map((tagId) => {
+                  const tag = tags.find((t) => t._id === tagId);
+                  return tag ? tag.name : null;
+                })
+                .filter(Boolean);
+            
+              // Check that all selected tag names are present in the task's tags
+              if (!selectedTagNames.every((tagName) => task.tags.includes(tagName))) {
+                matches = false;
+              }
               break;
-            }
-
-            // Convert selected tag IDs to tag names for comparison
-            const selectedTagNames = value
-              .map((tagId) => {
-                const tag = tags.find((t) => t._id === tagId);
-                return tag ? tag.name : null;
-              })
-              .filter(Boolean); // Remove any null values
-
-            // Compare using tag names instead of IDs
-            if (
-              !selectedTagNames.every((tagName) => task.tags.includes(tagName))
-            ) {
-              matches = false;
-            }
-            break;
+            
         }
       });
 
@@ -415,6 +511,36 @@ export default function TaskFeedView() {
     handleFilterChange(activeFilters);
   }, [tasks]);
 
+  // Check for mobile/tablet screens
+  useEffect(() => {
+    const checkScreenSize = () => {
+      // Use more appropriate breakpoints: mobile < 768px, tablet < 1024px
+      const isMobileDevice = window.innerWidth < 768;
+      const isTabletDevice = window.innerWidth < 1024;
+      setIsMobile(isMobileDevice || isTabletDevice);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Set initial state based on screen size
+  useEffect(() => {
+    if (isMobile) {
+      setMainMinimized(false);
+      setMyDayMinimized(true);
+      setSplitSizes([97, 3]);
+      setShowTabs(true);
+    } else {
+      setMainMinimized(false);
+      setMyDayMinimized(false);
+      setSplitSizes([50, 50]);
+      setShowTabs(false);
+    }
+  }, [isMobile]);
+
   // Fetch all necessary data when component mounts
   useEffect(() => {
     fetchData();
@@ -434,106 +560,111 @@ export default function TaskFeedView() {
     };
   }, []);
 
-  // Function to complete a task
-const completeTask = async (jobid: string, id: string) => {
-  try {
-    const response = await fetch(`/api/jobs/${jobid}/tasks/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        completed: true,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      const updatedTaskData = result.data;      
-      // Update local state
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === id
-            ? {
-                ...task,
-                completed: updatedTaskData.completed,
-                endDate: updatedTaskData.endDate,
-                timeElapsed: updatedTaskData.timeElapsed,
-              }
-            : task,
-        ),
-      );
-
-      // Also update filtered tasks
-      setFilteredTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === id
-            ? {
-                ...task,
-                completed: updatedTaskData.completed,
-                endDate: updatedTaskData.endDate,
-                timeElapsed: updatedTaskData.timeElapsed,
-              }
-            : task,
-        ),
-      );
-      setSortedTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === id
-            ? {
-                ...task,
-                completed: updatedTaskData.completed,
-                endDate: updatedTaskData.endDate,
-                timeElapsed: updatedTaskData.timeElapsed,
-              }
-            : task,
-        ),
-      );
-
-      // Filter out the task after a brief delay
-      setTimeout(() => {
-        setTasks((prevTasks) => prevTasks.filter((task) => task._id !== id));
-        setFilteredTasks((prevTasks) =>
-          prevTasks.filter((task) => task._id !== id),
-        );
-        setSortedTasks((prevTasks) =>
-          prevTasks.filter((task) => task._id !== id),
-        );
-      }, 500);
-      setTimeout(() => {
-        fetchData();
-      }, 1000);
-
-      toast({
-        title: "Task completed",
-        description: "Great job!",
-      });
-    } else {
-      throw new Error(result.error || "Failed to update task");
-    }
-  } catch (error) {
-    console.error("Error completing task:", error);
-    toast({
-      title: "Error",
-      description: "Failed to complete task",
-      variant: "destructive",
-    });
-  }
-};
-
-  // Handle checkbox change
   const handleCompleteTask = (id: string, completed: boolean) => {
     if (completed) {
-      // Find the task title for the confirmation dialog
-      const task = tasks.find((t) => t._id === id);
+      const task = tasks.find((t) => t._id === id || t.id === id);
       if (task) {
         setTaskToComplete({ id, jobId: task.jobId, title: task.title });
         setCompleteDialogOpen(true);
       }
     } else {
-      // Reopening a task doesn't need confirmation
-      reopenTask(id);
+      handleCompleteTaskConfirmed(id, false);
+    }
+  };
+
+  const handleCompleteTaskConfirmed = async (id: string, completed: boolean) => {
+    let removedTask: any = null;
+    setTasks((prevTasks) => {
+      if (completed) {
+        removedTask = prevTasks.find((task) => task._id === id || task.id === id);
+        return prevTasks.filter((task) => task._id !== id && task.id !== id);
+      } else {
+        return prevTasks.map((task) =>
+          (task._id === id || task.id === id)
+            ? { ...task, completed }
+            : task
+        );
+      }
+    });
+    setFilteredTasks((prevTasks) => {
+      if (completed) {
+        return prevTasks.filter((task) => task._id !== id && task.id !== id);
+      } else {
+        return prevTasks.map((task) =>
+          (task._id === id || task.id === id)
+            ? { ...task, completed }
+            : task
+        );
+      }
+    });
+    setSortedTasks((prevTasks) => {
+      if (completed) {
+        return prevTasks.filter((task) => task._id !== id && task.id !== id);
+      } else {
+        return prevTasks.map((task) =>
+          (task._id === id || task.id === id)
+            ? { ...task, completed }
+            : task
+        );
+      }
+    });
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          completed,
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update task");
+      }
+      toast({
+        title: completed ? "Task completed" : "Task reopened",
+        description: completed ? "Great job!" : "Task has been reopened",
+      });
+    } catch (error) {
+      setTasks((prevTasks) => {
+        if (completed && removedTask) {
+          return [removedTask, ...prevTasks];
+        } else {
+          return prevTasks.map((task) =>
+            (task._id === id || task.id === id)
+              ? { ...task, completed: !completed }
+              : task
+          );
+        }
+      });
+      setFilteredTasks((prevTasks) => {
+        if (completed && removedTask) {
+          return [removedTask, ...prevTasks];
+        } else {
+          return prevTasks.map((task) =>
+            (task._id === id || task.id === id)
+              ? { ...task, completed: !completed }
+              : task
+          );
+        }
+      });
+      setSortedTasks((prevTasks) => {
+        if (completed && removedTask) {
+          return [removedTask, ...prevTasks];
+        } else {
+          return prevTasks.map((task) =>
+            (task._id === id || task.id === id)
+              ? { ...task, completed: !completed }
+              : task
+          );
+        }
+      });
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive",
+      });
     }
   };
 
@@ -704,6 +835,57 @@ const completeTask = async (jobid: string, id: string) => {
       });
     }
   };
+
+  // Handler to add/remove task from My Day
+  const handleToggleMyDay = async (task: Task, value: boolean) => {
+    const taskId = task.id || (task as any)._id;
+    if (!taskId) {
+      toast({ title: "Task ID missing", description: "Cannot update My Day for a task without an ID.", variant: "destructive" });
+      return;
+    }
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/myday`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myDay: value, myDayDate: value ? today : null }),
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        setTasks((prev) => prev.map((t) => ((t.id || (t as any)._id) === taskId ? { ...t, myDay: value, myDayDate: value ? today : undefined } : t)));
+      } else {
+        toast({ title: "Failed to update My Day", description: result.error || "Unknown error", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Failed to update My Day", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
+  // On My Day page load, auto-reset tasks whose myDayDate !== today
+  useEffect(() => {
+    const today = new Date().toLocaleDateString('en-CA');
+    const expiredMyDayTasks = tasks.filter(t => t.myDay && t.myDayDate !== today);
+    if (expiredMyDayTasks.length > 0) {
+      // For each expired task, set myDay: false
+      Promise.all(expiredMyDayTasks.map(t =>
+        fetch(`/api/tasks/${t.id || t._id}/myday`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ myDay: false, myDayDate: null }),
+        })
+      )).then(() => {
+        // Refresh tasks after clearing
+        fetchData();
+      });
+    }
+  }, [tasks]);
+
+  // Filter tasks for My Day (include completed, sort incomplete first)
+  const myDayTasks = tasks
+    .filter((t) => t.myDay)
+    .sort((a, b) => Number(a.completed) - Number(b.completed));
+  // Filter tasks for main feed (not in My Day, not completed)
+  const mainFeedTasks = filteredTasks.filter((t) => !t.myDay && !t.completed);
 
   const handleAddTask = () => {
     setDialogMode("create");
@@ -968,116 +1150,445 @@ const completeTask = async (jobid: string, id: string) => {
   };
 
   return (
-    <div className="p-4 w-full">
-      <div className="flex gap-2">
-        <div className="w-full max-w-none">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Tasks</h1>
-
-            {/* Add the FilterComponent and TaskSortingComponent at the top */}
-
-            <div className="mb-4">
-              <Button onClick={handleAddTask}>
-                <Plus className="mr-2 h-4 w-4" /> Create Task
-              </Button>
-            </div>
-          </div>
+  <>
+    <TaskDetailsSidebar
+      open={taskDetailsSidebarOpen}
+      onOpenChange={setTaskDetailsSidebarOpen}
+      selectedTask={selectedTaskForDetails}
+      onTaskUpdated={handleTaskUpdated}
+      onNavigateToJob={handleNavigateToJob}
+      onDeleteTask={handleDeleteTask}
+    />
+    <div className="h-full w-full flex flex-col overflow-hidden">
+      {/* Mobile/Tablet Tab Navigation */}
+      {isMobile && (
+        <div className="flex border-b border-gray-200 bg-white shrink-0">
+          <button
+            onClick={() => {
+              setMainMinimized(false);
+              setMyDayMinimized(true);
+              setSplitSizes([97, 3]);
+            }}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              !mainMinimized && myDayMinimized
+                ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            All Tasks
+          </button>
+          <button
+            onClick={() => {
+              setMainMinimized(true);
+              setMyDayMinimized(false);
+              setSplitSizes([0, 100]);
+            }}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              mainMinimized && !myDayMinimized
+                ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            My Day
+          </button>
         </div>
-      </div>
+      )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-        <FilterComponent
-          onFilterChange={handleFilterChange}
-          businessFunctions={businessFunctions}
-          owners={owners}
-          tags={tags}
-          initialFilters={activeFilters}
-        />
-
-        <TaskSortingComponent
-          onSortChange={handleSortChange}
-          tasks={filteredTasks}
-          jobs={jobs}
-        />
-      </div>
-
-      <div className="grid gap-6 mt-4">
-        <div className="w-full">
-          <NextTasks
-            tasks={sortedTasks}
-            jobs={jobs}
-            onComplete={handleCompleteTask}
-            onViewTask={handleViewTask}
-            onAddToCalendar={handleAddToCalendar}
-            ownerMap={ownerMap}
-            loading={loading}
-            onEditTask={handleEditTask}
-            onDeleteTask={handleDeleteTask}
-            businessFunctionMap={businessFunctionMap}
-            isNextTask={isNextTask}
+      {/* Main Content Container */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        {isMobile ? (
+          /* Mobile/Tablet Layout - Single Panel */
+          <div className="h-full overflow-auto">
+            {!mainMinimized && myDayMinimized && (
+              <div className="p-4 h-full">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-2">
+                  <h2 className="text-xl sm:text-2xl font-bold">All Tasks</h2>
+                  <Button onClick={handleAddTask} className="shrink-0">
+                    <Plus className="mr-2 h-4 w-4" /> Create Task
+                  </Button>
+                </div>
+                <div className="flex flex-col space-y-4 mb-4">
+                  <FilterComponent
+                    onFilterChange={handleFilterChange}
+                    businessFunctions={businessFunctions}
+                    owners={owners}
+                    tags={tags}
+                    initialFilters={activeFilters}
+                  />
+                  <TaskSortingComponent
+                    onSortChange={handleSortChange}
+                    tasks={filteredTasks}
+                    jobs={jobs}
+                  />
+                </div>
+                <NextTasks
+                  tasks={mainFeedTasks}
+                  jobs={jobs}
+                  onComplete={handleCompleteTask}
+                  onViewTask={handleViewTask}
+                  onAddToCalendar={handleAddToCalendar}
+                  ownerMap={ownerMap}
+                  businessFunctionMap={businessFunctionMap}
+                  loading={loading}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteTask}
+                  isNextTask={isNextTask}
+                  onToggleMyDay={handleToggleMyDay}
+                  onDuplicate={(task) => {
+                    setTaskToDuplicate({ ...task, id: task.id || task._id });
+                    setDuplicateDialogOpen(true);
+                  }}
+                />
+              </div>
+            )}
+            {mainMinimized && !myDayMinimized && (
+              <div className="p-4 h-full">
+                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                  <Sun className="h-5 w-5 text-orange-500" />
+                  My Day
+                </h2>
+                <MyDayView
+                  tasks={myDayTasks}
+                  onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
+                  onComplete={async (id, completed) => {
+                    setTasks((prevTasks) =>
+                      prevTasks.map((task) =>
+                        (task._id === id || task.id === id)
+                          ? { ...task, completed }
+                          : task
+                      )
+                    );
+                    setFilteredTasks((prevTasks) =>
+                      prevTasks.map((task) =>
+                        (task._id === id || task.id === id)
+                          ? { ...task, completed }
+                          : task
+                      )
+                    );
+                    setSortedTasks((prevTasks) =>
+                      prevTasks.map((task) =>
+                        (task._id === id || task.id === id)
+                          ? { ...task, completed }
+                          : task
+                      )
+                    );
+                    try {
+                      const response = await fetch(`/api/tasks/${id}/myday`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
+                      });
+                      const result = await response.json();
+                      if (!result.success) {
+                        throw new Error(result.error || "Failed to update task");
+                      }
+                      toast({
+                        title: completed ? "Task completed" : "Task reopened",
+                        description: completed ? "Great job!" : "Task has been reopened",
+                      });
+                      fetchData();
+                    } catch (error) {
+                      setTasks((prevTasks) =>
+                        prevTasks.map((task) =>
+                          (task._id === id || task.id === id)
+                            ? { ...task, completed: !completed }
+                            : task
+                        )
+                      );
+                      setFilteredTasks((prevTasks) =>
+                        prevTasks.map((task) =>
+                          (task._id === id || task.id === id)
+                            ? { ...task, completed: !completed }
+                            : task
+                        )
+                      );
+                      setSortedTasks((prevTasks) =>
+                        prevTasks.map((task) =>
+                          (task._id === id || task.id === id)
+                            ? { ...task, completed: !completed }
+                            : task
+                        )
+                      );
+                      toast({
+                        title: "Error",
+                        description: "Failed to update task",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  onViewTask={handleViewTask}
+                  jobs={jobs}
+                  ownerMap={ownerMap}
+                  businessFunctionMap={businessFunctionMap}
+                  isNextTask={isNextTask}
+                  onDeleteTask={handleDeleteTask}
+                  onAddToCalendar={handleAddToCalendar}
+                  onDuplicate={(task) => {
+              setTaskToDuplicate({ ...task, id: task.id || task._id });
+              setDuplicateDialogOpen(true);
+            }}
           />
-        </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Desktop Layout - Split Panels */
+          <div className="h-full relative" ref={splitContainerRef}>
+            {/* Show All Tasks tab when main is minimized - positioned at left edge */}
+            {!isMobile && mainMinimized && showTabs && (
+              <button
+                ref={showTasksTabRef}
+                onClick={restoreMain}
+                className="absolute bg-orange-600 text-white px-3 py-2 rounded-l-lg shadow-lg font-semibold text-xs rotate-180 origin-top-left hover:bg-orange-700 transition"
+                style={{ 
+                  writingMode: 'vertical-rl', 
+                  textOrientation: 'mixed',
+                  left: '0px',
+                  top: '70px',
+                  transform: 'translateY(-50%)',
+                  zIndex: 20
+                }}
+                aria-label="Show Tasks"
+              >
+                Show All Tasks
+              </button>
+            )}
+            
+            {/* Show My Day tab when My Day is minimized - positioned with gap from right edge */}
+            {!isMobile && myDayMinimized && !mainMinimized && showTabs && (
+              <button
+                ref={showMyDayTabRef}
+                onClick={restoreMyDay}
+                className="absolute bg-orange-600 text-white px-3 py-2 rounded-r-lg shadow-lg font-semibold text-xs origin-top-right hover:bg-orange-700 transition"
+                style={{ 
+                  writingMode: 'vertical-lr', 
+                  textOrientation: 'mixed',
+                  right: '8px',
+                  top: '70px',
+                  transform: 'translateY(-50%)',
+                  zIndex: 20
+                }}
+                aria-label="Show My Day"
+              >
+                <span>Show My Day</span>
+              </button>
+            )}
+            
+            <Split
+              className="h-full flex"
+              minSize={[mainMinimized ? 0 : 300, myDayMinimized ? 0 : 300]}
+              sizes={splitSizes}
+              gutterSize={8}
+              direction="horizontal"
+              onDrag={handleSplitDrag}
+              onDragEnd={handleSplitDragEnd}
+            >
+              <div className={`${mainMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"} h-full overflow-auto relative`}>
+                {!mainMinimized && (
+                  <div className="p-4">
+                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-2">
+                      <h2 className="text-2xl font-bold">All Tasks</h2>
+                      <Button onClick={handleAddTask} className="shrink-0">
+                        <Plus className="mr-2 h-4 w-4" /> Create Task
+                      </Button>
+                    </div>
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
+                      <FilterComponent
+                        onFilterChange={handleFilterChange}
+                        businessFunctions={businessFunctions}
+                        owners={owners}
+                        tags={tags}
+                        initialFilters={activeFilters}
+                      />
+                      <TaskSortingComponent
+                        onSortChange={handleSortChange}
+                        tasks={filteredTasks}
+                        jobs={jobs}
+                      />
+                    </div>
+                    <NextTasks
+                      tasks={mainFeedTasks}
+                      jobs={jobs}
+                      onComplete={handleCompleteTask}
+                      onViewTask={handleViewTask}
+                      onAddToCalendar={handleAddToCalendar}
+                      ownerMap={ownerMap}
+                      businessFunctionMap={businessFunctionMap}
+                      loading={loading}
+                      onEditTask={handleEditTask}
+                      onDeleteTask={handleDeleteTask}
+                      isNextTask={isNextTask}
+                      onToggleMyDay={handleToggleMyDay}
+                      onDuplicate={(task) => {
+                        setTaskToDuplicate({ ...task, id: task.id || task._id });
+                        setDuplicateDialogOpen(true);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className={`${myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"} h-full overflow-auto relative`}>
+                {!myDayMinimized && (
+                  <div className="p-4">
+                    <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+                      <Sun className="h-5 w-5 text-orange-500" />
+                      My Day
+                    </h2>
+                    <MyDayView
+                      tasks={myDayTasks}
+                      onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
+                      onComplete={async (id, completed) => {
+                        setTasks((prevTasks) =>
+                          prevTasks.map((task) =>
+                            (task._id === id || task.id === id)
+                              ? { ...task, completed }
+                              : task
+                          )
+                        );
+                        setFilteredTasks((prevTasks) =>
+                          prevTasks.map((task) =>
+                            (task._id === id || task.id === id)
+                              ? { ...task, completed }
+                              : task
+                          )
+                        );
+                        setSortedTasks((prevTasks) =>
+                          prevTasks.map((task) =>
+                            (task._id === id || task.id === id)
+                              ? { ...task, completed }
+                              : task
+                          )
+                        );
+                        try {
+                          const response = await fetch(`/api/tasks/${id}/myday`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ myDay: false, myDayDate: null, completed: true }),
+                          });
+                          const result = await response.json();
+                          if (!result.success) {
+                            throw new Error(result.error || "Failed to update task");
+                          }
+                          toast({
+                            title: completed ? "Task completed" : "Task reopened",
+                            description: completed ? "Great job!" : "Task has been reopened",
+                          });
+                          fetchData();
+                        } catch (error) {
+                          setTasks((prevTasks) =>
+                            prevTasks.map((task) =>
+                              (task._id === id || task.id === id)
+                                ? { ...task, completed: !completed }
+                                : task
+                            )
+                          );
+                          setFilteredTasks((prevTasks) =>
+                            prevTasks.map((task) =>
+                              (task._id === id || task.id === id)
+                                ? { ...task, completed: !completed }
+                                : task
+                            )
+                          );
+                          setSortedTasks((prevTasks) =>
+                            prevTasks.map((task) =>
+                              (task._id === id || task.id === id)
+                                ? { ...task, completed: !completed }
+                                : task
+                            )
+                          );
+                          toast({
+                            title: "Error",
+                            description: "Failed to update task",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      onViewTask={handleViewTask}
+                      jobs={jobs}
+                      ownerMap={ownerMap}
+                      businessFunctionMap={businessFunctionMap}
+                      isNextTask={isNextTask}
+                      onDeleteTask={handleDeleteTask}
+                      onAddToCalendar={handleAddToCalendar}
+                      onDuplicate={(task) => {
+                        setTaskToDuplicate({ ...task, id: task.id || task._id });
+                        setDuplicateDialogOpen(true);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </Split>
+          </div>
+        )}
       </div>
+    </div>
+    {/* Task Completion Confirmation Dialog */}
+    <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Complete Task</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to mark this task as complete?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="font-medium">{taskToComplete?.title}</p>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setCompleteDialogOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (taskToComplete) {
+                handleCompleteTaskConfirmed(taskToComplete.id, true);
+                setCompleteDialogOpen(false);
+              }
+            }}
+          >
+            Complete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
-      {/* Task Dialog - Always render with proper mode and data */}
-      <TaskDialog
-        mode={dialogMode}
-        open={taskDialogOpen}
-        onOpenChange={setTaskDialogOpen}
-        onSubmit={handleTaskSubmit}
-        initialData={editingTask}
-        jobs={jobs} // Pass the jobs object to TaskDialog
-        jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
+      {/* Duplicate Task Dialog */}
+      <DuplicateTaskDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        sourceTask={taskToDuplicate as Task}
+        onSubmit={async (newTask) => {
+          setDuplicateDialogOpen(false);
+          setTaskToDuplicate(null);
+          await fetchData();
+        }}
       />
-
-      {/* Task Details Sidebar - NEW */}
-      <TaskDetailsSidebar
-        open={taskDetailsSidebarOpen}
-        onOpenChange={setTaskDetailsSidebarOpen}
-        selectedTask={selectedTaskForDetails}
-        onTaskUpdated={handleTaskUpdated}
-        onDeleteTask={handleDeleteTask}
-        onNavigateToJob={handleNavigateToJob}
-      />
+    <TaskDialog
+      mode={dialogMode}
+      open={taskDialogOpen}
+      onOpenChange={setTaskDialogOpen}
+      onSubmit={handleTaskSubmit}
+      initialData={editingTask}
+      jobs={jobs}
+      jobId={dialogMode === 'create' ? selectedJobForSidebar?.id : undefined}
+    />
+    {/* Render the TasksSidebar */}
+    {tasksSidebarOpen && selectedJobForSidebar && (
       <TasksSidebar
         open={tasksSidebarOpen}
         onOpenChange={setTasksSidebarOpen}
         selectedJob={selectedJobForSidebar}
         jobs={jobs}
+        onRefreshJobs={fetchData}
+        onTaskCreated={handleTaskUpdated}
+        onTaskUpdated={handleTaskUpdated}
+        onTaskDeleted={handleDeleteTask}
       />
-
-      {/* Task Completion Confirmation Dialog */}
-      <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Complete Task</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to mark this task as complete?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="font-medium">{taskToComplete?.title}</p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCompleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (taskToComplete) {
-                  completeTask(taskToComplete.jobId, taskToComplete.id);
-                  setCompleteDialogOpen(false);
-                }
-              }}
-            >
-              Complete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+    )}
+  </>
+);
 }
