@@ -288,7 +288,7 @@ export default function Dashboard() {
         </section>
 
         {/* Top 5 Recommended Jobs */}
-        <section className="w-full max-w-none" style={{ minWidth: "100%" }}>
+        {/* <section className="w-full max-w-none" style={{ minWidth: "100%" }}>
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold">Top Impactful Jobs</h2>
             <Button
@@ -419,7 +419,7 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-        </section>
+        </section> */}
       </div>
     </div>
   );

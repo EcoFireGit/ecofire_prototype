@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface MappingData {
   jobs: Array<{
@@ -59,7 +59,11 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     enableTableView: false,
   });
   const [activeTab, setActiveTab] = useState("job-outcome");
-  const [sortOrder, setSortOrder] = useState<"high-to-low" | "low-to-high">("high-to-low");
+  const [expandedCharts, setExpandedCharts] = useState({
+    jobOutcome: false,
+    jobOutput: false,
+    outputOutcome: false,
+  });
   const { toast } = useToast();
 
   const fetchUserPreferences = async () => {
@@ -113,10 +117,15 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     }
   };
 
+  const toggleChartExpansion = (chartType: 'jobOutcome' | 'jobOutput' | 'outputOutcome') => {
+    setExpandedCharts(prev => ({
+      ...prev,
+      [chartType]: !prev[chartType]
+    }));
+  };
+
   const renderJobOutcomeChart = () => {
     if (!mappingData) return null;
-
-
 
     // First, calculate the total impact for each outcome across ALL jobs
     const totalOutcomeImpact = new Map<string, number>();
@@ -171,8 +180,6 @@ const MappingChart: React.FC<MappingChartProps> = () => {
         .map(([name, value]) => {
           const percentage = (totalOutcomeImpact.get(name) || 0) > 0 ? (value / (totalOutcomeImpact.get(name) || 1)) * 100 : 0;
           
-          
-          
           return {
             name,
             value,
@@ -200,37 +207,40 @@ const MappingChart: React.FC<MappingChartProps> = () => {
         totalImpact: totalImpactPercentage
       };
     }).filter(job => job.outcomes.length > 0)
-    .sort((a, b) => {
-      if (sortOrder === "high-to-low") {
-        return b.totalImpact - a.totalImpact;
-      } else {
-        return a.totalImpact - b.totalImpact;
-      }
-    });
+    .sort((a, b) => b.totalImpact - a.totalImpact); // Always sort high-to-low by default
+
+    const displayData = expandedCharts.jobOutcome ? jobOutcomeData : jobOutcomeData.slice(0, 5);
+    const hasMoreItems = jobOutcomeData.length > 5;
 
     return (
       <div className="space-y-4">
-        {jobOutcomeData.map((job, index) => (
+        {displayData.map((job, index) => (
           <div key={index} className="border rounded-lg p-4 bg-white">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900">{job.jobName}</h4>
-              <span className="text-sm text-gray-500">Total Impact: {job.totalImpact.toFixed(1)}%</span>
+              <span className="text-sm text-gray-500">Total Mission Impact: {job.totalImpact.toFixed(1)}%</span>
             </div>
             
-            <div className="relative h-8 bg-gray-200 rounded overflow-hidden">
+            <div className="relative h-5 bg-gray-200 rounded-full overflow-hidden">
               {job.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-blue-600', 'bg-green-600', 'bg-purple-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
+                const colors = ['bg-blue-600', 'bg-green-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
                 const color = colors[outcomeIndex % colors.length];
+                const isFirst = outcomeIndex === 0;
+                const isLast = outcomeIndex === job.outcomes.length - 1;
                 
                 return (
                   <div
                     key={outcomeIndex}
-                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer`}
+                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer ${
+                      isFirst ? 'rounded-l-full' : ''
+                    } ${
+                      isLast ? 'rounded-r-full' : ''
+                    }`}
                     style={{
                       left: `${job.outcomes.slice(0, outcomeIndex).reduce((sum, o) => sum + o.percentage, 0)}%`,
                       width: `${outcome.percentage}%`
                     }}
-                    title={`${outcome.name}: ${outcome.value.toFixed(1)} (${outcome.percentage.toFixed(1)}%)`}
+                    title={`This job contributes ${outcome.percentage.toFixed(1)}% of total impact on the outcome, ${outcome.name}`}
                   />
                 );
               })}
@@ -238,20 +248,41 @@ const MappingChart: React.FC<MappingChartProps> = () => {
             
             <div className="mt-2 flex flex-wrap gap-2">
               {job.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-blue-600', 'bg-green-600', 'bg-purple-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
+                const colors = ['bg-blue-600', 'bg-green-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
                 const color = colors[outcomeIndex % colors.length];
                 
                 return (
                   <div key={outcomeIndex} className="flex items-center text-xs">
                     <div className={`w-3 h-3 ${color} rounded mr-1`}></div>
                     <span className="text-gray-600">{outcome.name}</span>
-                    <span className="text-gray-400 ml-1">({outcome.percentage.toFixed(1)}%)</span>
                   </div>
                 );
               })}
             </div>
           </div>
         ))}
+        
+        {hasMoreItems && (
+          <div className="flex justify-center mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => toggleChartExpansion('jobOutcome')}
+              className="flex items-center gap-2"
+            >
+              {expandedCharts.jobOutcome ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  View More ({jobOutcomeData.length - 5} more)
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     );
   };
@@ -363,37 +394,40 @@ const MappingChart: React.FC<MappingChartProps> = () => {
         totalImpact: totalImpactPercentage
       };
     }).filter(job => job.outputs.length > 0)
-    .sort((a, b) => {
-      if (sortOrder === "high-to-low") {
-        return b.totalImpact - a.totalImpact;
-      } else {
-        return a.totalImpact - b.totalImpact;
-      }
-    });
+    .sort((a, b) => b.totalImpact - a.totalImpact); // Always sort high-to-low by default
+
+    const displayData = expandedCharts.jobOutput ? jobOutputData : jobOutputData.slice(0, 5);
+    const hasMoreItems = jobOutputData.length > 5;
 
     return (
       <div className="space-y-4">
-        {jobOutputData.map((job, index) => (
+        {displayData.map((job, index) => (
           <div key={index} className="border rounded-lg p-4 bg-white">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900">{job.jobName}</h4>
-              <span className="text-sm text-gray-500">Total Impact: {job.totalImpact.toFixed(1)}%</span>
+              <span className="text-sm text-gray-500">Total Mission Impact: {job.totalImpact.toFixed(1)}%</span>
             </div>
             
-            <div className="relative h-8 bg-gray-200 rounded overflow-hidden">
+            <div className="relative h-5 bg-gray-200 rounded-full overflow-hidden">
               {job.outputs.map((output, outputIndex) => {
-                const colors = ['bg-green-600', 'bg-blue-600', 'bg-purple-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
+                const colors = ['bg-green-600', 'bg-blue-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
                 const color = colors[outputIndex % colors.length];
+                const isFirst = outputIndex === 0;
+                const isLast = outputIndex === job.outputs.length - 1;
                 
                 return (
                   <div
                     key={outputIndex}
-                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer`}
+                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer ${
+                      isFirst ? 'rounded-l-full' : ''
+                    } ${
+                      isLast ? 'rounded-r-full' : ''
+                    }`}
                     style={{
                       left: `${job.outputs.slice(0, outputIndex).reduce((sum, o) => sum + o.percentage, 0)}%`,
                       width: `${output.percentage}%`
                     }}
-                    title={`${output.name}: ${output.impactValue.toFixed(1)} (${output.percentage.toFixed(1)}%)`}
+                    title={`This job contributes ${output.percentage.toFixed(1)}% of total impact on the output, ${output.name}`}
                   />
                 );
               })}
@@ -401,20 +435,41 @@ const MappingChart: React.FC<MappingChartProps> = () => {
             
             <div className="mt-2 flex flex-wrap gap-2">
               {job.outputs.map((output, outputIndex) => {
-                const colors = ['bg-green-600', 'bg-blue-600', 'bg-purple-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
+                const colors = ['bg-green-600', 'bg-blue-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
                 const color = colors[outputIndex % colors.length];
                 
                 return (
                   <div key={outputIndex} className="flex items-center text-xs">
                     <div className={`w-3 h-3 ${color} rounded mr-1`}></div>
                     <span className="text-gray-600">{output.name}</span>
-                    <span className="text-gray-400 ml-1">({output.percentage.toFixed(1)}%)</span>
                   </div>
                 );
               })}
             </div>
           </div>
         ))}
+        
+        {hasMoreItems && (
+          <div className="flex justify-center mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => toggleChartExpansion('jobOutput')}
+              className="flex items-center gap-2"
+            >
+              {expandedCharts.jobOutput ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  View More ({jobOutputData.length - 5} more)
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     );
   };
@@ -478,37 +533,40 @@ const MappingChart: React.FC<MappingChartProps> = () => {
         totalImpact: totalImpactPercentage
       };
     }).filter(output => output.outcomes.length > 0)
-    .sort((a, b) => {
-      if (sortOrder === "high-to-low") {
-        return b.totalImpact - a.totalImpact;
-      } else {
-        return a.totalImpact - b.totalImpact;
-      }
-    });
+    .sort((a, b) => b.totalImpact - a.totalImpact); // Always sort high-to-low by default
+
+    const displayData = expandedCharts.outputOutcome ? outputOutcomeData : outputOutcomeData.slice(0, 5);
+    const hasMoreItems = outputOutcomeData.length > 5;
 
     return (
       <div className="space-y-4">
-        {outputOutcomeData.map((output, index) => (
+        {displayData.map((output, index) => (
           <div key={index} className="border rounded-lg p-4 bg-white">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900">{output.outputName}</h4>
-              <span className="text-sm text-gray-500">Total Impact: {output.totalImpact.toFixed(1)}%</span>
+              <span className="text-sm text-gray-500">Total Mission Impact: {output.totalImpact.toFixed(1)}%</span>
             </div>
             
-            <div className="relative h-8 bg-gray-200 rounded overflow-hidden">
+            <div className="relative h-5 bg-gray-200 rounded-full overflow-hidden">
               {output.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-purple-600', 'bg-blue-600', 'bg-green-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
+                const colors = ['bg-yellow-500', 'bg-blue-600', 'bg-green-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
                 const color = colors[outcomeIndex % colors.length];
+                const isFirst = outcomeIndex === 0;
+                const isLast = outcomeIndex === output.outcomes.length - 1;
                 
                 return (
                   <div
                     key={outcomeIndex}
-                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer`}
+                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer ${
+                      isFirst ? 'rounded-l-full' : ''
+                    } ${
+                      isLast ? 'rounded-r-full' : ''
+                    }`}
                     style={{
                       left: `${output.outcomes.slice(0, outcomeIndex).reduce((sum, o) => sum + o.percentage, 0)}%`,
                       width: `${outcome.percentage}%`
                     }}
-                    title={`${outcome.name}: ${outcome.impact.toFixed(1)} (${outcome.percentage.toFixed(1)}%)`}
+                    title={`This output contributes ${outcome.percentage.toFixed(1)}% of total impact on the outcome, ${outcome.name}`}
                   />
                 );
               })}
@@ -516,20 +574,41 @@ const MappingChart: React.FC<MappingChartProps> = () => {
             
             <div className="mt-2 flex flex-wrap gap-2">
               {output.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-purple-600', 'bg-blue-600', 'bg-green-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
+                const colors = ['bg-yellow-500', 'bg-blue-600', 'bg-green-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
                 const color = colors[outcomeIndex % colors.length];
                 
                 return (
                   <div key={outcomeIndex} className="flex items-center text-xs">
                     <div className={`w-3 h-3 ${color} rounded mr-1`}></div>
                     <span className="text-gray-600">{outcome.name}</span>
-                    <span className="text-gray-400 ml-1">({outcome.percentage.toFixed(1)}%)</span>
                   </div>
                 );
               })}
             </div>
           </div>
         ))}
+        
+        {hasMoreItems && (
+          <div className="flex justify-center mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => toggleChartExpansion('outputOutcome')}
+              className="flex items-center gap-2"
+            >
+              {expandedCharts.outputOutcome ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  View More ({outputOutcomeData.length - 5} more)
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     );
   };
@@ -583,76 +662,41 @@ const MappingChart: React.FC<MappingChartProps> = () => {
       <CardHeader>
         <CardTitle>{userPreferences.enableBackstage ? "Job-Output-Outcome Mapping" : "Job-Outcome Mapping"}</CardTitle>
       </CardHeader>
-              <CardContent>
-          <Tabs defaultValue="job-outcome" className="w-full" onValueChange={setActiveTab}>
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-                <TabsTrigger value="job-outcome" className="px-4 py-2">Job → Outcome</TabsTrigger>
-                {userPreferences.enableBackstage && (
-                  <>
-                    <TabsTrigger value="job-output" className="px-4 py-2">Job → Output</TabsTrigger>
-                    <TabsTrigger value="output-outcome" className="px-4 py-2">Output → Outcome</TabsTrigger>
-                  </>
-                )}
-              </TabsList>
+      <CardContent>
+        <Tabs defaultValue="job-outcome" className="w-full" onValueChange={setActiveTab}>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+              <TabsTrigger value="job-outcome" className="px-4 py-2">Job → Outcome</TabsTrigger>
+              {userPreferences.enableBackstage && (
+                <>
+                  <TabsTrigger value="job-output" className="px-4 py-2">Job → Output</TabsTrigger>
+                  <TabsTrigger value="output-outcome" className="px-4 py-2">Output → Outcome</TabsTrigger>
+                </>
+              )}
+            </TabsList>
+          </div>
+          
+          <div className="mt-4 text-sm text-gray-600">
+            <p>{getTabDescription(activeTab)}</p>
+          </div>
+          
+          <TabsContent value="job-outcome" className="mt-6">
+            {renderJobOutcomeChart()}
+          </TabsContent>
+          
+          {userPreferences.enableBackstage && (
+            <>
+              <TabsContent value="job-output" className="mt-6">
+                {renderJobOutputChart()}
+              </TabsContent>
               
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground mr-2">Sort by:</span>
-                <Select
-                  value={sortOrder}
-                  onValueChange={(value: "high-to-low" | "low-to-high") => setSortOrder(value)}
-                >
-                  <SelectTrigger className="w-[220px] h-9">
-                    <SelectValue>
-                      <div className="flex items-center">
-                        {sortOrder === "high-to-low" ? (
-                          <ArrowUp className="h-4 w-4 mr-2" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4 mr-2" />
-                        )}
-                        {sortOrder === "high-to-low" ? "Total Impact (high to low)" : "Total Impact (low to high)"}
-                      </div>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high-to-low">
-                      <div className="flex items-center">
-                        <ArrowUp className="h-4 w-4 mr-2" />
-                        Total Impact (high to low)
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="low-to-high">
-                      <div className="flex items-center">
-                        <ArrowDown className="h-4 w-4 mr-2" />
-                        Total Impact (low to high)
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="mt-4 text-sm text-gray-600">
-              <p>{getTabDescription(activeTab)}</p>
-            </div>
-            
-            <TabsContent value="job-outcome" className="mt-6">
-              {renderJobOutcomeChart()}
-            </TabsContent>
-            
-            {userPreferences.enableBackstage && (
-              <>
-                <TabsContent value="job-output" className="mt-6">
-                  {renderJobOutputChart()}
-                </TabsContent>
-                
-                <TabsContent value="output-outcome" className="mt-6">
-                  {renderOutputOutcomeChart()}
-                </TabsContent>
-              </>
-            )}
-          </Tabs>
-        </CardContent>
+              <TabsContent value="output-outcome" className="mt-6">
+                {renderOutputOutcomeChart()}
+              </TabsContent>
+            </>
+          )}
+        </Tabs>
+      </CardContent>
     </Card>
   );
 };
