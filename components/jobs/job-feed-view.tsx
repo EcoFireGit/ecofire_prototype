@@ -45,6 +45,8 @@ function convertJobsToTableData(
       nextTaskId: job.nextTaskId || undefined,
       tasks: job.tasks || [],
       impact: job.impact || 0,
+      isRecurring: job.isRecurring || false,
+      recurrenceInterval: job.recurrenceInterval || undefined,
       // Owner removed as it's now derived from the next task
     };
   });
@@ -469,6 +471,9 @@ export default function JobsPage() {
         title: "Success",
         description: "Selected jobs marked as complete",
       });
+
+      // Always refresh jobs to show new recurring instance
+      await fetchJobs();
     } catch (error) {
       console.error("Error marking jobs as done:", error);
       toast({
@@ -652,84 +657,110 @@ export default function JobsPage() {
     setSortedCompletedJobs(sortByRecommended(filteredCompleted));
   };
 
-  // Helper function to check if a job matches filters
-  const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
-    let matches = true;
-    const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
+// Helper function to check if a job matches filters
+const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
+  let matches = true;
 
-    Object.entries(filters).forEach(([key, value]) => {
-      if (
-        value === "" ||
-        value === null ||
-        value === undefined ||
-        value === "any"
-      )
-        return;
+  // Get the associated task for this job (if it has a nextTaskId)
+  const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
 
-      switch (key) {
-        case "businessFunctionId":
-          if (job.businessFunctionId !== value) matches = false;
-          break;
-        case "dueDate":
-          if (!job.dueDate || new Date(job.dueDate) > new Date(value))
-            matches = false;
-          break;
-        case "isDone":
-          if (job.isDone !== value) matches = false;
-          break;
-        case "focusLevel":
-          if (!nextTask || nextTask.focusLevel !== value) matches = false;
-          break;
-        case "joyLevel":
-          if (!nextTask || nextTask.joyLevel !== value) matches = false;
-          break;
-        case "owner":
-          if (!nextTask || nextTask.owner !== value) matches = false;
-          break;
-        case "minHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours < value
-          )
-            matches = false;
-          break;
-        case "maxHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours > value
-          )
-            matches = false;
-          break;
-        case "tags":
-          if (!Array.isArray(value) || value.length === 0) break;
+  // Process each filter
+  Object.entries(filters).forEach(([key, value]) => {
+    // Skip empty values or "any" values
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      value === "any"
+    )
+      return;
 
+    switch (key) {
+      // Job filters
+      case "businessFunctionId":
+        if (job.businessFunctionId !== value) matches = false;
+        break;
+      case "dueDate":
+        if (!job.dueDate || new Date(job.dueDate) > new Date(value))
+          matches = false;
+        break;
+      case "isDone":
+        if (job.isDone !== value) matches = false;
+        break;
+
+      // Task filters (applied to the job's next task)
+      case "focusLevel":
+        if (!nextTask || nextTask.focusLevel !== value) matches = false;
+        break;
+      case "joyLevel":
+        if (!nextTask || nextTask.joyLevel !== value) matches = false;
+        break;
+      case "owner":
+        if (value === "none") {
+          // Check if the displayed owner name would be "Not assigned"
+          // This covers both cases: no nextTask, or nextTask with no owner
+          const nextTaskId = job.nextTaskId;
+          const displayedOwner = nextTaskId && taskOwnerMap && taskOwnerMap[nextTaskId] 
+            ? taskOwnerMap[nextTaskId] 
+            : "Not assigned";
+          
+          if (displayedOwner !== "Not assigned") {
+            matches = false;
+          }
+        } else {
+          // For specific owner filtering, check the actual task owner
+          if (!nextTask || nextTask.owner !== value) {
+            matches = false;
+          }
+        }
+        break;
+      case "minHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours < value
+        )
+          matches = false;
+        break;
+      case "maxHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours > value
+        )
+          matches = false;
+        break;
+      case "tags":
+        if (!Array.isArray(value) || value.length === 0) break;
+
+        if (value.includes("none")) {
+          if (!nextTask) {
+            matches = false;
+          } else if (nextTask.tags && nextTask.tags.length > 0) {
+            matches = false;
+          }
+        } else {
           if (!nextTask || !nextTask.tags || !Array.isArray(nextTask.tags)) {
             matches = false;
-            break;
+          } else {
+            const selectedTagNames = value
+              .map((tagId) => {
+                const tag = tags.find((t) => t._id === tagId);
+                return tag ? tag.name : null;
+              })
+              .filter(Boolean);
+
+            if (!selectedTagNames.every((tagName) => nextTask.tags.includes(tagName))) {
+              matches = false;
+            }
           }
+        }
+        break;
+    }
+  });
 
-          const selectedTagNames = value
-            .map((tagId) => {
-              const tag = tags.find((t) => t._id === tagId);
-              return tag ? tag.name : null;
-            })
-            .filter(Boolean);
-
-          if (
-            !selectedTagNames.every((tagName) =>
-              nextTask.tags.includes(tagName),
-            )
-          ) {
-            matches = false;
-          }
-          break;
-      }
-    });
-
-    return matches;
-  };
+  return matches;
+};
 
   useEffect(() => {
     if (!loading && activeJobs.length > 0) {
@@ -911,7 +942,7 @@ export default function JobsPage() {
   };
 
   const handleSidebarClose = (open: boolean) => {
-    if (!open && needsRefresh) {
+    if (!open) {
       fetchJobs();
     }
     setTasksSidebarOpen(open);

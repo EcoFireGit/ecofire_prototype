@@ -20,6 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { 
   Calendar, 
   Clock, 
@@ -40,8 +53,10 @@ import {
   Tag,
   Edit,
   ChevronRight,
-  Sun
+  Sun,
+  ChevronsUpDown
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Task, RecurrenceInterval } from "@/components/tasks/types";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -102,12 +117,22 @@ export function TaskDetailsSidebar({
   const [isSaving, setIsSaving] = useState(false);
 
   const [isJobDialogOpen, setIsJobDialogOpen] = useState(false);
+  const [jobComboboxOpen, setJobComboboxOpen] = useState(false);
   const [recurringEdit, setRecurringEdit] = useState<{
     isEditing: boolean;
     interval: RecurrenceInterval | undefined;
   }>({ isEditing: false, interval: undefined });
 
   const { toast } = useToast();
+
+  // Filter jobs based on search term (for combobox)
+  const filteredJobs = Object.entries(jobs)
+    .filter(([id, job]: [string, any]) => !job.isDone);
+
+  // Get the selected job title for display
+  const selectedJobTitle = editingField === 'job' && editingValue && editingValue !== 'none' 
+    ? jobs[editingValue]?.title 
+    : jobInfo?.title;
 
   useEffect(() => {
     const fetchOwners = async () => {
@@ -349,7 +374,7 @@ const cancelEditing = () => {
           updateData.title = editingValue;
           break;
         case 'owner':
-          updateData.owner = editingValue === 'none' ? null : editingValue;
+          updateData.owner = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'date':
           updateData.date = editingValue ? `${editingValue}T00:00:00.000Z` : null;
@@ -358,10 +383,10 @@ const cancelEditing = () => {
           updateData.requiredHours = editingValue ? parseFloat(editingValue) : null;
           break;
         case 'focusLevel':
-          updateData.focusLevel = editingValue === 'none' ? null : editingValue;
+          updateData.focusLevel = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'joyLevel':
-          updateData.joyLevel = editingValue === 'none' ? null : editingValue;
+          updateData.joyLevel = editingValue === 'none' ? "none" : editingValue;
           break;
         case 'notes':
           updateData.notes = editingValue;
@@ -510,6 +535,7 @@ const cancelEditing = () => {
       }));
 
       setEditingValue(newJobId);
+      setJobComboboxOpen(false);
 
       setIsJobDialogOpen(false);
 
@@ -1129,31 +1155,59 @@ const cancelEditing = () => {
                     <div className="pl-6">
                       {editingField === 'job' ? (
                         <div className="flex items-center gap-2">
-                          <Select 
-                            value={editingValue} 
-                            onValueChange={(value) => {
-                              if (value === "create") {
-                                setIsJobDialogOpen(true);
-                              } else {
-                                setEditingValue(value);
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No job</SelectItem>
-                              {Object.entries(jobs)
-                                .filter(([id, job]: [string, any]) => !job.isDone)
-                                .map(([id, job]: [string, any]) => (
-                                <SelectItem key={id} value={id}>
-                                  {job.title}
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="create">+ Create New Job</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Popover open={jobComboboxOpen} onOpenChange={setJobComboboxOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={jobComboboxOpen}
+                                className="h-8 text-sm justify-between flex-1"
+                              >
+                                {selectedJobTitle || "Select a job..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                              <Command>
+                                <CommandInput 
+                                  placeholder="Search jobs..." 
+                                />
+                                <CommandList>
+                                  <CommandEmpty>No jobs found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {filteredJobs.map(([id, job]: [string, any]) => (
+                                      <CommandItem
+                                        key={id}
+                                        value={job.title}
+                                        onSelect={(currentValue) => {
+                                          setEditingValue(currentValue === editingValue ? 'none' : id);
+                                          setJobComboboxOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            editingValue === id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {job.title}
+                                      </CommandItem>
+                                    ))}
+                                    <CommandItem
+                                      value="Create New Job"
+                                      onSelect={() => {
+                                        setIsJobDialogOpen(true);
+                                        setJobComboboxOpen(false);
+                                      }}
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Create New Job
+                                    </CommandItem>
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           
                           <Button
                             size="sm"

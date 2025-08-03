@@ -100,6 +100,7 @@ export const columns = (
         [FocusLevel.High]: "bg-red-100 text-red-800",
         [FocusLevel.Medium]: "bg-orange-100 text-orange-800",
         [FocusLevel.Low]: "bg-green-100 text-green-800",
+        [FocusLevel.None]: "bg-gray-600 text-gray-800",
       };
 
       return (
@@ -121,6 +122,7 @@ export const columns = (
         [JoyLevel.High]: "bg-green-100 text-green-800",
         [JoyLevel.Medium]: "bg-blue-100 text-blue-800",
         [JoyLevel.Low]: "bg-purple-100 text-purple-800",
+        [JoyLevel.None]: "bg-gray-600 text-gray-800",
       };
 
       return (

@@ -13,9 +13,10 @@ interface MyDayViewProps {
   isNextTask: (task: any) => boolean;
   onDeleteTask: (id: string) => void;
   onAddToCalendar: (task: Task) => void;
+  onDuplicate: (task: any) => void;
 }
 
-export default function MyDayView({ tasks, onRemoveFromMyDay, onComplete, onViewTask, jobs, ownerMap, businessFunctionMap, isNextTask, onDeleteTask, onAddToCalendar }: MyDayViewProps) {
+export default function MyDayView({ tasks, onRemoveFromMyDay, onComplete, onViewTask, jobs, ownerMap, businessFunctionMap, isNextTask, onDeleteTask, onAddToCalendar, onDuplicate }: MyDayViewProps) {
   // Sort: incomplete tasks first, then completed
   const sortedTasks = [...tasks].sort((a, b) => Number(a.completed) - Number(b.completed));
   const handleCompleteInMyDay = (id: string, completed: boolean) => {
@@ -33,6 +34,7 @@ export default function MyDayView({ tasks, onRemoveFromMyDay, onComplete, onView
       onToggleMyDay={(task) => onRemoveFromMyDay(task)}
       onDeleteTask={onDeleteTask}
       onAddToCalendar={onAddToCalendar}
+      onDuplicate={onDuplicate}
     />
   );
 } 

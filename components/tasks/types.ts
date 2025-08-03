@@ -1,13 +1,15 @@
 export enum FocusLevel {
     High = "High",
     Medium = "Medium",
-    Low = "Low"
+    Low = "Low",
+    None = "none"
   }
   
   export enum JoyLevel {
     High = "High",
     Medium = "Medium",
-    Low = "Low"
+    Low = "Low",
+    None = "none"
   }
 
   export enum RecurrenceInterval {

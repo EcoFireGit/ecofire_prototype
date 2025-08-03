@@ -27,6 +27,7 @@ import type { Jobs } from "@/lib/models/job.model";
 import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
 import MyDayView from "./my-day-view";
 import Split from 'react-split';
+import { DuplicateTaskDialog } from "../duplicate-task-dialog";
 
 // Helper to map API Job to Job type
 function mapJobToSidebarJob(job: any): Job {
@@ -82,7 +83,8 @@ export default function TaskFeedView() {
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [tasksSidebarOpen, setTasksSidebarOpen] = useState(false);
   const [selectedJobForSidebar, setSelectedJobForSidebar] = useState<Job | null>(null);
-
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
   // Add state for minimized panes
   const [mainMinimized, setMainMinimized] = useState(false);
   const [myDayMinimized, setMyDayMinimized] = useState(false);
@@ -155,6 +157,7 @@ export default function TaskFeedView() {
       setShowTabs(false);
     }
   };
+
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -453,29 +456,41 @@ export default function TaskFeedView() {
           case "businessFunctionId":
             if (!job || job.businessFunctionId !== value) matches = false;
             break;
-          case "tags":
-            if (!Array.isArray(value) || value.length === 0) break;
-
-            if (!task.tags || !Array.isArray(task.tags)) {
-              matches = false;
+            case "tags":
+              if (!Array.isArray(value)) break;
+            
+              // If "none" is selected, show only tasks with no tags
+              if (value.includes("none")) {
+                if (task.tags && Array.isArray(task.tags) && task.tags.length > 0) {
+                  matches = false;
+                }
+                // If task.tags is undefined or empty, matches remains true
+                break;
+              }
+            
+              // If nothing is selected, don't filter by tags
+              if (value.length === 0) break;
+            
+              // Otherwise, filter by selected tags
+              if (!task.tags || !Array.isArray(task.tags)) {
+                matches = false;
+                break;
+              }
+            
+              // Convert selected tag IDs to tag names
+              const selectedTagNames = value
+                .map((tagId) => {
+                  const tag = tags.find((t) => t._id === tagId);
+                  return tag ? tag.name : null;
+                })
+                .filter(Boolean);
+            
+              // Check that all selected tag names are present in the task's tags
+              if (!selectedTagNames.every((tagName) => task.tags.includes(tagName))) {
+                matches = false;
+              }
               break;
-            }
-
-            // Convert selected tag IDs to tag names for comparison
-            const selectedTagNames = value
-              .map((tagId) => {
-                const tag = tags.find((t) => t._id === tagId);
-                return tag ? tag.name : null;
-              })
-              .filter(Boolean); // Remove any null values
-
-            // Compare using tag names instead of IDs
-            if (
-              !selectedTagNames.every((tagName) => task.tags.includes(tagName))
-            ) {
-              matches = false;
-            }
-            break;
+            
         }
       });
 
@@ -1219,6 +1234,10 @@ export default function TaskFeedView() {
                   onDeleteTask={handleDeleteTask}
                   isNextTask={isNextTask}
                   onToggleMyDay={handleToggleMyDay}
+                  onDuplicate={(task) => {
+                    setTaskToDuplicate({ ...task, id: task.id || task._id });
+                    setDuplicateDialogOpen(true);
+                  }}
                 />
               </div>
             )}
@@ -1304,7 +1323,11 @@ export default function TaskFeedView() {
                   isNextTask={isNextTask}
                   onDeleteTask={handleDeleteTask}
                   onAddToCalendar={handleAddToCalendar}
-                />
+                  onDuplicate={(task) => {
+              setTaskToDuplicate({ ...task, id: task.id || task._id });
+              setDuplicateDialogOpen(true);
+            }}
+          />
               </div>
             )}
           </div>
@@ -1396,6 +1419,10 @@ export default function TaskFeedView() {
                       onDeleteTask={handleDeleteTask}
                       isNextTask={isNextTask}
                       onToggleMyDay={handleToggleMyDay}
+                      onDuplicate={(task) => {
+                        setTaskToDuplicate({ ...task, id: task.id || task._id });
+                        setDuplicateDialogOpen(true);
+                      }}
                     />
                   </div>
                 )}
@@ -1483,6 +1510,10 @@ export default function TaskFeedView() {
                       isNextTask={isNextTask}
                       onDeleteTask={handleDeleteTask}
                       onAddToCalendar={handleAddToCalendar}
+                      onDuplicate={(task) => {
+                        setTaskToDuplicate({ ...task, id: task.id || task._id });
+                        setDuplicateDialogOpen(true);
+                      }}
                     />
                   </div>
                 )}
@@ -1524,6 +1555,18 @@ export default function TaskFeedView() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+      {/* Duplicate Task Dialog */}
+      <DuplicateTaskDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        sourceTask={taskToDuplicate as Task}
+        onSubmit={async (newTask) => {
+          setDuplicateDialogOpen(false);
+          setTaskToDuplicate(null);
+          await fetchData();
+        }}
+      />
     <TaskDialog
       mode={dialogMode}
       open={taskDialogOpen}
