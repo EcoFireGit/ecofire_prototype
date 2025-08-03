@@ -67,8 +67,8 @@ export default function DriverTour({ onTourEnd }: DriverTourProps): React.ReactE
                 driverRef.current.destroy();
               }
               
-              // Redirect to gcal page with tour parameter
-              window.location.href = '/backstage/gcal?tour=gcal&step=0';
+              // Redirect to settings calendar page with tour parameter
+              window.location.href = '/dashboard/settings?tab=calendar&tour=gcal&step=0';
               
               // Return false to prevent default next action
               return false;
