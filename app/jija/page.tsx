@@ -23,6 +23,7 @@ interface ChatSession {
 interface Task {
   id: string;
   name: string;
+  isDone?: boolean;
 }
 
 interface Job {
@@ -30,6 +31,7 @@ interface Job {
   title: string;
   impactValue?: number;
   tasks?: Task[];
+  isDone?: boolean;
 }
 
 const WELCOME_MESSAGES = [
@@ -42,35 +44,29 @@ const WELCOME_MESSAGES = [
 
 // Utility to robustly extract JSON array of suggestions from a string (handles code blocks, plain text, etc)
 function extractJsonArray(text: string): string[] {
-  // Remove triple backtick code block and optional language
-  const codeBlockRegex = /```(?:json)?\s*([\s\S]+?)\s*```/im;
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/im;
   let jsonStr = text;
-
-  // If inside code block, extract inner content
   const match = text.match(codeBlockRegex);
   if (match) {
     jsonStr = match[1];
   }
-
-  // Try to parse JSON array
   try {
     const parsed = JSON.parse(jsonStr.trim());
     if (Array.isArray(parsed)) return parsed;
   } catch {}
-
-  // Fallback: parse line by line, removing bullets and quotes
   return jsonStr
     .split("\n")
     .map((s) => s.replace(/^- /, "").replace(/^["']|["']$/g, "").trim())
     .filter(
       (line) =>
         !!line &&
-        !/^```/i.test(line) && // remove stray ```
+        !/^```/.test(line) &&
         !/^These Image numbers:/i.test(line) &&
         !/may be referenced by subsequent user messages\./i.test(line) &&
         line !== "["
     );
 }
+
 export default function Chat() {
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
@@ -89,6 +85,8 @@ export default function Chat() {
   const [welcomeMessage, setWelcomeMessage] = useState<string>("");
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  const suggestionsCallCountRef = useRef(0);
 
   const {
     error,
@@ -207,95 +205,134 @@ export default function Chat() {
     );
   }, []);
 
-  // Suggestions: update on chat open, jobs, or messages change (FIX)
-  useEffect(() => {
-    const fetchAISuggestions = async () => {
-      // If a conversation is open, use its context. Otherwise, use top jobs for suggestions.
-      let contextJobTitles: string[] = [];
-      let contextJobTasks: { [jobTitle: string]: string[] } = {};
-      let convoContext: string[] = [];
+  // Only include jobs and tasks that are not completed
+  function getTopUncompletedJobs(jobs: Job[], count: number = 3): Job[] {
+    const filteredJobs = jobs.filter(job => job.isDone !== true);
+    const jobsWithUncompletedTasks = filteredJobs.map(job => ({
+      ...job,
+      tasks: job.tasks
+        ? job.tasks.filter(task => task.isDone !== true)
+        : [],
+    }));
+    const validJobs = jobsWithUncompletedTasks.filter(
+      job => !job.tasks || job.tasks.length > 0
+    );
+    return validJobs.sort((a, b) => (b.impactValue || 0) - (a.impactValue || 0)).slice(0, count);
+  }
 
-      if (selectedChatId && messages.length > 0) {
-        // Use last few messages for context (up to 10 exchanges)
-        convoContext = messages.slice(-10).map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
-        // Try to infer job(s) from user's messages, fallback to showing top jobs
-        for (const msg of messages) {
-          if (msg.role === "user") {
-            jobs.forEach((job) => {
-              if (
-                msg.content
-                  .toLocaleLowerCase()
-                  .includes(job.title.toLocaleLowerCase())
-              ) {
+  // Track last assistant response to trigger suggestions after a new answer
+  const lastAssistantResponseRef = useRef<string | null>(null);
+  // Track last jobs snapshot for proper suggestions on load
+  const jobsSnapshotRef = useRef<string>("");
+
+  // Fetch suggestions
+  async function fetchAISuggestionsOnce() {
+    let contextJobTitles: string[] = [];
+    let contextJobTasks: { [jobTitle: string]: string[] } = {};
+    let convoContext: string[] = [];
+    const topJobs = getTopUncompletedJobs(jobs, 3);
+
+    if (selectedChatId && messages.length > 0) {
+      convoContext = messages.slice(-10).map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
+      for (const msg of messages) {
+        if (msg.role === "user") {
+          topJobs.forEach((job) => {
+            if (
+              msg.content
+                .toLocaleLowerCase()
+                .includes(job.title.toLocaleLowerCase())
+            ) {
+              if (!contextJobTitles.includes(job.title))
                 contextJobTitles.push(job.title);
-                if (job.tasks) {
-                  contextJobTasks[job.title] = job.tasks.map((t) => t.name);
-                }
+              if (job.tasks) {
+                contextJobTasks[job.title] = job.tasks.map((t) => t.name);
               }
-            });
-          }
-        }
-        // If no jobs mentioned in context, use top 3 jobs
-        if (contextJobTitles.length === 0) {
-          const jobsWithImpact = [...jobs].sort(
-            (a, b) => (b.impactValue || 0) - (a.impactValue || 0)
-          );
-          contextJobTitles = jobsWithImpact.slice(0, 3).map((j) => j.title);
-          jobsWithImpact.slice(0, 3).forEach((job) => {
-            if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
+            }
           });
         }
-      } else {
-        // No convo open: use top jobs and empty context
-        const jobsWithImpact = [...jobs].sort(
-          (a, b) => (b.impactValue || 0) - (a.impactValue || 0)
-        );
-        contextJobTitles = jobsWithImpact.slice(0, 3).map((j) => j.title);
-        jobsWithImpact.slice(0, 3).forEach((job) => {
+      }
+      if (contextJobTitles.length === 0) {
+        contextJobTitles = topJobs.map((j) => j.title);
+        topJobs.forEach((job) => {
           if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
         });
-        convoContext = [];
       }
+    } else {
+      contextJobTitles = topJobs.map((j) => j.title);
+      topJobs.forEach((job) => {
+        if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
+      });
+      convoContext = [];
+    }
 
-      if (contextJobTitles.length === 0) {
-        setAiSuggestions([]);
-        return;
-      }
-      setLoadingSuggestions(true);
-      try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            generateSuggestionsForJobs: contextJobTitles.map((title) => ({
-              title,
-              tasks: contextJobTasks[title] ?? [],
-            })),
-            conversationContext: convoContext,
-          }),
-        });
-        const data = await response.json();
-        let all: string[] = [];
-        if (Array.isArray(data.suggestions)) {
-          for (const sug of data.suggestions) {
-            if (Array.isArray(sug.suggestions)) {
-              sug.suggestions.forEach((s: string) => {
-                extractJsonArray(s).forEach(str => all.push(str));
-              });
-            }
-            if (all.length >= 3) break;
-          }
-        }
-        setAiSuggestions(all.slice(0, 3));
-      } catch {
-        setAiSuggestions([]);
-      }
+    if (contextJobTitles.length === 0) {
+      setAiSuggestions([]);
       setLoadingSuggestions(false);
-    };
-    fetchAISuggestions();
-    // Only re-run when selectedChatId, jobs, or messages (for the open chat) change
+      return;
+    }
+    setLoadingSuggestions(true);
+    suggestionsCallCountRef.current += 1;
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generateSuggestionsForJobs: contextJobTitles.map((title) => ({
+            title,
+            tasks: contextJobTasks[title] ?? [],
+          })),
+          conversationContext: convoContext,
+        }),
+      });
+      const data = await response.json();
+      let all: string[] = [];
+      if (Array.isArray(data.suggestions)) {
+        for (const sug of data.suggestions) {
+          if (Array.isArray(sug.suggestions)) {
+            sug.suggestions.forEach((s: string) => {
+              extractJsonArray(s).forEach(str => all.push(str));
+            });
+          }
+          if (all.length >= 3) break;
+        }
+      }
+      setAiSuggestions(all.slice(0, 3));
+    } catch {
+      setAiSuggestions([]);
+    }
+    setLoadingSuggestions(false);
+  }
+
+  // Always run on jobs load or change (including initial load and jobs update)
+  useEffect(() => {
+    const jobsString = JSON.stringify(jobs.map(j => ({
+      title: j.title,
+      completed: j.isDone,
+      tasks: j.tasks?.map(t => ({ name: t.name, done: t.isDone }))
+    })));
+    if (jobsString !== jobsSnapshotRef.current) {
+      jobsSnapshotRef.current = jobsString;
+      fetchAISuggestionsOnce();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedChatId, JSON.stringify(jobs), JSON.stringify(messages)]);
+  }, [jobs]);
+
+  // Run suggestions after a new assistant response
+  useEffect(() => {
+    const assistantMessages = messages.filter(m => m.role === "assistant");
+    const latestAssistantMsg = assistantMessages.length
+      ? assistantMessages[assistantMessages.length - 1].content
+      : null;
+    if (
+      status === "ready" &&
+      latestAssistantMsg &&
+      latestAssistantMsg !== lastAssistantResponseRef.current
+    ) {
+      fetchAISuggestionsOnce();
+      lastAssistantResponseRef.current = latestAssistantMsg;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, status]);
 
   // Always show suggestions bar, even if no convo is open
   const suggestionsBar = (
@@ -315,6 +352,8 @@ export default function Chat() {
             {suggestion}
           </button>
         ))}
+      <span className="ml-4 text-xs text-gray-400 font-mono" title="Suggestions API call count">
+      </span>
     </div>
   );
 
