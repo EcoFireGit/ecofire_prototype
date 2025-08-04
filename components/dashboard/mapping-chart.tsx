@@ -381,14 +381,14 @@ const MappingChart: React.FC<MappingChartProps> = () => {
       return {
         jobName: job.name,
         outputs: outputs.map(output => {
-          // Calculate equal distribution among jobs for this output
-          const jobsForThisOutput = mappingData.jobOutputMappings.filter(mapping => 
-            mapping.outputId === output.id
-          ).length;
+          // Use the actual impact value from the database
+          const jobOutputMapping = mappingData.jobOutputMappings.find(mapping => 
+            mapping.jobId === job.id && mapping.outputId === output.id
+          );
           
           return {
             ...output,
-            percentage: jobsForThisOutput > 0 ? (100 / jobsForThisOutput) : 0
+            percentage: jobOutputMapping ? jobOutputMapping.impactValue : 0
           };
         }),
         totalImpact: totalImpactPercentage
