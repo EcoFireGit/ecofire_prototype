@@ -42,6 +42,11 @@ export interface FilterComponentProps {
   initialFilters?: Record<string, any>;
 }
 
+
+
+
+
+
 const FilterComponent: React.FC<FilterComponentProps> = ({
   onFilterChange,
   businessFunctions = [],
@@ -94,9 +99,6 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
         loadFiltersFromCookies();
 
       if (Object.keys(savedFilters).length > 0) {
-        console.log("Loading saved filters:", savedFilters);
-
-        // Apply the saved filters
         setFilters(savedFilters);
         setActiveWellnessMood(savedMood);
 
@@ -117,12 +119,6 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
   // Save filters whenever they change
   useEffect(() => {
     if (Object.keys(filters).length > 0) {
-      console.log(
-        "Saving filters to storage:",
-        filters,
-        "activeWellnessMood:",
-        activeWellnessMood,
-      );
       saveFiltersToCookies(filters, activeWellnessMood);
     }
   }, [filters, activeWellnessMood]);
@@ -223,8 +219,6 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
         const minutesInHours = minutes / 60;
         const timeFilters = { minHours: 0, maxHours: minutesInHours };
 
-        console.log("Found saved appointment time:", minutes, "minutes");
-
         // Apply the saved filters
         setFilters(timeFilters);
         setHoursRange([0, minutesInHours]);
@@ -241,7 +235,6 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
         // Clear the saved time
         sessionStorage.removeItem("appointmentTime");
       } catch (error) {
-        console.error("Error applying saved time filter:", error);
         sessionStorage.removeItem("appointmentTime");
       }
     }
@@ -266,6 +259,25 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
     setFilteredTagOptions(tags);
   }, [tags]);
 
+  // -------- Updated handleFilterChange to allow filtering by "none" value --------
+  const handleFilterChange = (key: string, value: any) => {
+    // Clear active wellness mood when filters are manually changed
+    setActiveWellnessMood(null);
+
+    const newFilters = { ...filters };
+
+    // "none" is now a valid selectable value, so do not delete key if "none"
+    if (value === null || value === undefined || value === "any") {
+      delete newFilters[key];
+    } else {
+      newFilters[key] = value;
+    }
+
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+  // ------------------------------------------------------------------------------
+
   // Hours Required Filter X Button Handler
   const handleClearHoursFilter = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -289,21 +301,6 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
     setActiveWellnessMood(null);
   };
 
-  const handleFilterChange = (key: string, value: any) => {
-    // Clear active wellness mood when filters are manually changed
-    setActiveWellnessMood(null);
-
-    const newFilters = { ...filters };
-
-    if (value === null || value === undefined || value === "any") {
-      delete newFilters[key];
-    } else {
-      newFilters[key] = value;
-    }
-
-    setFilters(newFilters);
-    onFilterChange(newFilters);
-  };
   // Focus Level Filter X Button Handler
   const handleClearFocusLevelFilter = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -420,9 +417,6 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
     newFilters.maxHours = value[1];
     setFilters(newFilters);
     onFilterChange(newFilters);
-
-    // Save filters (handled by useEffect)
-    // saveFiltersToCookies(newFilters, null);
   };
 
   const handleDateChange = (date: Date | undefined) => {
@@ -501,18 +495,21 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
 
   // Helper function to get business function name by ID
   const getBusinessFunctionName = (id: string) => {
+    if (id === "none") return "None";
     const bf = businessFunctions.find((bf) => bf.id === id);
     return bf ? bf.name : id;
   };
 
   // Helper function to get owner name by ID
   const getOwnerName = (id: string) => {
+    if (id === "none") return "None";
     const owner = owners.find((owner) => owner._id === id);
     return owner ? owner.name : id;
   };
 
   // Helper function to get tag name by ID
   const getTagName = (id: string) => {
+    if (id === "none") return "None";
     const tag = tags.find((tag) => tag._id === id);
     return tag ? tag.name : id;
   };
@@ -620,7 +617,11 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               className="h-10 gap-1"
             >
               <Target className="h-4 w-4" />
-              <span>{filters.focusLevel || "Focus"}</span>
+              <span>
+                {filters.focusLevel
+                  ? (filters.focusLevel === "none" ? "None" : filters.focusLevel)
+                  : "Focus"}
+              </span>
               <ChevronDown className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -666,7 +667,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
             <Button
               variant={filters.focusLevel === "Low" ? "default" : "ghost"}
               size="sm"
-              className="justify-start"
+              className="justify-start mb-1"
               onClick={() =>
                 handleFilterChange(
                   "focusLevel",
@@ -675,6 +676,19 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               }
             >
               Low
+            </Button>
+            <Button
+              variant={filters.focusLevel === "none" ? "default" : "ghost"}
+              size="sm"
+              className="justify-start"
+              onClick={() =>
+                handleFilterChange(
+                  "focusLevel",
+                  filters.focusLevel === "none" ? null : "none",
+                )
+              }
+            >
+              None
             </Button>
           </div>
         </PopoverContent>
@@ -690,7 +704,11 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               className="h-10 gap-1"
             >
               <Smile className="h-4 w-4" />
-              <span>{filters.joyLevel || "Joy"}</span>
+              <span>
+                {filters.joyLevel
+                  ? (filters.joyLevel === "none" ? "None" : filters.joyLevel)
+                  : "Joy"}
+              </span>
               <ChevronDown className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -736,7 +754,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
             <Button
               variant={filters.joyLevel === "Low" ? "default" : "ghost"}
               size="sm"
-              className="justify-start"
+              className="justify-start mb-1"
               onClick={() =>
                 handleFilterChange(
                   "joyLevel",
@@ -745,6 +763,19 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
               }
             >
               Low
+            </Button>
+            <Button
+              variant={filters.joyLevel === "none" ? "default" : "ghost"}
+              size="sm"
+              className="justify-start"
+              onClick={() =>
+                handleFilterChange(
+                  "joyLevel",
+                  filters.joyLevel === "none" ? null : "none",
+                )
+              }
+            >
+              None
             </Button>
           </div>
         </PopoverContent>
@@ -799,6 +830,21 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
                 {bf.name}
               </Button>
             ))}
+            <Button
+              variant={
+                filters.businessFunctionId === "none" ? "default" : "ghost"
+              }
+              size="sm"
+              className="justify-start"
+              onClick={() =>
+                handleFilterChange(
+                  "businessFunctionId",
+                  filters.businessFunctionId === "none" ? null : "none",
+                )
+              }
+            >
+              None
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -814,7 +860,9 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
             >
               <Users className="h-4 w-4" />
               <span>
-                {filters.owner ? getOwnerName(filters.owner) : "Owner"}
+                {filters.owner
+                  ? getOwnerName(filters.owner)
+                  : "Owner"}
               </span>
               <ChevronDown className="h-4 w-4" />
             </Button>
@@ -848,6 +896,19 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
                 {owner.name}
               </Button>
             ))}
+            <Button
+              variant={filters.owner === "none" ? "default" : "ghost"}
+              size="sm"
+              className="justify-start"
+              onClick={() =>
+                handleFilterChange(
+                  "owner",
+                  filters.owner === "none" ? null : "none",
+                )
+              }
+            >
+              None
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
@@ -920,30 +981,23 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
 
             {/* Tag selection list */}
             <div className="flex flex-col max-h-72 overflow-y-auto space-y-2">
-              {filteredTagOptions.length > 0 ? (
-                filteredTagOptions.map((tag) => (
-                  <div key={tag._id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`tag-${tag._id}`}
-                      checked={selectedTags.includes(tag._id)}
-                      onCheckedChange={() => handleTagToggle(tag._id)}
-                    />
-                    <label
-                      htmlFor={`tag-${tag._id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
-                      {tag.name}
-                    </label>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {tagSearchValue
-                    ? "No matching tags found"
-                    : "No tags available"}
-                </p>
-              )}
-            </div>
+  {filteredTagOptions.concat([{ _id: "none", name: "None" }]).map((tag) => (
+    <div key={tag._id} className="flex items-center space-x-2">
+      <Checkbox
+        id={`tag-${tag._id}`}
+        checked={selectedTags.includes(tag._id)}
+        onCheckedChange={() => handleTagToggle(tag._id)}
+      />
+      <label
+        htmlFor={`tag-${tag._id}`}
+        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+      >
+        {tag.name}
+      </label>
+    </div>
+  ))}
+</div>
+
           </div>
         </PopoverContent>
       </Popover>
@@ -996,4 +1050,3 @@ const FilterComponent: React.FC<FilterComponentProps> = ({
 };
 
 export default FilterComponent;
-

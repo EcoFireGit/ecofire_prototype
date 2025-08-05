@@ -11,16 +11,29 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Plus,
   PawPrint,
   Calendar,
   Briefcase,
   FileText,
-  Edit,
   GripVertical,
+  Check,
+  X,
+  Info,
+  Trash2,
+  RefreshCcw,
 } from "lucide-react";
-import { TaskDialog } from "./tasks-dialog";
+import { TaskDialog } from "./tasks-dialog-jobselector";
 import { Task } from "./types";
 import { Job } from "@/components/jobs/table/columns";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +42,9 @@ import { TaskProvider } from "@/hooks/task-context";
 import { TaskCard } from "./tasks-card";
 import { useTaskContext } from "@/hooks/task-context";
 import { useRouter } from "next/navigation";
+import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
+import { DuplicateTaskDialog } from "./duplicate-task-dialog";
+import { RecurrenceInterval } from "@/components/tasks/types";
 
 // DnD Kit imports
 import {
@@ -65,7 +81,10 @@ interface SortableTaskItemProps {
   onComplete: (id: string, jobid: string, completed: boolean) => void;
   ownerMap: Record<string, string>;
   onAddToCalendar?: (task: Task) => void;
+  onOpenTaskDetails?: (task: Task) => void;
+  onDuplicate?: () => void;
 }
+type EditableJobField = 'title' | 'dueDate' | 'notes' | 'businessFunction';
 
 // Sortable Task Item component with original UI plus Add to Calendar button
 function SortableTaskItem({
@@ -75,7 +94,10 @@ function SortableTaskItem({
   onComplete,
   ownerMap,
   onAddToCalendar,
-}: SortableTaskItemProps) {
+  onOpenTaskDetails,
+  onToggleMyDay,
+  onDuplicate,
+}: SortableTaskItemProps & { onToggleMyDay?: (task: Task, value: boolean) => void }) {
   const {
     attributes,
     listeners,
@@ -117,6 +139,9 @@ function SortableTaskItem({
             onComplete={onComplete}
             ownerMap={ownerMap}
             onAddToCalendar={onAddToCalendar}
+            onOpenTaskDetails={onOpenTaskDetails}
+            onToggleMyDay={onToggleMyDay}
+            onDuplicate={onDuplicate}
           />
         </div>
       </div>
@@ -129,6 +154,11 @@ interface TasksSidebarProps {
   onOpenChange: (open: boolean) => void;
   selectedJob: Job | null;
   onRefreshJobs?: () => void; // Simple callback to refresh jobs data
+  onDeleteJob?: (jobId: string) => void;
+  jobs?: Record<string, any>;
+  onTaskCreated?: (newTask: any) => void;
+  onTaskUpdated?: (updatedTask: any) => void;
+  onTaskDeleted?: (deletedTaskId: string, jobId?: string) => void;
 }
 
 export function TasksSidebar({
@@ -136,6 +166,11 @@ export function TasksSidebar({
   onOpenChange,
   selectedJob,
   onRefreshJobs,
+  onDeleteJob,
+  jobs,
+  onTaskCreated,
+  onTaskUpdated,
+  onTaskDeleted,
 }: TasksSidebarProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -144,9 +179,20 @@ export function TasksSidebar({
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [owners, setOwners] = useState<Owner[]>([]);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
+  const [businessFunctions, setBusinessFunctions] = useState<{ _id: string; name: string }[]>([]);
   const [nextTaskId, setNextTaskId] = useState<string | undefined>(undefined);
   const [showSaveOrder, setShowSaveOrder] = useState<boolean>(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [taskDetailsSidebarOpen, setTaskDetailsSidebarOpen] = useState(false);
+  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
+
+  // Job inline editing state
+  const [editingJobField, setEditingJobField] = useState<EditableJobField | null>(null);
+  const [editingJobValue, setEditingJobValue] = useState<string>('');
+  const [isSavingJob, setIsSavingJob] = useState(false);
+  const [recurringEdit, setRecurringEdit] = useState<{ isEditing: boolean; interval: string | undefined }>({ isEditing: false, interval: undefined });
 
   // This flag will track if we've already done the initial sort
   const initialSortDoneRef = useRef(false);
@@ -162,6 +208,30 @@ export function TasksSidebar({
     }
   }, [open]);
 
+  useEffect(() => {
+    const handleJobTasksRefresh = (event: CustomEvent) => {
+      if (selectedJob && event.detail.jobId === selectedJob.id) {
+        console.log(`Refreshing tasks for job ${selectedJob.id} due to job change`);
+        fetchTasks();
+      }
+    };
+
+    const handleJobProgressUpdate = (event: CustomEvent) => {
+      if (selectedJob && event.detail.jobId === selectedJob.id) {
+        console.log(`Job progress updated for job ${selectedJob.id}`);
+        fetchTasks();
+      }
+    };
+
+    window.addEventListener('refresh-job-tasks', handleJobTasksRefresh as EventListener);
+    window.addEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('refresh-job-tasks', handleJobTasksRefresh as EventListener);
+      window.removeEventListener('job-progress-update', handleJobProgressUpdate as EventListener);
+    };
+  }, [selectedJob]);
+
   // Set up sensors for drag operations
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -169,6 +239,246 @@ export function TasksSidebar({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  const handleOpenTaskDetails = (task: Task) => {
+    if (duplicateDialogOpen) return; // Block opening details if duplicating
+    setSelectedTaskForDetails(task);
+    setTaskDetailsSidebarOpen(true);
+  };
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    setTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      )
+    );
+    
+    if (updatedTask.isNextTask && typeof onRefreshJobs === "function") {
+      onRefreshJobs();
+    }
+  };
+
+  const handleTaskDetailsSidebarClose = (open: boolean) => {
+    setTaskDetailsSidebarOpen(open);
+    
+    if (!open && selectedJob) {
+      console.log('Task details sidebar closed, refreshing tasks');
+      fetchTasks();
+    }
+  };
+
+  const handleNavigateToJob = (jobId: string) => {
+    console.log('TasksSidebar handleNavigateToJob called with jobId:', jobId);
+    console.log('Current selectedJob:', selectedJob?.id);
+    console.log('Available jobs in jobs map:', Object.keys(jobs || {}));
+    
+    // If the jobId is different from the current selected job, we need to navigate
+    if (selectedJob && jobId !== selectedJob.id) {
+      console.log('Navigating to different job:', jobId);
+      // Find the job in the jobs map
+      const targetJob = jobs?.[jobId];
+      if (targetJob) {
+        console.log('Found target job:', targetJob.title);
+        // Close the current sidebar and task details
+        setSelectedTaskForDetails(null);
+        onOpenChange(false);
+        
+        // Dispatch an event to open the tasks sidebar for the new job
+        // This will be handled by the parent component (job-feed-view)
+        const event = new CustomEvent('open-tasks-sidebar', {
+          detail: { jobId, jobData: targetJob }
+        });
+        window.dispatchEvent(event);
+        console.log('Dispatched open-tasks-sidebar event for jobId:', jobId);
+      } else {
+        console.log('Target job not found in jobs map');
+        console.log('Jobs map keys:', Object.keys(jobs || {}));
+        
+        // Fallback: try to dispatch the event anyway, let the parent handle it
+        const event = new CustomEvent('open-tasks-sidebar', {
+          detail: { jobId }
+        });
+        window.dispatchEvent(event);
+        console.log('Dispatched open-tasks-sidebar event without job data for jobId:', jobId);
+      }
+    } else {
+      console.log('Same job, just closing task details sidebar');
+      // Same job, just close the task details sidebar
+      setSelectedTaskForDetails(null);
+    }
+  };
+
+  const handleMarkJobComplete = async (completed: boolean) => {
+  if (!selectedJob) return;
+
+  try {
+    const response = await fetch(`/api/jobs/${selectedJob.id}?updateTasks=true`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ isDone: completed }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      Object.assign(selectedJob, {
+        ...selectedJob,
+        isDone: completed,
+      });
+
+      if (typeof onRefreshJobs === "function") {
+        onRefreshJobs();
+        
+        const refreshEvent = new CustomEvent('force-jobs-refresh', {
+          detail: { jobId: selectedJob.id, completed }
+        });
+        window.dispatchEvent(refreshEvent);
+      }
+
+      toast({
+        title: "Success",
+        description: completed ? "Job marked as complete" : "Job marked as active",
+      });
+
+      if (completed) {
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 1000);
+      }
+    } else {
+      throw new Error(result.error || "Failed to update job");
+    }
+  } catch (error) {
+    console.error("Error updating job completion:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update job completion status",
+      variant: "destructive",
+    });
+  }
+};
+
+  const startEditingJob = (field: EditableJobField, currentValue: any) => {
+    setEditingJobField(field);
+    
+    switch (field) {
+      case 'dueDate':
+        if (currentValue) {
+          const date = new Date(currentValue);
+          setEditingJobValue(date.toISOString().split('T')[0]);
+        } else {
+          setEditingJobValue('');
+        }
+        break;
+      case 'businessFunction':
+        setEditingJobValue(currentValue || 'none');
+        break;
+      default:
+        setEditingJobValue(currentValue || '');
+    }
+  };
+
+  const cancelEditingJob = () => {
+    setEditingJobField(null);
+    setEditingJobValue('');
+  };
+
+  const saveJobEdit = async () => {
+    if (!selectedJob || !editingJobField) return;
+
+    setIsSavingJob(true);
+    try {
+      const updateData: any = {};
+      
+      switch (editingJobField) {
+        case 'title':
+          updateData.title = editingJobValue;
+          break;
+        case 'dueDate':
+          updateData.dueDate = editingJobValue ? `${editingJobValue}T00:00:00.000Z` : null;
+          break;
+        case 'notes':
+          updateData.notes = editingJobValue;
+          break;
+        case 'businessFunction':
+          updateData.businessFunctionId = editingJobValue === 'none' ? null : editingJobValue;
+          break;
+      }
+
+      console.log('Updating job with data:', updateData);
+
+      const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await response.json();
+      console.log('Job update result:', result);
+
+      if (result.success) {
+        Object.assign(selectedJob, {
+          ...selectedJob,
+          ...updateData,
+        });
+
+        if (editingJobField === 'businessFunction') {
+          const selectedBF = businessFunctions.find(bf => bf._id === editingJobValue);
+          if (selectedBF) {
+            selectedJob.businessFunctionName = selectedBF.name;
+          } else if (editingJobValue === 'none') {
+            selectedJob.businessFunctionName = undefined;
+          }
+        }
+
+        if (typeof onRefreshJobs === "function") {
+          onRefreshJobs();
+        }
+
+        toast({
+          title: "Success",
+          description: "Job updated successfully",
+        });
+
+        setEditingJobField(null);
+        setEditingJobValue('');
+      } else {
+        throw new Error(result.error || "Failed to update job");
+      }
+    } catch (error) {
+      console.error("Error updating job:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update job",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingJob(false);
+    }
+  };
+
+  const handleAskJija = () => {
+    if (!selectedJob) return;
+    const params = new URLSearchParams();
+    params.set("source", "job");
+    if (selectedJob.id) params.set("jobId", selectedJob.id);
+    if (selectedJob.title) params.set("jobTitle", selectedJob.title);
+    const jijaUrl = `/jija?${params.toString()}`;
+    window.location.href = jijaUrl;
+  };
+
+  const handleDeleteJob = () => {
+    if (!selectedJob || !onDeleteJob) return;
+    
+    if (window.confirm(`Are you sure you want to delete "${selectedJob.title}"? This action cannot be undone and will also delete all associated tasks.`)) {
+      onDeleteJob(selectedJob.id);
+      onOpenChange(false);
+    }
+  };
 
   // Fetch owners from API
   useEffect(() => {
@@ -202,6 +512,33 @@ export function TasksSidebar({
     fetchOwners();
   }, [toast]);
 
+  useEffect(() => {
+    const fetchBusinessFunctions = async () => {
+      try {
+        const response = await fetch("/api/business-functions");
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch business functions: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success && Array.isArray(result.data)) {
+          setBusinessFunctions(result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching business functions:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch business functions list",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchBusinessFunctions();
+  }, [toast]);
+
   // Fetch tasks when job changes
   useEffect(() => {
     if (selectedJob) {
@@ -218,11 +555,21 @@ export function TasksSidebar({
 
   const fetchTasks = async () => {
     if (!selectedJob) return;
-
+    let jobId: string | undefined = undefined;
+    if ('id' in selectedJob && selectedJob.id) {
+      jobId = selectedJob.id;
+    } else if ('_id' in selectedJob && (selectedJob as any)._id) {
+      jobId = (selectedJob as any)._id;
+    }
+    if (!jobId) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/tasks?jobId=${selectedJob.id}`);
+      const response = await fetch(`/api/tasks?jobId=${jobId}`);
       const result = await response.json();
+      console.log('TasksSidebar: API response for /api/tasks?jobId=', jobId, result);
 
       if (result.success) {
         // Map from MongoDB _id to id for frontend consistency
@@ -239,6 +586,13 @@ export function TasksSidebar({
           jobId: task.jobId,
           completed: task.completed,
           isNextTask: task._id === selectedJob.nextTaskId,
+          createdDate: task.createdDate,
+          endDate: task.endDate,
+          timeElapsed: task.timeElapsed,
+          isRecurring: task.isRecurring,
+          recurrenceInterval: task.recurrenceInterval,
+          myDay: task.myDay,
+          myDayDate: task.myDayDate,
         }));
 
         // On initial load, sort tasks based on job.tasks array
@@ -313,6 +667,156 @@ export function TasksSidebar({
     setTaskDialogOpen(true);
   };
 
+  const handleTaskSubmit = async (taskData: Partial<Task>) => {
+    try {
+      // Make sure tags is always defined as an array
+      const processedTaskData = {
+        ...taskData,
+        tags: taskData.tags || [],
+      };
+
+      if (dialogMode === "create") {
+        // Create new task
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(processedTaskData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Map from MongoDB _id to id for frontend consistency
+          const newTask: Task = {
+            id: result.data._id,
+            title: result.data.title,
+            owner: result.data.owner,
+            date: result.data.date,
+            requiredHours: result.data.requiredHours,
+            focusLevel: result.data.focusLevel,
+            joyLevel: result.data.joyLevel,
+            notes: result.data.notes,
+            tags: result.data.tags || [],
+            jobId: result.data.jobId,
+            completed: result.data.completed,
+            isNextTask: false,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
+          };
+
+          // Add task ID to job's tasks array
+          if (selectedJob) {
+            await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
+
+            // Trigger a refresh of the job progress since we added a new task
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
+            });
+            window.dispatchEvent(event);
+          }
+
+          setTasks([...tasks, newTask]);
+          
+          // Call the callback to notify parent component
+          if (onTaskCreated) {
+            onTaskCreated(newTask);
+          }
+          
+          toast({
+            title: "Success",
+            description: "Task created successfully",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create task",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Update existing task
+        if (!currentTask) return;
+
+        const response = await fetch(`/api/tasks/${currentTask.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(processedTaskData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Map from MongoDB _id to id for frontend consistency
+          const updatedTask: Task = {
+            id: result.data._id,
+            title: result.data.title,
+            owner: result.data.owner,
+            date: result.data.date,
+            requiredHours: result.data.requiredHours,
+            focusLevel: result.data.focusLevel,
+            joyLevel: result.data.joyLevel,
+            notes: result.data.notes,
+            tags: result.data.tags || [],
+            jobId: result.data.jobId,
+            completed: result.data.completed,
+            isNextTask: result.data._id === nextTaskId,
+            createdDate: result.data.createdDate,
+            endDate: result.data.endDate,
+            timeElapsed: result.data.timeElapsed,
+
+          };
+
+          // If the task completion status changed, trigger a progress update
+          if (currentTask.completed !== updatedTask.completed && selectedJob) {
+            const event = new CustomEvent("job-progress-update", {
+              detail: { jobId: selectedJob.id },
+            });
+            window.dispatchEvent(event);
+          }
+
+           // Add this check: If the edited task is the next task, trigger a refresh
+          if (updatedTask.isNextTask && typeof onRefreshJobs === "function") {
+            onRefreshJobs();
+          }
+
+          setTasks(
+            tasks.map((task) =>
+              task.id === updatedTask.id ? updatedTask : task,
+            ),
+          );
+
+          // Call the callback to notify parent component
+          if (onTaskUpdated) {
+            onTaskUpdated(updatedTask);
+          }
+
+          toast({
+            title: "Success",
+            description: "Task updated successfully",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to update task",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error submitting task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit task",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteTask = async (id: string) => {
     try {
       const response = await fetch(`/api/tasks/${id}`, {
@@ -328,6 +832,12 @@ export function TasksSidebar({
         // }
 
         setTasks(tasks.filter((task) => task.id !== id));
+        
+        // Call the callback to notify parent component
+        if (onTaskDeleted) {
+          onTaskDeleted(id, selectedJob?.id);
+        }
+        
         toast({
           title: "Success",
           description: "Task deleted successfully",
@@ -364,35 +874,48 @@ export function TasksSidebar({
       });
       const result = await response.json();
       if (result.success) {
-        // Use the function form of setState to ensure you're working with the latest state
+        const updatedTaskData = result.data;
+      // Use the function form of setState to ensure you're working with the latest state
         setTasks((prevTasks) => {
           const updatedTasks = prevTasks.map((task) => {
-            if (task.id === id){
-              return {
+            if (task.id === id) {
+              const updatedTask = {
                 ...task,
-                completed,
-                isNextTask: completed? false : task.isNextTask,
+                completed: updatedTaskData.completed,
+                isNextTask: completed ? false : task.isNextTask,
+                createdDate: updatedTaskData.createdDate || task.createdDate,
+                endDate: updatedTaskData.endDate,
+                timeElapsed: updatedTaskData.timeElapsed,
               };
+              
+              // Call the callback to notify parent component
+              if (onTaskUpdated) {
+                onTaskUpdated(updatedTask);
+              }
+              
+              return updatedTask;
             }
             return task;
           });
 
-          return updatedTasks.sort((a,b) => {
-              if (a.isNextTask && !a.completed) return -1;
-              if (b.isNextTask && !b.completed) return 1;
+          return updatedTasks.sort((a, b) => {
+            if (a.isNextTask && !a.completed) return -1;
+            if (b.isNextTask && !b.completed) return 1;
 
-              if (!a.completed && b.completed) return -1;
-              if (a.completed && !b.completed) return 1;
 
-              return 0;
-          })
+            if (!a.completed && b.completed) return -1;
+            if (a.completed && !b.completed) return 1;
+
+            return 0;
+          });
         });
 
         // Then trigger a refresh of the job progress
         refreshJobProgress(jobid);
         setTimeout(() => {
           saveTasksOrderSilently();
-        }, 100)
+        }, 100);
+        await fetchTasks();
       } else {
         toast({
           title: "Error",
@@ -498,138 +1021,6 @@ export function TasksSidebar({
     } catch (error) {
       console.error("Error updating next task:", error);
       throw error;
-    }
-  };
-
-  const handleTaskSubmit = async (taskData: Partial<Task>) => {
-    try {
-      // Make sure tags is always defined as an array
-      const processedTaskData = {
-        ...taskData,
-        tags: taskData.tags || [],
-      };
-
-      if (dialogMode === "create") {
-        // Create new task
-        const response = await fetch("/api/tasks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(processedTaskData),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Map from MongoDB _id to id for frontend consistency
-          const newTask: Task = {
-            id: result.data._id,
-            title: result.data.title,
-            owner: result.data.owner,
-            date: result.data.date,
-            requiredHours: result.data.requiredHours,
-            focusLevel: result.data.focusLevel,
-            joyLevel: result.data.joyLevel,
-            notes: result.data.notes,
-            tags: result.data.tags || [],
-            jobId: result.data.jobId,
-            completed: result.data.completed,
-            isNextTask: false,
-          };
-
-          // Add task ID to job's tasks array
-          if (selectedJob) {
-            await updateJobTasks([...tasks.map((t) => t.id), newTask.id]);
-
-            // Trigger a refresh of the job progress since we added a new task
-            const event = new CustomEvent("job-progress-update", {
-              detail: { jobId: selectedJob.id },
-            });
-            window.dispatchEvent(event);
-          }
-
-          setTasks([...tasks, newTask]);
-          toast({
-            title: "Success",
-            description: "Task created successfully",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to create task",
-            variant: "destructive",
-          });
-        }
-      } else {
-        // Update existing task
-        if (!currentTask) return;
-
-        const response = await fetch(`/api/tasks/${currentTask.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(processedTaskData),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Map from MongoDB _id to id for frontend consistency
-          const updatedTask: Task = {
-            id: result.data._id,
-            title: result.data.title,
-            owner: result.data.owner,
-            date: result.data.date,
-            requiredHours: result.data.requiredHours,
-            focusLevel: result.data.focusLevel,
-            joyLevel: result.data.joyLevel,
-            notes: result.data.notes,
-            tags: result.data.tags || [],
-            jobId: result.data.jobId,
-            completed: result.data.completed,
-            isNextTask: result.data._id === nextTaskId,
-          };
-
-          // If the task completion status changed, trigger a progress update
-          if (currentTask.completed !== updatedTask.completed && selectedJob) {
-            const event = new CustomEvent("job-progress-update", {
-              detail: { jobId: selectedJob.id },
-            });
-            window.dispatchEvent(event);
-          }
-
-           // Add this check: If the edited task is the next task, trigger a refresh
-          if (updatedTask.isNextTask && typeof onRefreshJobs === "function") {
-            onRefreshJobs();
-          }
-
-          setTasks(
-            tasks.map((task) =>
-              task.id === updatedTask.id ? updatedTask : task,
-            ),
-          );
-
-          toast({
-            title: "Success",
-            description: "Task updated successfully",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to update task",
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error submitting task:", error);
-      toast({
-        title: "Error",
-        description: "Failed to submit task",
-        variant: "destructive",
-      });
     }
   };
 
@@ -870,6 +1261,92 @@ export function TasksSidebar({
     }
   };
 
+  const renderEditableJobField = (
+    field: EditableJobField,
+    currentValue: any,
+    displayValue: string,
+    icon: React.ReactNode,
+    label: string,
+    isTextarea: boolean = false,
+    isSelect: boolean = false
+  ) => {
+    const isEditing = editingJobField === field;
+
+    return (
+      <div className="flex items-start">
+        {icon}
+        <div className="flex-1">
+          <span className="text-xs text-gray-500">{label}</span>
+          {isEditing ? (
+            <div className="flex items-start gap-2 mt-1">
+              {isSelect ? (
+                <Select value={editingJobValue} onValueChange={setEditingJobValue}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No business function</SelectItem>
+                    {businessFunctions.map((bf) => (
+                      <SelectItem key={bf._id} value={bf._id}>
+                        {bf.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : isTextarea ? (
+                <Textarea
+                  value={editingJobValue}
+                  onChange={(e) => setEditingJobValue(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                  placeholder={`Enter ${label.toLowerCase()}...`}
+                />
+              ) : (
+                <Input
+                  type={field === 'dueDate' ? 'date' : 'text'}
+                  value={editingJobValue}
+                  onChange={(e) => setEditingJobValue(e.target.value)}
+                  className="h-8 text-sm"
+                  placeholder={`Enter ${label.toLowerCase()}...`}
+                />
+              )}
+              
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={saveJobEdit}
+                  disabled={isSavingJob}
+                  className="h-8 w-8 p-0"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={cancelEditingJob}
+                  disabled={isSavingJob}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 mt-1 transition-colors group relative"
+              onClick={() => startEditingJob(field, currentValue)}
+            >
+              <p className="text-sm font-medium">{displayValue}</p>
+              <div className="absolute -top-8 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                Click to edit
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (!selectedJob) {
     return null;
   }
@@ -885,12 +1362,12 @@ export function TasksSidebar({
    * 
    * This ensures users always see their next priority task at the top and don't need
    * to scroll through completed tasks to find incomplete work.
-   *  * @remarks
+   * @remarks
    * - Uses spread operator to avoid mutating original tasks array
    * - Comparison function returns -1/1/0 for before/after/equal positioning
    * - Within same completion status, tasks maintain their relative order
    * - Next task loses priority when marked as completed
-   * */
+   */
 
   // Sort tasks - only prioritize the next task, allowing drag and drop to manage the rest
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -923,6 +1400,32 @@ export function TasksSidebar({
     });
   };
 
+  const handleToggleMyDay = async (task: Task, value: boolean) => {
+    const today = new Date().toLocaleDateString('en-CA');
+    try {
+      await fetch(`/api/tasks/${task.id || (task as any)._id}/myday`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myDay: value, myDayDate: value ? today : null }),
+      });
+      if (typeof fetchTasks === 'function') fetchTasks();
+    } catch (err) {
+    }
+  };
+  // Helper to refresh selectedJob from backend
+  async function refreshSelectedJob(jobId: string) {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`);
+      const result = await response.json();
+      if (result.success && result.data && selectedJob) {
+        Object.assign(selectedJob, result.data);
+        if (typeof onRefreshJobs === "function") onRefreshJobs();
+      }
+    } catch (err) {
+      // Ignore errors, fallback to local state
+    }
+  }
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -933,37 +1436,107 @@ export function TasksSidebar({
           {/* Wrap the content with the TaskProvider */}
           <TaskProvider>
             <SheetHeader className="mb-4">
-              <div className="flex justify-between items-center">
-                <SheetTitle>Job Tasks</SheetTitle>
-                {selectedJob && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // Close the sidebar first
-                      onOpenChange(false);
-                      // Then set the editing job and open the dialog
-                      if (selectedJob) {
-                        const editEvent = new CustomEvent("open-job-edit", {
-                          detail: { job: selectedJob },
-                        });
-                        window.dispatchEvent(editEvent);
-                      }
-                    }}
-                  >
-                    <Edit className="h-4 w-4 mr-2" /> Edit Job
-                  </Button>
-                )}
+              <SheetTitle>Job Tasks</SheetTitle>
+              <SheetDescription>
+                Manage tasks for this job
+              </SheetDescription>
+              {/* Helper text for inline editing*/}
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <Info className="h-4 w-4" />
+                  <span className="text-sm">
+                    <span className="font-medium">Tip:</span> Click on the job details below to edit them inline. After editing, click ✓ to save.
+                  </span>
+                </div>
               </div>
-              <SheetDescription>Manage tasks for this job</SheetDescription>
             </SheetHeader>
 
-            {/* Job Details Card */}
+            {/* Quick Action Buttons */}
+<div className="mb-6 flex items-center justify-between">
+  <div className="flex flex-wrap gap-3">
+    {/* Mark Job Complete/Active Button */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleMarkJobComplete(!selectedJob.isDone)}
+      className={`flex items-center gap-2 ${
+        selectedJob.isDone 
+          ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50" 
+          : "text-green-600 hover:text-green-700 hover:bg-green-50"
+      }`}
+    >
+      <Check className="h-4 w-4" />
+      {selectedJob.isDone ? "Mark job as active" : "Mark job as complete"}
+    </Button>
+    
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleAskJija}
+      className="flex items-center gap-2"
+    >
+      <PawPrint className="h-4 w-4 text-[#F05523] fill-[#F05523]" />
+      Ask Jija
+    </Button>
+  </div>
+  
+  {onDeleteJob && (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleDeleteJob}
+      className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+    >
+      <Trash2 className="h-4 w-4" />
+      Delete Job
+    </Button>
+  )}
+</div>
+
+            {/* Job Details Card with Inline Editing */}
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span>{selectedJob.title}</span>
+                    {/* Editable Job Title */}
+                    {editingJobField === 'title' ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editingJobValue}
+                          onChange={(e) => setEditingJobValue(e.target.value)}
+                          className="text-lg font-semibold"
+                          placeholder="Job title"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={saveJobEdit}
+                          disabled={isSavingJob}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={cancelEditingJob}
+                          disabled={isSavingJob}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span 
+                        className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors relative group"
+                        onClick={() => startEditingJob('title', selectedJob.title)}
+                      >
+                        {selectedJob.title}
+                        <div className="absolute -top-8 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          Click to edit
+                        </div>
+                      </span>
+                    )}
                     <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
                       #{selectedJob.jobNumber}
                     </span>
@@ -971,59 +1544,164 @@ export function TasksSidebar({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {/* Notes Section */}
-                {selectedJob.notes && (
-                  <div className="mb-4 pb-4 border-b">
-                    <div className="flex items-center mb-2">
-                      <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                      <h3 className="text-sm font-semibold">Notes</h3>
-                    </div>
-                    <div className="pl-6">
-                      <div
-                        className="text-sm text-muted-foreground"
-                        style={{
-                          whiteSpace: "pre-wrap",
-                          overflowY: "auto",
-                          overflowX: "hidden",
-                          maxHeight: "10rem",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {selectedJob.notes}
-                      </div>
-                    </div>
+                {/* Editable Notes Section */}
+                <div className="mb-4 pb-4 border-b">
+                  <div className="flex items-center mb-2">
+                    <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                    <h3 className="text-sm font-semibold">Notes</h3>
                   </div>
-                )}
+                  <div className="pl-6">
+                    {editingJobField === 'notes' ? (
+                      <div className="flex flex-col gap-2">
+                        <Textarea
+                          value={editingJobValue}
+                          onChange={(e) => setEditingJobValue(e.target.value)}
+                          className="text-sm min-h-[100px]"
+                          placeholder="Add notes..."
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={saveJobEdit}
+                            disabled={isSavingJob}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={cancelEditingJob}
+                            disabled={isSavingJob}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors group relative"
+                        onClick={() => startEditingJob('notes', selectedJob.notes)}
+                      >
+                        <div
+                          className="text-sm text-muted-foreground"
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            overflowY: "auto",
+                            overflowX: "hidden",
+                            maxHeight: "10rem",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {selectedJob.notes || "Click to add notes..."}
+                        </div>
+                        <div className="absolute -top-8 left-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          Click to edit
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Job Attributes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Business Function */}
-                  {selectedJob.businessFunctionName && (
-                    <div className="flex items-start">
-                      <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
-                      <div>
-                        <span className="text-xs text-gray-500">
-                          Business Function
-                        </span>
-                        <p className="text-sm font-medium">
-                          {selectedJob.businessFunctionName}
-                        </p>
-                      </div>
-                    </div>
+                  {/* Editable Business Function */}
+                  {renderEditableJobField(
+                    'businessFunction',
+                    selectedJob.businessFunctionId,
+                    selectedJob.businessFunctionName || 'No business function',
+                    <Briefcase className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />,
+                    'Business Function',
+                    false,
+                    true
                   )}
 
-                  {/* Due Date */}
-                  {selectedJob.dueDate && (
-                    <div className="flex items-start">
-                      <Calendar className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
-                      <div>
-                        <span className="text-xs text-gray-500">Due Date</span>
-                        <p className="text-sm font-medium">
-                          {formatDate(selectedJob.dueDate)}
-                        </p>
+                  {/* Editable Due Date */}
+                  {renderEditableJobField(
+                    'dueDate',
+                    selectedJob.dueDate,
+                    formatDate(selectedJob.dueDate),
+                    <Calendar className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />,
+                    'Due Date'
+                  )}
+                </div>
+              </CardContent>
+              {/* Recurring Job Section */}
+              <CardContent className="pt-0">
+                <div className="mb-4 pb-4 border-b">
+                  <div className="flex gap-8">
+                    {/* Recurring Section */}
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <RefreshCcw className="h-4 w-4 mr-2 text-gray-500" />
+                        <h3 className="text-sm text-gray-600">Recurring</h3>
+                      </div>
+                      <div className="pl-6">
+                        {selectedJob.isRecurring ? (
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm flex items-center gap-1"><RefreshCcw className="h-4 w-4 inline text-blue-500" />{selectedJob.recurrenceInterval}</span>
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              // Disable recurrence
+                              const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ isRecurring: false, recurrenceInterval: null }),
+                              });
+                              const result = await response.json();
+                              if (result.success) {
+                                await refreshSelectedJob(selectedJob.id);
+                                setRecurringEdit({ isEditing: false, interval: undefined });
+                                toast({ title: "Success", description: "Job will no longer recur." });
+                              } else {
+                                toast({ title: "Error", description: result.error || "Failed to update job", variant: "destructive" });
+                              }
+                            }}>Stop Recurring</Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={recurringEdit.interval || ""}
+                                onValueChange={(value) => setRecurringEdit(prev => ({ ...prev, interval: value }))}
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Interval" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="daily">Daily</SelectItem>
+                                  <SelectItem value="weekly">Weekly</SelectItem>
+                                  <SelectItem value="biweekly">Biweekly</SelectItem>
+                                  <SelectItem value="monthly">Monthly</SelectItem>
+                                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                                  <SelectItem value="annually">Annually</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" onClick={async () => {
+                                if (!recurringEdit.interval) {
+                                  toast({ title: "Error", description: "Please select a recurrence interval.", variant: "destructive" });
+                                  return;
+                                }
+                                const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ isRecurring: true, recurrenceInterval: recurringEdit.interval }),
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                  await refreshSelectedJob(selectedJob.id);
+                                  setRecurringEdit({ isEditing: false, interval: undefined });
+                                  toast({ title: "Success", description: "Job set as recurring." });
+                                } else {
+                                  toast({ title: "Error", description: result.error || "Failed to update job", variant: "destructive" });
+                                }
+                              }}>Make Recurring</Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1073,6 +1751,12 @@ export function TasksSidebar({
                           onComplete={handleCompleteTask}
                           ownerMap={ownerMap}
                           onAddToCalendar={handleAddToCalendar}
+                          onOpenTaskDetails={handleOpenTaskDetails}
+                          onToggleMyDay={handleToggleMyDay}
+                          onDuplicate={() => {
+                            setTaskToDuplicate(task);
+                            setDuplicateDialogOpen(true);
+                          }}
                         />
                       ))}
                     </SortableContext>
@@ -1088,7 +1772,7 @@ export function TasksSidebar({
             {/* Save Order Notification */}
             {showSaveOrder && (
               <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 z-50 border border-gray-200">
-                <p className="text-sm mb-2">Save the new task order?</p>
+                <span className="text-sm mb-2 block">Save the new task order?</span>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -1118,7 +1802,54 @@ export function TasksSidebar({
         onOpenChange={setTaskDialogOpen}
         onSubmit={handleTaskSubmit}
         initialData={currentTask}
-        jobId={selectedJob?.id ?? ""}
+        jobs={jobs}
+        jobId={selectedJob?.id}
+      />
+
+      {/* Task Details Sidebar */}
+      <TaskDetailsSidebar
+        open={taskDetailsSidebarOpen}
+        onOpenChange={handleTaskDetailsSidebarClose}
+        selectedTask={selectedTaskForDetails}
+        onTaskUpdated={handleTaskUpdated}
+        onNavigateToJob={handleNavigateToJob}
+        onDeleteTask={handleDeleteTask}
+      />
+
+      {/* Duplicate Task Dialog */}
+      <DuplicateTaskDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => {
+          setDuplicateDialogOpen(open);
+          if (!open) setTaskToDuplicate(null);
+        }}
+        sourceTask={taskToDuplicate as Task}
+        onSubmit={(newTask) => {
+          const mappedTask: Task = {
+            id: (newTask.id || (newTask as any)._id || Math.random().toString(36)) as string,
+            title: newTask.title || '',
+            owner: newTask.owner,
+            date: newTask.date,
+            requiredHours: newTask.requiredHours,
+            focusLevel: newTask.focusLevel,
+            joyLevel: newTask.joyLevel,
+            notes: newTask.notes,
+            tags: newTask.tags || [],
+            jobId: newTask.jobId || '',
+            completed: newTask.completed ?? false,
+            isNextTask: false,
+            createdDate: newTask.createdDate,
+            endDate: newTask.endDate,
+            timeElapsed: newTask.timeElapsed,
+            isRecurring: newTask.isRecurring,
+            recurrenceInterval: newTask.recurrenceInterval,
+          };
+          if (mappedTask.jobId === selectedJob?.id) {
+            setTasks((prev) => [mappedTask, ...prev]);
+          }
+          setDuplicateDialogOpen(false);
+          setTaskToDuplicate(null);
+        }}
       />
     </>
   );

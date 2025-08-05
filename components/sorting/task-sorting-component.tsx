@@ -12,7 +12,8 @@ import {
   ArrowUpDown,
   ArrowDown,
   ArrowUp,
-  Clock
+  Clock,
+  Calendar
 } from "lucide-react";
 
 export type TaskSortOption =
@@ -20,7 +21,9 @@ export type TaskSortOption =
   | "date-asc"
   | "date-desc"
   | "hoursRequired-asc"
-  | "hoursRequired-desc";
+  | "hoursRequired-desc"
+  | "createdDate-asc"
+  | "createdDate-desc";
 
 interface TaskSortingComponentProps {
   onSortChange: (sortedTasks: any[]) => void;
@@ -66,30 +69,36 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
 
     switch (option) {
       case "recommended":
-        // Sort by next tasks first, then by job impact score (higher first)
+        // Sort by earliest do-date first, then next tasks, then impact score
         sortedTasks.sort((a, b) => {
-          // Check if task is a next task
+          // First sort by earliest do-date (ascending - earliest first)
+          if (a.date && b.date) {
+            const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+            if (dateComparison !== 0) return dateComparison;
+          } else if (a.date && !b.date) {
+            return -1; // Tasks with dates come before tasks without dates
+          } else if (!a.date && b.date) {
+            return 1;
+          }
+
+          // If dates are the same (or both null), check next task status
           const aIsNextTask = a.jobId && jobs[a.jobId]?.nextTaskId === a._id;
           const bIsNextTask = b.jobId && jobs[b.jobId]?.nextTaskId === b._id;
 
-          // First sort by next task status
           if (aIsNextTask && !bIsNextTask) return -1;
           if (!aIsNextTask && bIsNextTask) return 1;
 
-          // If both are next tasks, sort by job impact score (higher first)
+          // If both are next tasks (or both are not), sort by job impact score (higher first)
           if (aIsNextTask && bIsNextTask) {
             const aImpact = jobs[a.jobId]?.impact || 0;
             const bImpact = jobs[b.jobId]?.impact || 0;
             return bImpact - aImpact;
           }
 
-          // If neither are next tasks, sort by date
-          if (a.date && b.date) {
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
-          }
-
-          // Default fallback for sorting
-          return 0;
+          // For non-next tasks, also sort by impact score
+          const aImpact = jobs[a.jobId]?.impact || 0;
+          const bImpact = jobs[b.jobId]?.impact || 0;
+          return bImpact - aImpact;
         });
         break;
 
@@ -140,7 +149,23 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
           return hoursB - hoursA;
         });
         break;
-    }
+
+        case "createdDate-asc":
+          sortedTasks.sort((a, b) => {
+            if (!a.createdDate) return 1;
+            if (!b.createdDate) return -1;
+            return new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime();
+          });
+          break;
+
+        case "createdDate-desc":
+          sortedTasks.sort((a, b) => {
+            if (!a.createdDate) return 1;
+            if (!b.createdDate) return -1;
+            return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
+          });
+          break;
+            }
 
     onSortChange(sortedTasks);
   };
@@ -172,6 +197,16 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
         return {
           label: "Hours Required (high to low)",
           icon: <Clock className="h-4 w-4 mr-2" />,
+        };
+      case "createdDate-asc":
+        return {
+          label: "Created Date (earliest first)",
+          icon: <Calendar className="h-4 w-4 mr-2" />,
+        };
+      case "createdDate-desc":
+        return {
+          label: "Created Date (latest first)",
+          icon: <Calendar className="h-4 w-4 mr-2" />,
         };
     }
   };
@@ -221,6 +256,18 @@ const TaskSortingComponent: React.FC<TaskSortingComponentProps> = ({
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-2" />
                 Hours Required (high to low)
+              </div>
+            </SelectItem>
+            <SelectItem value="createdDate-asc">
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Created Date (earliest first)
+              </div>
+            </SelectItem>
+            <SelectItem value="createdDate-desc">
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Created Date (latest first)
               </div>
             </SelectItem>
           </SelectContent>

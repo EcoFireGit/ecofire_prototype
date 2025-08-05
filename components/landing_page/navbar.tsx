@@ -33,8 +33,8 @@ function convertJobsToTableData(
       jobNumber: job.jobNumber,
       title: job.title,
       notes: job.notes || undefined,
-      businessFunctionId: job.businessFunctionId || undefined,
-      businessFunctionName: businessFunction?.name || undefined,
+      businessFunctionId: job.businessFunctionId || "none",
+      businessFunctionName: businessFunction?.name || "none",
       dueDate: job.dueDate ? new Date(job.dueDate).toISOString() : undefined,
       createdDate: new Date(job.createdDate!).toISOString(),
       isDone: job.isDone || false,
@@ -220,11 +220,12 @@ const Navbar = () => {
     try {
       const gcalResponse = await fetch("/api/gcal");
       if (!gcalResponse.ok) {
-        throw new Error("Failed to fetch Google Calendar data");
+        console.log("Failed to fetch Google Calendar data");
+        return
       } else {
         const response = await fetch("/api/notifications");
         if (!response.ok) {
-          throw new Error("Failed to fetch notifications");
+          console.log("Failed to fetch notifications");
         }
 
         const data = await response.json();

@@ -10,30 +10,45 @@ export class JobService {
       await dbConnect();
       const job = await Job.findById(jobId);
       if(!job || !job.tasks){
-        throw new Error('Job or Tasks not found');
+        console.log(`Job ${jobId} or tasks not found`);
+        return null;
       }
 
       if(!job.tasks.includes(taskId)){
-        throw new Error('TaskId not found in job tasks');
+        console.log(`TaskId ${taskId} not found in job ${jobId} tasks array`);
+        return null;
       } 
 
       if(job.nextTaskId !== taskId){
+        console.log(`Task ${taskId} is not the current next task, no update needed`);
         return job;
       }
         //find the task from the array that is not comple
         // te and set it as nextTask
       const nextTask = await this.getFirstIncompleteTask(job.tasks);
+      
+      if (!nextTask) {
+        console.log(`No incomplete tasks found for job ${jobId}, clearing nextTaskId`);
+        const updatedJob = await Job.findOneAndUpdate(
+          { _id: jobId },
+          { nextTaskId: null },
+          { new: true }
+        );
+        return updatedJob;
+      }
+      
       const updatedJob = await Job.findOneAndUpdate(
         { _id: jobId },
         { nextTaskId: nextTask }, // Specify the fields to update
         { new: true }  // returns the updated document
       );
 
+      console.log(`Successfully set next task ${nextTask} for job ${jobId}`);
       return updatedJob;
     } catch (error) {
-      throw new Error('Error setting next TaskId in database');
+      console.error('Error in setIncompleteTaskAsNextStep:', error);
+      return null;
     }
-
   }
 
   async  getFirstIncompleteTask(taskIds: string[]): Promise<string | null> {
@@ -256,11 +271,171 @@ async createJob(jobData: Partial<Jobs>, userId: string): Promise<Jobs> {
   async updateJob(id: string, userId: string, updateData: Partial<Jobs>): Promise<Jobs | null> {
     try {
       await dbConnect();
+      console.log('[updateJob] Incoming updateData:', updateData);
+      // Normalize recurrenceInterval: if null, set to undefined
+      if (Object.prototype.hasOwnProperty.call(updateData, 'recurrenceInterval') && updateData.recurrenceInterval === null) {
+        updateData.recurrenceInterval = undefined;
+      }
+      console.log('[updateJob] Normalized updateData:', updateData);
+      const prevJob = await Job.findOne({ _id: id });
       const updatedJob = await Job.findOneAndUpdate(
         { _id: id },
         { $set: updateData },
         { new: true, runValidators: true }
       );
+      console.log('[updateJob] Updated job:', updatedJob);
+
+      // Recurring job logic: if job is marked as complete and is recurring, create next instance
+      if (
+        prevJob &&
+        !prevJob.isDone && // Only trigger on transition to done
+        updateData.isDone === true &&
+        prevJob.isRecurring &&
+        prevJob.recurrenceInterval &&
+        (prevJob.dueDate || prevJob.createdDate) // Use dueDate or fallback to createdDate
+      ) {
+        // Calculate next due date
+        let lastDate = prevJob.dueDate ? new Date(prevJob.dueDate) : new Date(prevJob.createdDate);
+        let nextDueDate = new Date(lastDate);
+        switch (prevJob.recurrenceInterval) {
+          case 'daily':
+            nextDueDate.setDate(nextDueDate.getDate() + 1);
+            break;
+          case 'weekly':
+            nextDueDate.setDate(nextDueDate.getDate() + 7);
+            break;
+          case 'biweekly':
+            nextDueDate.setDate(nextDueDate.getDate() + 14);
+            break;
+          case 'monthly':
+            nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+            break;
+          case 'quarterly':
+            nextDueDate.setMonth(nextDueDate.getMonth() + 3);
+            break;
+          case 'annually':
+            nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+            break;
+          default:
+            break;
+        }
+        // Create new job instance for the next recurrence
+        const newJobData: Partial<Jobs> = {
+          title: prevJob.title,
+          notes: prevJob.notes,
+          businessFunctionId: prevJob.businessFunctionId,
+          userId: prevJob.userId,
+          dueDate: nextDueDate,
+          isDone: false,
+          impact: prevJob.impact,
+          isDeleted: false,
+          isRecurring: prevJob.isRecurring,
+          recurrenceInterval: prevJob.recurrenceInterval,
+        };
+        // Use createJob to ensure jobNumber and createdDate are set
+        try {
+          const newJob = await this.createJob(newJobData, userId);
+          // Duplicate tasks from previous job to new job
+          if (prevJob.tasks && prevJob.tasks.length > 0) {
+            const TaskService = require('./task.service').TaskService;
+            const taskService = new TaskService();
+            const tasksResult = await taskService.getTasksByJobId(prevJob._id.toString(), userId);
+            const newTaskIds: string[] = [];
+
+            // Group recurring tasks by title (case-insensitive, trimmed)
+            const recurringTaskMap: Record<string, any> = {};
+            const nonRecurringTasks: any[] = [];
+            for (const task of tasksResult) {
+              if (task.isRecurring) {
+                const key = task.title.trim().toLowerCase();
+                if (!recurringTaskMap[key]) {
+                  recurringTaskMap[key] = task;
+                }
+              } else {
+                nonRecurringTasks.push(task);
+              }
+            }
+
+            // Create new tasks for each unique recurring title
+            for (const key in recurringTaskMap) {
+              const task = recurringTaskMap[key];
+              const newTask = {
+                ...task,
+                jobId: newJob._id,
+                completed: false,
+                isDeleted: false,
+                isRecurring: true,
+                recurrenceInterval: task.recurrenceInterval,
+              };
+              delete newTask._id;
+              delete newTask.id;
+              delete newTask.date;
+              const createdTask = await taskService.createTask(newTask, userId);
+              if (createdTask) {
+                newTaskIds.push(createdTask._id);
+              }
+            }
+
+            // Create new tasks for non-recurring tasks as usual
+            for (const task of nonRecurringTasks) {
+              const newTask = {
+                ...task,
+                jobId: newJob._id,
+                completed: false,
+                isDeleted: false,
+                isRecurring: false,
+                recurrenceInterval: undefined,
+              };
+              delete newTask._id;
+              delete newTask.id;
+              delete newTask.date;
+              const createdTask = await taskService.createTask(newTask, userId);
+              if (createdTask) {
+                newTaskIds.push(createdTask._id);
+              }
+            }
+
+            // Update the new job with the list of new task IDs
+            await this.updateJob(newJob._id, userId, { tasks: newTaskIds });
+            // Set first task as nextTaskId if any
+            if (newTaskIds.length > 0) {
+              await this.updateJob(newJob._id, userId, { nextTaskId: newTaskIds[0] });
+            }
+          }
+
+          try {
+            const { MappingService } = require('./pi-job-mapping.service');
+            const mappingService = new MappingService();
+            const originalJobMappings = await mappingService.getMappingsByJobId(prevJob._id.toString());
+            if (originalJobMappings && originalJobMappings.length > 0) {
+              for (const mapping of originalJobMappings) {
+                const newMapping = {
+                  jobId: newJob._id,
+                  jobName: newJob.title,
+                  piId: mapping.piId,
+                  piName: mapping.piName,
+                  piImpactValue: mapping.piImpactValue,
+                  piTarget: mapping.piTarget || 0,
+                  notes: `Recurring instance from job: ${prevJob.title}`,
+                };
+                await mappingService.CreateMapping(newMapping, userId);
+              }
+            }
+          } catch (error) {
+            console.error('Error duplicating PI-job mappings for recurring job:', error);
+          }
+
+          try {
+            const { updateJobImpactValues } = await import("@/lib/services/job-impact.service");
+            await updateJobImpactValues(userId);
+          } catch (error) {
+            console.error("Error updating job impact values for recurring job:", error);
+          }
+
+        } catch (err) {
+          console.error('Error creating next recurring job instance:', err);
+        }
+      }
 
       return updatedJob ? JSON.parse(JSON.stringify(updatedJob)) : null;
     } catch (error) {

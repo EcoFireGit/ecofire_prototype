@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Jobs } from "@/lib/models/job.model";
 import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
 import { Job, columns } from "@/components/jobs/table/columns";
@@ -45,6 +45,8 @@ function convertJobsToTableData(
       nextTaskId: job.nextTaskId || undefined,
       tasks: job.tasks || [],
       impact: job.impact || 0,
+      isRecurring: job.isRecurring || false,
+      recurrenceInterval: job.recurrenceInterval || undefined,
       // Owner removed as it's now derived from the next task
     };
   });
@@ -80,10 +82,78 @@ export default function JobsPage() {
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [isTableViewEnabled, setIsTableViewEnabled] = useState(false);
-  const [creatingJob, setCreatingJob] = useState(false); //State to track job creation
+  const [creatingJob, setCreatingJob] = useState(false);
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  
+  // Define the event handler outside useEffect
+  const handleOpenTasksSidebarEvent = useCallback((event: CustomEvent) => {
+    const { jobId, jobData } = event.detail;
+    console.log('Job-feed-view received open-tasks-sidebar event for jobId:', jobId);
+    console.log('Job data provided in event:', jobData);
+    console.log('Available activeJobs:', activeJobs.map(j => ({ id: j.id, title: j.title })));
+    console.log('Available completedJobs:', completedJobs.map(j => ({ id: j.id, title: j.title })));
+    
+    // First try to use the job data provided in the event
+    if (jobData) {
+      console.log('Using job data from event:', jobData.title);
+      // Convert the job data to the format expected by handleOpenTasksSidebar
+      const convertedJob = {
+        id: jobData._id || jobData.id,
+        jobNumber: jobData.jobNumber,
+        title: jobData.title,
+        notes: jobData.notes,
+        businessFunctionId: jobData.businessFunctionId,
+        businessFunctionName: jobData.businessFunctionName,
+        dueDate: jobData.dueDate,
+        createdDate: jobData.createdDate,
+        isDone: jobData.isDone,
+        nextTaskId: jobData.nextTaskId,
+        tasks: jobData.tasks,
+        impact: jobData.impact,
+      };
+      handleOpenTasksSidebar(convertedJob);
+      return;
+    }
+    
+    // Fallback to finding the job in the arrays
+    let job = activeJobs.find(j => j.id === jobId) || completedJobs.find(j => j.id === jobId);
+    
+    if (job) {
+      console.log('Found job to open:', job.title);
+      handleOpenTasksSidebar(job);
+    } else {
+      console.log('Job not found in activeJobs or completedJobs');
+      console.log('Looking for jobId:', jobId);
+      console.log('Active jobs IDs:', activeJobs.map(j => j.id));
+      console.log('Completed jobs IDs:', completedJobs.map(j => j.id));
+      console.log('Job not found - this might be because the job data needs to be refreshed');
+    }
+  }, [activeJobs, completedJobs]);
+  
+  const jobs = React.useMemo(() => {
+    const jobsMap: Record<string, any> = {};
+    
+    [...activeJobs, ...completedJobs].forEach(job => {
+      jobsMap[job.id] = {
+        _id: job.id,
+        title: job.title,
+        jobNumber: job.jobNumber,
+        businessFunctionId: job.businessFunctionId,
+        businessFunctionName: job.businessFunctionName,
+        dueDate: job.dueDate,
+        isDone: job.isDone,
+        nextTaskId: job.nextTaskId,
+        tasks: job.tasks,
+        impact: job.impact,
+        notes: job.notes,
+        createdDate: job.createdDate
+      };
+    });
+    
+    return jobsMap;
+  }, [activeJobs, completedJobs]);
 
   useEffect(() => {
     // Event handler to open the dialog
@@ -105,16 +175,27 @@ export default function JobsPage() {
       fetchJobs();
     };
 
+    const handleForceJobsRefresh = (event: CustomEvent) => {
+      console.log('Force refreshing jobs due to completion status change:', event.detail);
+      fetchJobs();
+    };
+
+
+
     window.addEventListener("openJobDialog", handleOpenDialog);
     window.addEventListener("open-job-edit", handleEditJob);
     window.addEventListener("refreshJobsList", handleRefreshJobsList);
+    window.addEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
+    window.addEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
 
     return () => {
       window.removeEventListener("openJobDialog", handleOpenDialog);
       window.removeEventListener("open-job-edit", handleEditJob);
       window.removeEventListener("refreshJobsList", handleRefreshJobsList);
+      window.removeEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
+      window.removeEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
     };
-  }, []);
+  }, [handleOpenTasksSidebarEvent]);
 
   // New: Check for businessFunction in URL params for initial filtering
   useEffect(() => {
@@ -390,6 +471,9 @@ export default function JobsPage() {
         title: "Success",
         description: "Selected jobs marked as complete",
       });
+
+      // Always refresh jobs to show new recurring instance
+      await fetchJobs();
     } catch (error) {
       console.error("Error marking jobs as done:", error);
       toast({
@@ -539,33 +623,6 @@ export default function JobsPage() {
     }
   }, [searchParams]);
 
-  // Add this new useEffect to listen for the custom event from the Navbar
-  useEffect(() => {
-    // Event handler to open the dialog
-    const handleOpenDialog = () => {
-      setEditingJob(undefined);
-      setDialogOpen(true);
-    };
-
-    // Event handler for editing a job from TasksSidebar
-    const handleEditJob = (event: any) => {
-      if (event.detail && event.detail.job) {
-        setEditingJob(event.detail.job);
-        setDialogOpen(true);
-      }
-    };
-
-    // Add the event listeners
-    window.addEventListener("openJobDialog", handleOpenDialog);
-    window.addEventListener("open-job-edit", handleEditJob);
-
-    // Clean up the event listeners when component unmounts
-    return () => {
-      window.removeEventListener("openJobDialog", handleOpenDialog);
-      window.removeEventListener("open-job-edit", handleEditJob);
-    };
-  }, []);
-
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
 
@@ -600,84 +657,110 @@ export default function JobsPage() {
     setSortedCompletedJobs(sortByRecommended(filteredCompleted));
   };
 
-  // Helper function to check if a job matches filters
-  const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
-    let matches = true;
-    const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
+// Helper function to check if a job matches filters
+const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
+  let matches = true;
 
-    Object.entries(filters).forEach(([key, value]) => {
-      if (
-        value === "" ||
-        value === null ||
-        value === undefined ||
-        value === "any"
-      )
-        return;
+  // Get the associated task for this job (if it has a nextTaskId)
+  const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
 
-      switch (key) {
-        case "businessFunctionId":
-          if (job.businessFunctionId !== value) matches = false;
-          break;
-        case "dueDate":
-          if (!job.dueDate || new Date(job.dueDate) > new Date(value))
-            matches = false;
-          break;
-        case "isDone":
-          if (job.isDone !== value) matches = false;
-          break;
-        case "focusLevel":
-          if (!nextTask || nextTask.focusLevel !== value) matches = false;
-          break;
-        case "joyLevel":
-          if (!nextTask || nextTask.joyLevel !== value) matches = false;
-          break;
-        case "owner":
-          if (!nextTask || nextTask.owner !== value) matches = false;
-          break;
-        case "minHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours < value
-          )
-            matches = false;
-          break;
-        case "maxHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours > value
-          )
-            matches = false;
-          break;
-        case "tags":
-          if (!Array.isArray(value) || value.length === 0) break;
+  // Process each filter
+  Object.entries(filters).forEach(([key, value]) => {
+    // Skip empty values or "any" values
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      value === "any"
+    )
+      return;
 
+    switch (key) {
+      // Job filters
+      case "businessFunctionId":
+        if (job.businessFunctionId !== value) matches = false;
+        break;
+      case "dueDate":
+        if (!job.dueDate || new Date(job.dueDate) > new Date(value))
+          matches = false;
+        break;
+      case "isDone":
+        if (job.isDone !== value) matches = false;
+        break;
+
+      // Task filters (applied to the job's next task)
+      case "focusLevel":
+        if (!nextTask || nextTask.focusLevel !== value) matches = false;
+        break;
+      case "joyLevel":
+        if (!nextTask || nextTask.joyLevel !== value) matches = false;
+        break;
+      case "owner":
+        if (value === "none") {
+          // Check if the displayed owner name would be "Not assigned"
+          // This covers both cases: no nextTask, or nextTask with no owner
+          const nextTaskId = job.nextTaskId;
+          const displayedOwner = nextTaskId && taskOwnerMap && taskOwnerMap[nextTaskId] 
+            ? taskOwnerMap[nextTaskId] 
+            : "Not assigned";
+          
+          if (displayedOwner !== "Not assigned") {
+            matches = false;
+          }
+        } else {
+          // For specific owner filtering, check the actual task owner
+          if (!nextTask || nextTask.owner !== value) {
+            matches = false;
+          }
+        }
+        break;
+      case "minHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours < value
+        )
+          matches = false;
+        break;
+      case "maxHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours > value
+        )
+          matches = false;
+        break;
+      case "tags":
+        if (!Array.isArray(value) || value.length === 0) break;
+
+        if (value.includes("none")) {
+          if (!nextTask) {
+            matches = false;
+          } else if (nextTask.tags && nextTask.tags.length > 0) {
+            matches = false;
+          }
+        } else {
           if (!nextTask || !nextTask.tags || !Array.isArray(nextTask.tags)) {
             matches = false;
-            break;
+          } else {
+            const selectedTagNames = value
+              .map((tagId) => {
+                const tag = tags.find((t) => t._id === tagId);
+                return tag ? tag.name : null;
+              })
+              .filter(Boolean);
+
+            if (!selectedTagNames.every((tagName) => nextTask.tags.includes(tagName))) {
+              matches = false;
+            }
           }
+        }
+        break;
+    }
+  });
 
-          const selectedTagNames = value
-            .map((tagId) => {
-              const tag = tags.find((t) => t._id === tagId);
-              return tag ? tag.name : null;
-            })
-            .filter(Boolean);
-
-          if (
-            !selectedTagNames.every((tagName) =>
-              nextTask.tags.includes(tagName),
-            )
-          ) {
-            matches = false;
-          }
-          break;
-      }
-    });
-
-    return matches;
-  };
+  return matches;
+};
 
   useEffect(() => {
     if (!loading && activeJobs.length > 0) {
@@ -703,8 +786,7 @@ export default function JobsPage() {
         setSortedCompletedJobs(sortByRecommended(filteredCompleted));
       }
     }
-  }, [loading, activeJobs, completedJobs, activeFilters]);
-  
+  }, [loading, activeJobs, completedJobs, activeFilters, taskDetails, tags]);
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -860,44 +942,11 @@ export default function JobsPage() {
   };
 
   const handleSidebarClose = (open: boolean) => {
-    if (!open && needsRefresh) {
+    if (!open) {
       fetchJobs();
     }
     setTasksSidebarOpen(open);
     if (!open) setSelectedJob(null); // Clear selected job and avoid stale sidebar data
-  };
-
-  const updateJobProgressById = async (jobId: string) => {
-    try {
-      const response = await fetch(`/api/jobs/${jobId}`);
-      const result = await response.json();
-
-      if (result.success) {
-        const updatedJob = result.data;
-        setActiveJobs((prevActiveJobs) =>
-          prevActiveJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setCompletedJobs((prevCompletedJobs) =>
-          prevCompletedJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setFilteredActiveJobs((prevFilteredActiveJobs) =>
-          prevFilteredActiveJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setFilteredCompletedJobs((prevFilteredCompletedJobs) =>
-          prevFilteredCompletedJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-      }
-    } catch (error) {
-      console.error("Error updating job progress:", error);
-    }
   };
 
   if (loading) {
@@ -1109,6 +1158,8 @@ export default function JobsPage() {
           onOpenChange={handleSidebarClose}
           selectedJob={selectedJob}
           onRefreshJobs={() => setNeedsRefresh(true)}
+          onDeleteJob={handleDelete}
+          jobs={jobs} 
         />
 
         {selectedActiveJobs.size > 0 && (
