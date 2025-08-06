@@ -64,6 +64,9 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     jobOutput: false,
     outputOutcome: false,
   });
+  const [itemColors, setItemColors] = useState<Map<string, string>>(new Map());
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [hoveredBarItem, setHoveredBarItem] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchUserPreferences = async () => {
@@ -86,6 +89,54 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     fetchMappingData();
     fetchUserPreferences();
   }, []);
+
+  // Initialize colors for all items when mapping data is loaded
+  useEffect(() => {
+    if (mappingData) {
+      const newItemColors = new Map<string, string>();
+      
+      // Collect all unique item names
+      const allItems = new Set<string>();
+      
+      // Add all job names
+      mappingData.jobs.forEach(job => allItems.add(job.name));
+      
+      // Add all output names
+      mappingData.outputs.forEach(output => allItems.add(output.name));
+      
+      // Generate colors for all items
+      allItems.forEach(itemName => {
+        // Generate a hash code from the item name
+        const hashCode = itemName.split('').reduce((acc, char) => {
+          return char.charCodeAt(0) + ((acc << 5) - acc);
+        }, 0);
+        
+        // Try to find a unique color
+        let attempts = 0;
+        let color: string;
+        let h: number, s: number, l: number;
+        
+        do {
+          // Use the hash as base, but add attempts to find unique colors
+          h = Math.abs((hashCode + attempts * 137) % 360);
+          s = 65 + ((hashCode + attempts) % 20);
+          l = 55 + ((hashCode + attempts * 2) % 15);
+          
+          color = `hsl(${h}, ${s}%, ${l}%)`;
+          attempts++;
+          
+          if (attempts > 100) {
+            console.warn(`Could not find unique color for ${itemName} after 100 attempts`);
+            break;
+          }
+        } while (Array.from(newItemColors.values()).includes(color));
+        
+        newItemColors.set(itemName, color);
+      });
+      
+      setItemColors(newItemColors);
+    }
+  }, [mappingData]);
 
   const fetchMappingData = async () => {
     try {
@@ -124,140 +175,175 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     }));
   };
 
+  // Get the color for an item (colors are pre-generated)
+  const getItemColor = (itemName: string) => {
+    return itemColors.get(itemName) || '#6B7280'; // fallback gray color
+  };
+
+  // Calculate Job % impact on Output
+  const calculateJobOutputImpact = (jobId: string, outputId: string): number => {
+    if (!mappingData) return 0;
+    
+    const mapping = mappingData.jobOutputMappings.find(
+      m => m.jobId === jobId && m.outputId === outputId
+    );
+    
+    if (!mapping) return 0;
+    
+    const output = mappingData.outputs.find(o => o.id === outputId);
+    if (!output) return 0;
+    
+    const denominator = output.targetValue - output.beginningValue;
+    if (denominator <= 0) return 0;
+    
+    // Return raw impact value, we'll normalize it later
+    const result = mapping.impactValue / denominator;
+    
+    return result;
+  };
+
+  // Calculate Output % impact on Outcome
+  const calculateOutputOutcomeImpact = (outputId: string, outcomeId: string): number => {
+    if (!mappingData) return 0;
+    
+    const mapping = mappingData.outputOutcomeMappings.find(
+      m => m.outputId === outputId && m.outcomeId === outcomeId
+    );
+    
+    if (!mapping) return 0;
+    
+    const outcome = mappingData.outcomes.find(o => o.id === outcomeId);
+    if (!outcome) return 0;
+    
+    const denominator = outcome.targetValue - outcome.beginningValue;
+    if (denominator <= 0) return 0;
+    
+    // Calculate raw impact: output-outcome impact / (outcome target - outcome beginning)
+    const result = mapping.impact / denominator;
+    
+    return result;
+  };
+
+  // Calculate Job % impact on Outcome
+  const calculateJobOutcomeImpact = (jobId: string, outcomeId: string): number => {
+    if (!mappingData) return 0;
+    
+    let totalImpact = 0;
+    
+    // Get all outputs that this job impacts
+    const jobOutputs = mappingData.jobOutputMappings.filter(m => m.jobId === jobId);
+    
+    jobOutputs.forEach((jobOutput) => {
+      // Calculate job's impact on this output
+      const jobOutputImpact = calculateJobOutputImpact(jobId, jobOutput.outputId);
+      
+      // Calculate this output's impact on the outcome
+      const outputOutcomeImpact = calculateOutputOutcomeImpact(jobOutput.outputId, outcomeId);
+      
+      // Multiply the two raw impacts
+      const pathImpact = jobOutputImpact * outputOutcomeImpact;
+      totalImpact += pathImpact;
+    });
+    
+    return totalImpact;
+  };
+
   const renderJobOutcomeChart = () => {
     if (!mappingData) return null;
 
-    // First, calculate the total impact for each outcome across ALL jobs
-    const totalOutcomeImpact = new Map<string, number>();
-    
-    mappingData.jobs.forEach(job => {
-      const jobOutputMappings = mappingData.jobOutputMappings.filter(
-        mapping => mapping.jobId === job.id
-      );
+    // Group by outcomes, with jobs as stacks
+    const outcomeJobData = mappingData.outcomes.map(outcome => {
+      const jobImpacts = mappingData.jobs.map(job => {
+        const impact = calculateJobOutcomeImpact(job.id, outcome.id);
+        return {
+          jobId: job.id,
+          jobName: job.name,
+          impact
+        };
+      }).filter(job => job.impact > 0)
+      .sort((a, b) => b.impact - a.impact);
 
-      jobOutputMappings.forEach(jobOutput => {
-        const outputOutcomeMappings = mappingData.outputOutcomeMappings.filter(
-          mapping => mapping.outputId === jobOutput.outputId
-        );
-
-        outputOutcomeMappings.forEach(outputOutcome => {
-          const contribution = jobOutput.impactValue * outputOutcome.impact;
-          const current = totalOutcomeImpact.get(outputOutcome.outcomeName) || 0;
-          totalOutcomeImpact.set(outputOutcome.outcomeName, current + contribution);
-        });
-      });
-    });
-
-    // Now calculate each job's contribution to outcomes
-    const jobOutcomeData = mappingData.jobs.map(job => {
-      const jobOutputMappings = mappingData.jobOutputMappings.filter(
-        mapping => mapping.jobId === job.id
-      );
-
-      const outcomeContributions = jobOutputMappings.map(jobOutput => {
-        const outputOutcomeMappings = mappingData.outputOutcomeMappings.filter(
-          mapping => mapping.outputId === jobOutput.outputId
-        );
-
-        return outputOutcomeMappings.map(outputOutcome => {
-          const contribution = jobOutput.impactValue * outputOutcome.impact;
-          return {
-            outcomeName: outputOutcome.outcomeName,
-            contribution
-          };
-        });
-      }).flat();
-
-      // Aggregate contributions by outcome
-      const outcomeMap = new Map<string, number>();
-      outcomeContributions.forEach(contribution => {
-        const current = outcomeMap.get(contribution.outcomeName) || 0;
-        outcomeMap.set(contribution.outcomeName, current + contribution.contribution);
-      });
-
-      const outcomes = Array.from(outcomeMap.entries())
-        .filter(([name]) => name && name.trim() !== '') // Filter out empty outcome names
-        .map(([name, value]) => {
-          const percentage = (totalOutcomeImpact.get(name) || 0) > 0 ? (value / (totalOutcomeImpact.get(name) || 1)) * 100 : 0;
-          
-          return {
-            name,
-            value,
-            percentage
-          };
-        });
-
-      // Calculate job's contribution to mission impact
-      const jobMissionContribution = outcomes.reduce((sum, outcome) => {
-        // Find the corresponding outcome to get its mission points
-        const outcomeData = mappingData.outcomes.find(o => o.name === outcome.name);
-        const missionPoints = outcomeData?.points || 0;
-        // Calculate this job's contribution to this outcome's mission impact
-        const outcomeContribution = (outcome.percentage / 100) * missionPoints;
-        return sum + outcomeContribution;
-      }, 0);
+      // Calculate total impact for this outcome to normalize to percentages
+      const totalImpact = jobImpacts.reduce((sum, job) => sum + job.impact, 0);
       
-      // Calculate total mission impact
-      const totalMissionImpact = mappingData.outcomes.reduce((sum, outcome) => sum + (outcome.points || 0), 0);
-      const totalImpactPercentage = totalMissionImpact > 0 ? (jobMissionContribution / totalMissionImpact) * 100 : 0;
+      // Convert to percentages
+      const jobImpactsWithPercentages = jobImpacts.map(job => {
+        const percentage = totalImpact > 0 ? (job.impact / totalImpact) * 100 : 0;
+        return {
+          ...job,
+          impact: percentage
+        };
+      });
 
       return {
-        jobName: job.name,
-        outcomes,
-        totalImpact: totalImpactPercentage
+        outcomeId: outcome.id,
+        outcomeName: outcome.name,
+        jobs: jobImpactsWithPercentages
       };
-    }).filter(job => job.outcomes.length > 0)
-    .sort((a, b) => b.totalImpact - a.totalImpact); // Always sort high-to-low by default
+    }).filter(outcome => outcome.jobs.length > 0)
+    .sort((a, b) => {
+      const aTotal = a.jobs.reduce((sum, job) => sum + job.impact, 0);
+      const bTotal = b.jobs.reduce((sum, job) => sum + job.impact, 0);
+      return bTotal - aTotal;
+    });
 
-    const displayData = expandedCharts.jobOutcome ? jobOutcomeData : jobOutcomeData.slice(0, 5);
-    const hasMoreItems = jobOutcomeData.length > 5;
+    const displayData = expandedCharts.jobOutcome ? outcomeJobData : outcomeJobData.slice(0, 5);
+    const hasMoreItems = outcomeJobData.length > 5;
 
     return (
       <div className="space-y-4">
-        {displayData.map((job, index) => (
+        {displayData.map((outcome, index) => (
           <div key={index} className="border rounded-lg p-4 bg-white">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-gray-900">{job.jobName}</h4>
-              <span className="text-sm text-gray-500">Total Mission Impact: {job.totalImpact.toFixed(1)}%</span>
+              <h4 className="font-medium text-gray-900">{outcome.outcomeName}</h4>
             </div>
             
             <div className="relative h-5 bg-gray-200 rounded-full overflow-hidden">
-              {job.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-blue-600', 'bg-green-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
-                const color = colors[outcomeIndex % colors.length];
-                const isFirst = outcomeIndex === 0;
-                const isLast = outcomeIndex === job.outcomes.length - 1;
+              {outcome.jobs.map((job, jobIndex) => {
+                const isFirst = jobIndex === 0;
+                const isLast = jobIndex === outcome.jobs.length - 1;
                 
                 return (
                   <div
-                    key={outcomeIndex}
-                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer ${
+                    key={jobIndex}
+                    className={`absolute h-full transition-all duration-200 hover:brightness-110 cursor-pointer ${
                       isFirst ? 'rounded-l-full' : ''
                     } ${
                       isLast ? 'rounded-r-full' : ''
                     }`}
                     style={{
-                      left: `${job.outcomes.slice(0, outcomeIndex).reduce((sum, o) => sum + o.percentage, 0)}%`,
-                      width: `${outcome.percentage}%`
+                      left: `${outcome.jobs.slice(0, jobIndex).reduce((sum, j) => sum + j.impact, 0)}%`,
+                      width: `${job.impact}%`,
+                      backgroundColor: getItemColor(job.jobName)
                     }}
-                    title={`This job contributes ${outcome.percentage.toFixed(1)}% of total impact on the outcome, ${outcome.name}`}
+                    title={`"${job.jobName}" contributes ${job.impact.toFixed(1)}%`}
+                    onMouseEnter={() => setHoveredBarItem(job.jobName)}
+                    onMouseLeave={() => setHoveredBarItem(null)}
                   />
                 );
               })}
             </div>
             
             <div className="mt-2 flex flex-wrap gap-2">
-              {job.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-blue-600', 'bg-green-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
-                const color = colors[outcomeIndex % colors.length];
-                
-                return (
-                  <div key={outcomeIndex} className="flex items-center text-xs">
-                    <div className={`w-3 h-3 ${color} rounded mr-1`}></div>
-                    <span className="text-gray-600">{outcome.name}</span>
-                  </div>
-                );
-              })}
+              {outcome.jobs.map((job, jobIndex) => (
+                <div 
+                  key={jobIndex} 
+                  className="flex items-center text-xs cursor-pointer"
+                  onMouseEnter={() => setHoveredItem(job.jobName)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <div 
+                    className="w-3 h-3 rounded mr-1"
+                    style={{ backgroundColor: getItemColor(job.jobName) }}
+                  ></div>
+                  <span className={`text-gray-600 ${(hoveredItem === job.jobName || hoveredBarItem === job.jobName) ? '' : 'truncate max-w-[80px]'}`}>
+                    {(hoveredItem === job.jobName || hoveredBarItem === job.jobName)
+                      ? <>{job.jobName} <span className="text-gray-400">({job.impact.toFixed(1)}%)</span></>
+                      : (job.jobName.length > 10 ? `${job.jobName.substring(0, 10)}...` : job.jobName)
+                    }
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -277,7 +363,7 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4" />
-                  View More ({jobOutcomeData.length - 5} more)
+                  View More ({outcomeJobData.length - 5} more)
                 </>
               )}
             </Button>
@@ -290,161 +376,99 @@ const MappingChart: React.FC<MappingChartProps> = () => {
   const renderJobOutputChart = () => {
     if (!mappingData) return null;
 
-    // Group mappings by job
-    const jobOutputData = mappingData.jobs.map(job => {
-      const jobOutputMappings = mappingData.jobOutputMappings.filter(
-        mapping => mapping.jobId === job.id
-      );
+    // Group by outputs, with jobs as stacks
+    const outputJobData = mappingData.outputs.map(output => {
+      const jobImpacts = mappingData.jobs.map(job => {
+        const impact = calculateJobOutputImpact(job.id, output.id);
+        return {
+          jobId: job.id,
+          jobName: job.name,
+          impact
+        };
+      }).filter(job => job.impact > 0)
+      .sort((a, b) => b.impact - a.impact);
 
-      const outputs = jobOutputMappings.map(mapping => ({
-        id: mapping.outputId,
-        name: mapping.outputName,
-        impactValue: mapping.impactValue,
-        target: mapping.target
-      }));
-
-      const totalRawImpact = outputs.reduce((sum, output) => sum + output.impactValue, 0);
+      // Calculate total impact for this output to normalize to percentages
+      const totalImpact = jobImpacts.reduce((sum, job) => sum + job.impact, 0);
       
-      // For Job → Output chart: Calculate job's mission impact through its outputs
-      const totalJobOutputImpact = outputs.reduce((sum, output) => sum + output.impactValue, 0);
-      
-      // Calculate job's contribution to mission through its outputs
-      const jobMissionContribution = outputs.reduce((sum, output) => {
-        // Find all outcomes this output contributes to
-        const outputOutcomes = mappingData.outputOutcomeMappings.filter(mapping => mapping.outputId === output.id);
-        let outputContribution = 0;
-        
-        outputOutcomes.forEach(outputOutcome => {
-          const outcomeData = mappingData.outcomes.find(o => o.name === outputOutcome.outcomeName);
-          const missionPoints = outcomeData?.points || 0;
-          
-          // Calculate how many outputs are associated with this outcome
-          const outputsForThisOutcome = mappingData.outputOutcomeMappings.filter(mapping => 
-            mapping.outcomeName === outputOutcome.outcomeName
-          ).length;
-          
-          // Calculate how many jobs are associated with this output
-          const jobsForThisOutput = mappingData.jobOutputMappings.filter(mapping => 
-            mapping.outputId === output.id
-          ).length;
-          
-          // Mission impact is distributed equally among outputs, then among jobs
-          const outputMissionShare = missionPoints / outputsForThisOutcome;
-          const jobMissionShare = outputMissionShare / jobsForThisOutput;
-          
-          outputContribution += jobMissionShare;
-        });
-        
-        return sum + outputContribution;
-      }, 0);
-      
-      // Calculate total mission impact (sum of all outcome points)
-      const totalMissionImpact = mappingData.outcomes.reduce((sum, outcome) => sum + (outcome.points || 0), 0);
-      
-      // Calculate total mission contribution from all jobs
-      const allJobsMissionContribution = mappingData.jobs.reduce((totalJobContribution, job) => {
-        const jobOutputs = mappingData.jobOutputMappings.filter(mapping => mapping.jobId === job.id);
-        const jobOutputsWithData = jobOutputs.map(mapping => {
-          const output = mappingData.outputs.find(o => o.id === mapping.outputId);
-          return { ...mapping, outputName: output?.name || mapping.outputName };
-        });
-        
-        return totalJobContribution + jobOutputsWithData.reduce((sum, output) => {
-          const outputOutcomes = mappingData.outputOutcomeMappings.filter(mapping => mapping.outputId === output.outputId);
-          let outputContribution = 0;
-          
-          outputOutcomes.forEach(outputOutcome => {
-            const outcomeData = mappingData.outcomes.find(o => o.name === outputOutcome.outcomeName);
-            const missionPoints = outcomeData?.points || 0;
-            
-            const outputsForThisOutcome = mappingData.outputOutcomeMappings.filter(mapping => 
-              mapping.outcomeName === outputOutcome.outcomeName
-            ).length;
-            
-            const jobsForThisOutput = mappingData.jobOutputMappings.filter(mapping => 
-              mapping.outputId === output.outputId
-            ).length;
-            
-            const outputMissionShare = missionPoints / outputsForThisOutcome;
-            const jobMissionShare = outputMissionShare / jobsForThisOutput;
-            
-            outputContribution += jobMissionShare;
-          });
-          
-          return sum + outputContribution;
-        }, 0);
-      }, 0);
-      
-      // Calculate percentage relative to total mission contribution from all jobs
-      const totalImpactPercentage = allJobsMissionContribution > 0 ? (jobMissionContribution / allJobsMissionContribution) * 100 : 0;
+      // Convert to percentages
+      const jobImpactsWithPercentages = jobImpacts.map(job => {
+        const percentage = totalImpact > 0 ? (job.impact / totalImpact) * 100 : 0;
+        return {
+          ...job,
+          impact: percentage
+        };
+      });
 
       return {
-        jobName: job.name,
-        outputs: outputs.map(output => {
-          // Use the actual impact value from the database
-          const jobOutputMapping = mappingData.jobOutputMappings.find(mapping => 
-            mapping.jobId === job.id && mapping.outputId === output.id
-          );
-          
-          return {
-            ...output,
-            percentage: jobOutputMapping ? jobOutputMapping.impactValue : 0
-          };
-        }),
-        totalImpact: totalImpactPercentage
+        outputId: output.id,
+        outputName: output.name,
+        jobs: jobImpactsWithPercentages
       };
-    }).filter(job => job.outputs.length > 0)
-    .sort((a, b) => b.totalImpact - a.totalImpact); // Always sort high-to-low by default
+    }).filter(output => output.jobs.length > 0)
+    .sort((a, b) => {
+      const aTotal = a.jobs.reduce((sum, job) => sum + job.impact, 0);
+      const bTotal = b.jobs.reduce((sum, job) => sum + job.impact, 0);
+      return bTotal - aTotal;
+    });
 
-    const displayData = expandedCharts.jobOutput ? jobOutputData : jobOutputData.slice(0, 5);
-    const hasMoreItems = jobOutputData.length > 5;
+    const displayData = expandedCharts.jobOutput ? outputJobData : outputJobData.slice(0, 5);
+    const hasMoreItems = outputJobData.length > 5;
 
     return (
       <div className="space-y-4">
-        {displayData.map((job, index) => (
+        {displayData.map((output, index) => (
           <div key={index} className="border rounded-lg p-4 bg-white">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-gray-900">{job.jobName}</h4>
-              <span className="text-sm text-gray-500">Total Mission Impact: {job.totalImpact.toFixed(1)}%</span>
+              <h4 className="font-medium text-gray-900">{output.outputName}</h4>
             </div>
             
             <div className="relative h-5 bg-gray-200 rounded-full overflow-hidden">
-              {job.outputs.map((output, outputIndex) => {
-                const colors = ['bg-green-600', 'bg-blue-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
-                const color = colors[outputIndex % colors.length];
-                const isFirst = outputIndex === 0;
-                const isLast = outputIndex === job.outputs.length - 1;
+              {output.jobs.map((job, jobIndex) => {
+                const isFirst = jobIndex === 0;
+                const isLast = jobIndex === output.jobs.length - 1;
                 
                 return (
                   <div
-                    key={outputIndex}
-                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer ${
+                    key={jobIndex}
+                    className={`absolute h-full transition-all duration-200 hover:brightness-110 cursor-pointer ${
                       isFirst ? 'rounded-l-full' : ''
                     } ${
                       isLast ? 'rounded-r-full' : ''
                     }`}
                     style={{
-                      left: `${job.outputs.slice(0, outputIndex).reduce((sum, o) => sum + o.percentage, 0)}%`,
-                      width: `${output.percentage}%`
+                      left: `${output.jobs.slice(0, jobIndex).reduce((sum, j) => sum + j.impact, 0)}%`,
+                      width: `${job.impact}%`,
+                      backgroundColor: getItemColor(job.jobName)
                     }}
-                    title={`This job contributes ${output.percentage.toFixed(1)}% of total impact on the output, ${output.name}`}
+                    title={`"${job.jobName}" contributes ${job.impact.toFixed(1)}%`}
+                    onMouseEnter={() => setHoveredBarItem(job.jobName)}
+                    onMouseLeave={() => setHoveredBarItem(null)}
                   />
                 );
               })}
             </div>
             
             <div className="mt-2 flex flex-wrap gap-2">
-              {job.outputs.map((output, outputIndex) => {
-                const colors = ['bg-green-600', 'bg-blue-600', 'bg-yellow-500', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
-                const color = colors[outputIndex % colors.length];
-                
-                return (
-                  <div key={outputIndex} className="flex items-center text-xs">
-                    <div className={`w-3 h-3 ${color} rounded mr-1`}></div>
-                    <span className="text-gray-600">{output.name}</span>
-                  </div>
-                );
-              })}
+              {output.jobs.map((job, jobIndex) => (
+                <div 
+                  key={jobIndex} 
+                  className="flex items-center text-xs cursor-pointer"
+                  onMouseEnter={() => setHoveredItem(job.jobName)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <div 
+                    className="w-3 h-3 rounded mr-1"
+                    style={{ backgroundColor: getItemColor(job.jobName) }}
+                  ></div>
+                  <span className={`text-gray-600 ${(hoveredItem === job.jobName || hoveredBarItem === job.jobName) ? '' : 'truncate max-w-[80px]'}`}>
+                    {(hoveredItem === job.jobName || hoveredBarItem === job.jobName)
+                      ? <>{job.jobName} <span className="text-gray-400">({job.impact.toFixed(1)}%)</span></>
+                      : (job.jobName.length > 10 ? `${job.jobName.substring(0, 10)}...` : job.jobName)
+                    }
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -464,7 +488,7 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4" />
-                  View More ({jobOutputData.length - 5} more)
+                  View More ({outputJobData.length - 5} more)
                 </>
               )}
             </Button>
@@ -477,113 +501,103 @@ const MappingChart: React.FC<MappingChartProps> = () => {
   const renderOutputOutcomeChart = () => {
     if (!mappingData) return null;
 
-    // Group mappings by output
-    const outputOutcomeData = mappingData.outputs.map(output => {
-      const outputOutcomeMappings = mappingData.outputOutcomeMappings.filter(
-        mapping => mapping.outputId === output.id
-      );
-
-      const outcomes = outputOutcomeMappings.map(mapping => ({
-        name: mapping.outcomeName,
-        impact: mapping.impact
-      }));
-
-      // Calculate output's contribution to mission impact
-      const outputMissionContribution = outcomes.reduce((sum, outcome) => {
-        const outcomeData = mappingData.outcomes.find(o => o.name === outcome.name);
-        const missionPoints = outcomeData?.points || 0;
-        // Calculate this output's contribution to this outcome's mission impact
-        const outcomeContribution = (outcome.impact / 100) * missionPoints;
-        return sum + outcomeContribution;
-      }, 0);
+    // Group by outcomes, with outputs as stacks
+    const outcomeOutputData = mappingData.outcomes.map(outcome => {
+      const outputImpacts = mappingData.outputs.map(output => {
+        const impact = calculateOutputOutcomeImpact(output.id, outcome.id);
+        return {
+          outputId: output.id,
+          outputName: output.name,
+          impact
+        };
+      }).filter(output => output.impact > 0)
+      .sort((a, b) => b.impact - a.impact);
       
-      // Calculate total mission impact from all outputs
-      const allOutputsMissionContribution = mappingData.outputs.reduce((totalOutputContribution, output) => {
-        const outputOutcomeMappings = mappingData.outputOutcomeMappings.filter(
-          mapping => mapping.outputId === output.id
-        );
-        
-        return totalOutputContribution + outputOutcomeMappings.reduce((sum, mapping) => {
-          const outcomeData = mappingData.outcomes.find(o => o.name === mapping.outcomeName);
-          const missionPoints = outcomeData?.points || 0;
-          const outcomeContribution = (mapping.impact / 100) * missionPoints;
-          return sum + outcomeContribution;
-        }, 0);
-      }, 0);
+
+
+      // Calculate total impact for this outcome to normalize to percentages
+      const totalImpact = outputImpacts.reduce((sum, output) => sum + output.impact, 0);
       
-      // Calculate percentage relative to total mission contribution from all outputs
-      const totalImpactPercentage = allOutputsMissionContribution > 0 ? (outputMissionContribution / allOutputsMissionContribution) * 100 : 0;
+      // Convert to percentages
+      const outputImpactsWithPercentages = outputImpacts.map(output => {
+        const percentage = totalImpact > 0 ? (output.impact / totalImpact) * 100 : 0;
+        return {
+          ...output,
+          impact: percentage
+        };
+      });
+      
+
 
       return {
-        outputName: output.name,
-        outcomes: outcomes.map(outcome => {
-          // Calculate total impact for this specific outcome across ALL outputs
-          const totalOutcomeImpact = mappingData.outputOutcomeMappings
-            .filter(mapping => mapping.outcomeName === outcome.name)
-            .reduce((sum, mapping) => sum + mapping.impact, 0);
-          
-          // Calculate this output's percentage contribution to this outcome
-          const outcomePercentage = totalOutcomeImpact > 0 ? (outcome.impact / totalOutcomeImpact) * 100 : 0;
-          
-          return {
-            ...outcome,
-            percentage: outcomePercentage
-          };
-        }),
-        totalImpact: totalImpactPercentage
+        outcomeId: outcome.id,
+        outcomeName: outcome.name,
+        outputs: outputImpactsWithPercentages
       };
-    }).filter(output => output.outcomes.length > 0)
-    .sort((a, b) => b.totalImpact - a.totalImpact); // Always sort high-to-low by default
+    }).filter(outcome => outcome.outputs.length > 0)
+    .sort((a, b) => {
+      const aTotal = a.outputs.reduce((sum, output) => sum + output.impact, 0);
+      const bTotal = b.outputs.reduce((sum, output) => sum + output.impact, 0);
+      return bTotal - aTotal;
+    });
 
-    const displayData = expandedCharts.outputOutcome ? outputOutcomeData : outputOutcomeData.slice(0, 5);
-    const hasMoreItems = outputOutcomeData.length > 5;
+    const displayData = expandedCharts.outputOutcome ? outcomeOutputData : outcomeOutputData.slice(0, 5);
+    const hasMoreItems = outcomeOutputData.length > 5;
 
     return (
       <div className="space-y-4">
-        {displayData.map((output, index) => (
+        {displayData.map((outcome, index) => (
           <div key={index} className="border rounded-lg p-4 bg-white">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-gray-900">{output.outputName}</h4>
-              <span className="text-sm text-gray-500">Total Mission Impact: {output.totalImpact.toFixed(1)}%</span>
+              <h4 className="font-medium text-gray-900">{outcome.outcomeName}</h4>
             </div>
             
             <div className="relative h-5 bg-gray-200 rounded-full overflow-hidden">
-              {output.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-yellow-500', 'bg-blue-600', 'bg-green-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
-                const color = colors[outcomeIndex % colors.length];
-                const isFirst = outcomeIndex === 0;
-                const isLast = outcomeIndex === output.outcomes.length - 1;
+              {outcome.outputs.map((output, outputIndex) => {
+                const isFirst = outputIndex === 0;
+                const isLast = outputIndex === outcome.outputs.length - 1;
                 
                 return (
                   <div
-                    key={outcomeIndex}
-                    className={`absolute h-full ${color} transition-all duration-200 hover:brightness-110 cursor-pointer ${
+                    key={outputIndex}
+                    className={`absolute h-full transition-all duration-200 hover:brightness-110 cursor-pointer ${
                       isFirst ? 'rounded-l-full' : ''
                     } ${
                       isLast ? 'rounded-r-full' : ''
                     }`}
                     style={{
-                      left: `${output.outcomes.slice(0, outcomeIndex).reduce((sum, o) => sum + o.percentage, 0)}%`,
-                      width: `${outcome.percentage}%`
+                      left: `${outcome.outputs.slice(0, outputIndex).reduce((sum, o) => sum + o.impact, 0)}%`,
+                      width: `${output.impact}%`,
+                      backgroundColor: getItemColor(output.outputName)
                     }}
-                    title={`This output contributes ${outcome.percentage.toFixed(1)}% of total impact on the outcome, ${outcome.name}`}
+                    title={`"${output.outputName}" contributes ${output.impact.toFixed(1)}%`}
+                    onMouseEnter={() => setHoveredBarItem(output.outputName)}
+                    onMouseLeave={() => setHoveredBarItem(null)}
                   />
                 );
               })}
             </div>
             
             <div className="mt-2 flex flex-wrap gap-2">
-              {output.outcomes.map((outcome, outcomeIndex) => {
-                const colors = ['bg-yellow-500', 'bg-blue-600', 'bg-green-600', 'bg-orange-600', 'bg-red-600', 'bg-indigo-600'];
-                const color = colors[outcomeIndex % colors.length];
-                
-                return (
-                  <div key={outcomeIndex} className="flex items-center text-xs">
-                    <div className={`w-3 h-3 ${color} rounded mr-1`}></div>
-                    <span className="text-gray-600">{outcome.name}</span>
-                  </div>
-                );
-              })}
+              {outcome.outputs.map((output, outputIndex) => (
+                <div 
+                  key={outputIndex} 
+                  className="flex items-center text-xs cursor-pointer"
+                  onMouseEnter={() => setHoveredItem(output.outputName)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <div 
+                    className="w-3 h-3 rounded mr-1"
+                    style={{ backgroundColor: getItemColor(output.outputName) }}
+                  ></div>
+                  <span className={`text-gray-600 ${(hoveredItem === output.outputName || hoveredBarItem === output.outputName) ? '' : 'truncate max-w-[80px]'}`}>
+                    {(hoveredItem === output.outputName || hoveredBarItem === output.outputName)
+                      ? <>{output.outputName} <span className="text-gray-400">({output.impact.toFixed(1)}%)</span></>
+                      : (output.outputName.length > 10 ? `${output.outputName.substring(0, 10)}...` : output.outputName)
+                    }
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -603,7 +617,7 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4" />
-                  View More ({outputOutcomeData.length - 5} more)
+                  View More ({outcomeOutputData.length - 5} more)
                 </>
               )}
             </Button>
@@ -647,55 +661,59 @@ const MappingChart: React.FC<MappingChartProps> = () => {
   const getTabDescription = (tab: string) => {
     switch (tab) {
       case "job-outcome":
-        return "Shows the impact relationships between jobs and outcomes in your organization.";
+        return "Shows how jobs contribute to outcomes through their impact on outputs.";
       case "job-output":
-        return "Shows the impact relationships between jobs and outputs in your organization.";
+        return "Shows how jobs directly impact outputs in your organization.";
       case "output-outcome":
-        return "Shows the impact relationships between outputs and outcomes in your organization.";
+        return "Shows how outputs contribute to outcomes in your organization.";
       default:
-        return "Shows the impact relationships between jobs and outcomes in your organization.";
+        return "Shows how jobs contribute to outcomes through their impact on outputs.";
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{userPreferences.enableBackstage ? "Job-Output-Outcome Mapping" : "Job-Outcome Mapping"}</CardTitle>
+        <CardTitle>{userPreferences.enableBackstage ? "Job-Output-Outcome Mapping" : "Outcome → Jobs Mapping"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="job-outcome" className="w-full" onValueChange={setActiveTab}>
-          <div className="flex items-center justify-between mb-4">
-            <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-              <TabsTrigger value="job-outcome" className="px-4 py-2">Job → Outcome</TabsTrigger>
-              {userPreferences.enableBackstage && (
-                <>
-                  <TabsTrigger value="job-output" className="px-4 py-2">Job → Output</TabsTrigger>
-                  <TabsTrigger value="output-outcome" className="px-4 py-2">Output → Outcome</TabsTrigger>
-                </>
-              )}
-            </TabsList>
+        {userPreferences.enableBackstage ? (
+          <Tabs defaultValue="job-outcome" className="w-full" onValueChange={setActiveTab}>
+            <div className="flex items-center justify-between mb-4">
+              <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                <TabsTrigger value="job-outcome" className="px-4 py-2">Outcome → Jobs</TabsTrigger>
+                <TabsTrigger value="job-output" className="px-4 py-2">Output → Jobs</TabsTrigger>
+                <TabsTrigger value="output-outcome" className="px-4 py-2">Outcome → Outputs</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <div className="mt-4 text-sm text-gray-600">
+              <p>{getTabDescription(activeTab)}</p>
+            </div>
+            
+            <TabsContent value="job-outcome" className="mt-6">
+              {renderJobOutcomeChart()}
+            </TabsContent>
+            
+            <TabsContent value="job-output" className="mt-6">
+              {renderJobOutputChart()}
+            </TabsContent>
+            
+            <TabsContent value="output-outcome" className="mt-6">
+              {renderOutputOutcomeChart()}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="w-full">
+            <div className="mt-4 text-sm text-gray-600">
+              <p>{getTabDescription("job-outcome")}</p>
+            </div>
+            
+            <div className="mt-6">
+              {renderJobOutcomeChart()}
+            </div>
           </div>
-          
-          <div className="mt-4 text-sm text-gray-600">
-            <p>{getTabDescription(activeTab)}</p>
-          </div>
-          
-          <TabsContent value="job-outcome" className="mt-6">
-            {renderJobOutcomeChart()}
-          </TabsContent>
-          
-          {userPreferences.enableBackstage && (
-            <>
-              <TabsContent value="job-output" className="mt-6">
-                {renderJobOutputChart()}
-              </TabsContent>
-              
-              <TabsContent value="output-outcome" className="mt-6">
-                {renderOutputOutcomeChart()}
-              </TabsContent>
-            </>
-          )}
-        </Tabs>
+        )}
       </CardContent>
     </Card>
   );
