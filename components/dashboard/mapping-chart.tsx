@@ -180,6 +180,46 @@ const MappingChart: React.FC<MappingChartProps> = () => {
     return itemColors.get(itemName) || '#6B7280'; // fallback gray color
   };
 
+  // Shared function to get normalized output percentages for an outcome
+  const getOutputPercentagesForOutcome = (outcomeId: string) => {
+    if (!mappingData) return [];
+    
+    const outputImpacts = mappingData.outputs.map(output => {
+      const impact = calculateOutputOutcomeImpact(output.id, outcomeId);
+      return {
+        outputId: output.id,
+        outputName: output.name,
+        impact
+      };
+    }).filter(output => output.impact > 0);
+    
+    const totalOutputImpact = outputImpacts.reduce((sum, output) => sum + output.impact, 0);
+    return outputImpacts.map(output => ({
+      ...output,
+      percentage: totalOutputImpact > 0 ? (output.impact / totalOutputImpact) * 100 : 0
+    }));
+  };
+
+  // Shared function to get normalized job percentages for an output
+  const getJobPercentagesForOutput = (outputId: string) => {
+    if (!mappingData) return [];
+    
+    const jobImpacts = mappingData.jobs.map(job => {
+      const impact = calculateJobOutputImpact(job.id, outputId);
+      return {
+        jobId: job.id,
+        jobName: job.name,
+        impact
+      };
+    }).filter(job => job.impact > 0);
+    
+    const totalJobImpact = jobImpacts.reduce((sum, job) => sum + job.impact, 0);
+    return jobImpacts.map(job => ({
+      ...job,
+      percentage: totalJobImpact > 0 ? (job.impact / totalJobImpact) * 100 : 0
+    }));
+  };
+
   // Calculate Job % impact on Output
   const calculateJobOutputImpact = (jobId: string, outputId: string): number => {
     if (!mappingData) return 0;
@@ -228,24 +268,22 @@ const MappingChart: React.FC<MappingChartProps> = () => {
   const calculateJobOutcomeImpact = (jobId: string, outcomeId: string): number => {
     if (!mappingData) return 0;
     
-    let totalImpact = 0;
+    // Use the shared function to get output percentages
+    const outputPercentages = getOutputPercentagesForOutcome(outcomeId);
     
     // Get all outputs that this job impacts
     const jobOutputs = mappingData.jobOutputMappings.filter(m => m.jobId === jobId);
     
+    // Sum up the normalized percentages of outputs that this job impacts
+    let totalJobImpact = 0;
     jobOutputs.forEach((jobOutput) => {
-      // Calculate job's impact on this output
-      const jobOutputImpact = calculateJobOutputImpact(jobId, jobOutput.outputId);
-      
-      // Calculate this output's impact on the outcome
-      const outputOutcomeImpact = calculateOutputOutcomeImpact(jobOutput.outputId, outcomeId);
-      
-      // Multiply the two raw impacts
-      const pathImpact = jobOutputImpact * outputOutcomeImpact;
-      totalImpact += pathImpact;
+      const outputPercentage = outputPercentages.find(op => op.outputId === jobOutput.outputId);
+      if (outputPercentage) {
+        totalJobImpact += outputPercentage.percentage;
+      }
     });
     
-    return totalImpact;
+    return totalJobImpact;
   };
 
   const renderJobOutcomeChart = () => {
@@ -378,27 +416,15 @@ const MappingChart: React.FC<MappingChartProps> = () => {
 
     // Group by outputs, with jobs as stacks
     const outputJobData = mappingData.outputs.map(output => {
-      const jobImpacts = mappingData.jobs.map(job => {
-        const impact = calculateJobOutputImpact(job.id, output.id);
-        return {
-          jobId: job.id,
-          jobName: job.name,
-          impact
-        };
-      }).filter(job => job.impact > 0)
-      .sort((a, b) => b.impact - a.impact);
-
-      // Calculate total impact for this output to normalize to percentages
-      const totalImpact = jobImpacts.reduce((sum, job) => sum + job.impact, 0);
+      const jobPercentages = getJobPercentagesForOutput(output.id);
       
-      // Convert to percentages
-      const jobImpactsWithPercentages = jobImpacts.map(job => {
-        const percentage = totalImpact > 0 ? (job.impact / totalImpact) * 100 : 0;
-        return {
-          ...job,
-          impact: percentage
-        };
-      });
+      const jobImpactsWithPercentages = jobPercentages
+        .sort((a, b) => b.percentage - a.percentage)
+        .map(job => ({
+          jobId: job.jobId,
+          jobName: job.jobName,
+          impact: job.percentage
+        }));
 
       return {
         outputId: output.id,
@@ -503,29 +529,15 @@ const MappingChart: React.FC<MappingChartProps> = () => {
 
     // Group by outcomes, with outputs as stacks
     const outcomeOutputData = mappingData.outcomes.map(outcome => {
-      const outputImpacts = mappingData.outputs.map(output => {
-        const impact = calculateOutputOutcomeImpact(output.id, outcome.id);
-        return {
-          outputId: output.id,
-          outputName: output.name,
-          impact
-        };
-      }).filter(output => output.impact > 0)
-      .sort((a, b) => b.impact - a.impact);
+      const outputPercentages = getOutputPercentagesForOutcome(outcome.id);
       
-
-
-      // Calculate total impact for this outcome to normalize to percentages
-      const totalImpact = outputImpacts.reduce((sum, output) => sum + output.impact, 0);
-      
-      // Convert to percentages
-      const outputImpactsWithPercentages = outputImpacts.map(output => {
-        const percentage = totalImpact > 0 ? (output.impact / totalImpact) * 100 : 0;
-        return {
-          ...output,
-          impact: percentage
-        };
-      });
+      const outputImpactsWithPercentages = outputPercentages
+        .sort((a, b) => b.percentage - a.percentage)
+        .map(output => ({
+          outputId: output.outputId,
+          outputName: output.outputName,
+          impact: output.percentage
+        }));
       
 
 
