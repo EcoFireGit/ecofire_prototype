@@ -28,25 +28,27 @@ export default function CalendarAuth() {
 
   return (
     <div className="space-y-4">
-      <Button onClick={handleAuth} disabled={isAuthorizing} id="authorize-gcal">
-        {isAuthorizing ? "Authorizing..." : "Authorize Google Calendar"}
-      </Button>
+      <div className="flex gap-4">
+        <Button onClick={handleAuth} disabled={isAuthorizing} id="authorize-gcal">
+          {isAuthorizing ? "Authorizing..." : "Authorize Google Calendar"}
+        </Button>
 
-      <Button
-        onClick={handleGetCalenders}
-        disabled={isGetting}
-        id="get-calendars"
-      >
-        {isGetting ? "Getting..." : "Get Calendars"}
-      </Button>
+        <Button
+          onClick={handleGetCalenders}
+          disabled={isGetting}
+          id="get-calendars"
+        >
+          {isGetting ? "Getting..." : "Get Calendars"}
+        </Button>
 
-      <Button
-        onClick={handleCreatePrioriCalendar}
-        disabled={isCreating}
-        id="create-prioriwise-calendar"
-      >
-        {isCreating ? "Creating..." : "Create Prioriwise Calendar"}
-      </Button>
+        <Button
+          onClick={handleCreatePrioriCalendar}
+          disabled={isCreating}
+          id="create-prioriwise-calendar"
+        >
+          {isCreating ? "Creating..." : "Create Prioriwise Calendar"}
+        </Button>
+      </div>
 
       {calendars.length > 0 && (
         <div className="space-y-2">
