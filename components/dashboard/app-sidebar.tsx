@@ -54,6 +54,12 @@ import { usePathname } from "next/navigation";
 
 // Menu items.
 const items = [
+    {
+    title: "Jobs",
+    url: "/jobs",
+    icon: Calendar,
+    id: "jobs",
+  },
   {
     title: "Jija",
     url: "/jija?source=sidepanel",
