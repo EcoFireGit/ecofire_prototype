@@ -1,6 +1,6 @@
-
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
+import OpenAI from "openai";
 import { JobService } from "@/lib/services/job.service";
 import { ChatService } from "@/lib/services/chat.service";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
@@ -12,20 +12,80 @@ import { QBOService } from "@/lib/services/qbo.service";
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
+// You may want to memoize/reuse this if called often
+const openaiDirect = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
 export async function POST(req: Request) {
-  // Extract the data from the body of the request
   const body = await req.json();
+
+  // --- AI suggestion generator branch ---
+  if (body.generateSuggestionsForJobs && Array.isArray(body.generateSuggestionsForJobs)) {
+    // Get user ID from auth
+    const authResult = await validateAuth();
+    if (!authResult.isAuthorized) {
+      return authResult.response;
+    }
+    const jobs = body.generateSuggestionsForJobs;
+    // Accept context (e.g. latest messages) to tailor suggestions if a convo is open
+    const convoContext = Array.isArray(body.conversationContext)
+      ? body.conversationContext
+      : [];
+
+    try {
+      const suggestions = await Promise.all(
+        jobs.map(async (job: { tasks: any[]; title: any; }) => {
+          // Compose a more contextual prompt if there's conversation context
+          let contextPrompt = "";
+          if (convoContext.length > 0) {
+            contextPrompt =
+              `Here is the recent conversation context for the user about their business and jobs:\n` +
+              convoContext.map((msg: any) => `- ${msg}`).join("\n") +
+              "\n";
+          }
+          const tasksStr = job.tasks && job.tasks.length
+            ? `\nThe job "${job.title}" has the following sub-tasks: ${job.tasks.join(", ")}.`
+            : "";
+          const prompt =
+            `${contextPrompt}A job represents a high-level goal and a task is a sub-task under that job.` +
+            ` Suggest 3 practical, actionable and distinct questions or things a user might want to ask or do about the job "${job.title}".${tasksStr} Respond with only a JSON array of strings.`;
+          const resp = await openaiDirect.chat.completions.create({
+            model: "gpt-4-turbo",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 150,
+            temperature: 0.7,
+          });
+          const text = resp.choices[0].message.content || "[]";
+          let suggestions = [];
+          try {
+            suggestions = JSON.parse(text);
+          } catch {
+            // fallback: split by line if not valid JSON
+            suggestions = text
+              .split("\n")
+              .map(s => s.replace(/^- /, "").replace(/^["']|["']$/g, "").trim())
+              .filter(Boolean);
+          }
+          return { title: job.title, suggestions };
+        })
+      );
+      return Response.json({ suggestions });
+    } catch (e) {
+      return Response.json({ suggestions: [] }, { status: 200 });
+    }
+  }
+
+  // --- Normal chat branch ---
+
+  // Extract other params safely
   const { messages, id, source, jobId, taskId, jobTitle } = body;
-  const chatId = id || crypto.randomUUID(); // Use provided ID or generate a new one
+  const chatId = id || crypto.randomUUID();
 
   // Get user ID from auth
   const authResult = await validateAuth();
-      
-      if (!authResult.isAuthorized) {
-        return authResult.response;
-      }
-      
-      const userId = authResult.userId;
+  if (!authResult.isAuthorized) {
+    return authResult.response;
+  }
+  const userId = authResult.userId;
 
   // Get mission statement from business-info
   const businessInfoService = new BusinessInfoService();
@@ -175,12 +235,12 @@ export async function POST(req: Request) {
   try {
     const chatService = new ChatService();
 
-    // Call the language model
+    // Call the language model for streaming chat
     const result = streamText({
       model: openai("gpt-4-turbo"),
       system: systemPrompt,
       messages,
-      async onFinish({ text, toolCalls, toolResults, usage, finishReason }) {
+      async onFinish({ text }) {
         // Store chat history
         const allMessages = [...messages, { role: "assistant", content: text }];
         await chatService.saveChatHistory(userId!, chatId, allMessages);
