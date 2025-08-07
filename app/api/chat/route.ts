@@ -156,8 +156,8 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
     .map((job) => job.title)
     .map((item) => `* ${item}`)
     .join("\n");
+  //console.log("chat id", id);
   let systemPrompt = systemPrompt_initial + undoneJobs;
-
   if (jobTitle) {
     systemPrompt += `\n\nThe user is currently asking about: "${jobTitle}".`;
   }
@@ -166,6 +166,7 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
   if (source === "task" && taskId) {
     try {
       const taskService = new (require("@/lib/services/task.service").TaskService)();
+      const jobService = new (require("@/lib/services/job.service").JobService)();
       const mappingService = new (require("@/lib/services/pi-job-mapping.service").MappingService)();
       const piQboMappingService = new (require("@/lib/services/pi-qbo-mapping.service").PIQBOMappingService)();
       const qboService = new (require("@/lib/services/qbo.service").QBOService)();
@@ -227,14 +228,15 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
   // If invoked from a job, enrich with job and outcomes context
   if (source === "job" && jobId) {
     try {
+      const jobService = new (require("@/lib/services/job.service").JobService)();
       const mappingService = new (require("@/lib/services/pi-job-mapping.service").MappingService)();
       const piQboMappingService = new (require("@/lib/services/pi-qbo-mapping.service").PIQBOMappingService)();
       const qboService = new (require("@/lib/services/qbo.service").QBOService)();
-      const job = await jobService.getJobById(jobId, userId!);
+      const job = await jobService.getJobById(jobId, userId);
       if (job) {
         const piMappings = await mappingService.getMappingsByJobId(job._id || job.id);
         const qboIdSet = new Set();
-        const qboDetails = [];
+        const qboDetails: any[] = [];
         for (const piMapping of piMappings) {
           const piQboMappings = await piQboMappingService.getMappingsForPI(piMapping.piId, userId);
           for (const piQbo of piQboMappings) {
@@ -270,11 +272,12 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
   if (source === "sidepanel") {
     try {
       const qboService = new (require("@/lib/services/qbo.service").QBOService)();
-      const allQBOs = await qboService.getAllQBOs(userId!);
-      const allJobs = await jobService.getAllJobs(userId!);
+      const jobService = new (require("@/lib/services/job.service").JobService)();
+      const allQBOs = await qboService.getAllQBOs(userId);
+      const allJobs = await jobService.getAllJobs(userId);
       let connectionSection = '';
-      const outcomeNames = allQBOs && allQBOs.length > 0 ? allQBOs.map((qbo: { name: any; }) => qbo.name).join(", ") : "(none found)";
-      const jobNames = allJobs && allJobs.length > 0 ? allJobs.map((job) => job.title).join(", ") : "(none found)";
+      const outcomeNames = allQBOs && allQBOs.length > 0 ? allQBOs.map((qbo: any) => qbo.name).join(", ") : "(none found)";
+      const jobNames = allJobs && allJobs.length > 0 ? allJobs.map((job: any) => job.title).join(", ") : "(none found)";
       connectionSection = `Job(s): ${jobNames}\n- Outcome(s): ${outcomeNames}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the names of any jobs and outcome(s) from the lists above that are relevant to your answer, using their names in bold. Clearly explain the connection and impact on those jobs and outcomes.`;
       systemPrompt += connectionSection;
     } catch (error) {
@@ -282,7 +285,6 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
       systemPrompt += `Job(s): (unknown)\n- Outcome(s): (unknown)\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the names of any jobs and outcome(s) from the lists above that are relevant to your answer, using their names in bold. Clearly explain the connection and impact on those jobs and outcomes.`;
     }
   }
-
   try {
     const chatService = new ChatService();
 
