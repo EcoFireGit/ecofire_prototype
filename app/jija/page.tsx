@@ -83,6 +83,7 @@ export default function Chat() {
   const jobId = searchParams.get("jobId") || undefined;
   const taskId = searchParams.get("taskId") || undefined;
   const jobTitle = searchParams.get("jobTitle");
+  const taskName = searchParams.get("taskName"); // <-- Added for task context
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [welcomeMessage, setWelcomeMessage] = useState<string>("");
@@ -90,6 +91,9 @@ export default function Chat() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const suggestionsCallCountRef = useRef(0);
+
+  // Debounce timer for suggestions
+  const suggestionDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     error,
@@ -127,12 +131,14 @@ export default function Chat() {
     fetchJobs();
   }, []);
 
-  // Prefill input if jobTitle is present
+  // Prefill input if jobTitle or taskName is present
   useEffect(() => {
     if (jobTitle) {
-      setInput(`Can you help me with the job "${jobTitle}"?`);
+      setInput(`Can you help me with doing "${jobTitle}"?`);
     }
-  }, [jobTitle, setInput]);
+    // Only prefill on first mount, not on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobTitle, taskName, setInput]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -228,45 +234,50 @@ export default function Chat() {
   // Track last jobs snapshot for proper suggestions on load
   const jobsSnapshotRef = useRef<string>("");
 
-  // Fetch suggestions
+  // Debounced suggestion fetcher
+  function scheduleFetchAISuggestions() {
+    if (loadingSuggestions) return;
+    if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
+    suggestionDebounceRef.current = setTimeout(() => {
+      fetchAISuggestionsOnce();
+    }, 750); // Debounce delay, adjust as needed
+  }
+
+  // Fetch suggestions (runs only when scheduled)
   async function fetchAISuggestionsOnce() {
     let contextJobTitles: string[] = [];
     let contextJobTasks: { [jobTitle: string]: string[] } = {};
     let convoContext: string[] = [];
-    const topJobs = getTopUncompletedJobs(jobs, 3);
 
-    if (selectedChatId && messages.length > 0) {
-      convoContext = messages.slice(-10).map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
-      for (const msg of messages) {
-        if (msg.role === "user") {
-          topJobs.forEach((job) => {
-            if (
-              msg.content
-                .toLocaleLowerCase()
-                .includes(job.title.toLocaleLowerCase())
-            ) {
-              if (!contextJobTitles.includes(job.title))
-                contextJobTitles.push(job.title);
-              if (job.tasks) {
-                contextJobTasks[job.title] = job.tasks.map((t) => t.name);
-              }
-            }
-          });
+    // ----------- SUGGESTIONS LOGIC PATCH -------------
+    // If invoked from a job/task, base suggestions on that job/task only
+    if ((source === "job" && jobTitle) || (source === "task" && taskName)) {
+      // Get job/task context
+      if (source === "job" && jobTitle) {
+        contextJobTitles = [jobTitle];
+        const jobObj = jobs.find(j => j.title === jobTitle);
+        if (jobObj && jobObj.tasks) {
+          contextJobTasks[jobTitle] = jobObj.tasks.map(t => t.name);
+        } else {
+          contextJobTasks[jobTitle] = [];
         }
+      } else if (source === "task" && taskName) {
+        // Find task within jobs
+        let foundJob = jobs.find(j => j.tasks && j.tasks.some(t => t.name === taskName));
+        contextJobTitles = foundJob ? [foundJob.title] : [];
+        contextJobTasks[foundJob?.title ?? ""] = foundJob?.tasks?.map(t => t.name) ?? [];
       }
-      if (contextJobTitles.length === 0) {
-        contextJobTitles = topJobs.map((j) => j.title);
-        topJobs.forEach((job) => {
-          if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
-        });
-      }
+      convoContext = messages.slice(-10).map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
     } else {
+      // Default: show top jobs
+      const topJobs = getTopUncompletedJobs(jobs, 3);
       contextJobTitles = topJobs.map((j) => j.title);
       topJobs.forEach((job) => {
         if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
       });
       convoContext = [];
     }
+    // -------------------------------------------------
 
     if (contextJobTitles.length === 0) {
       setAiSuggestions([]);
@@ -315,7 +326,7 @@ export default function Chat() {
     })));
     if (jobsString !== jobsSnapshotRef.current) {
       jobsSnapshotRef.current = jobsString;
-      fetchAISuggestionsOnce();
+      scheduleFetchAISuggestions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs]);
@@ -331,7 +342,7 @@ export default function Chat() {
       latestAssistantMsg &&
       latestAssistantMsg !== lastAssistantResponseRef.current
     ) {
-      fetchAISuggestionsOnce();
+      scheduleFetchAISuggestions();
       lastAssistantResponseRef.current = latestAssistantMsg;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -389,7 +400,7 @@ export default function Chat() {
   const loadChatSession = async (chatId: string) => {
     try {
       setSelectedChatId(chatId);
-      setInput("");
+      // Don't clear setInput("") here, so prefilled text remains
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
@@ -437,8 +448,6 @@ export default function Chat() {
         <h1 className="text-xl sm:text-2xl font-bold mb-4 text-left sm:text-left">
           Jija Assistant
         </h1>
-        
-
         <div className="flex flex-col sm:flex-row sm:justify-end items-center gap-2 sm:gap-3">
           {/* Close Conversation Button - Only visible when a chat is selected */}
           {selectedChatId && (
@@ -446,7 +455,7 @@ export default function Chat() {
               onClick={() => {
                 setSelectedChatId(null);
                 setMessages([]);
-                setInput("");
+                setInput(""); // User closes, okay to clear
               }}
               variant="outline"
               className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm"

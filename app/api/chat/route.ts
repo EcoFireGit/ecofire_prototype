@@ -8,6 +8,8 @@ import { validateAuth } from "@/lib/utils/auth-utils";
 import { MappingService } from "@/lib/services/pi-job-mapping.service";
 import { PIQBOMappingService } from "@/lib/services/pi-qbo-mapping.service";
 import { QBOService } from "@/lib/services/qbo.service";
+import { TaskService } from "@/lib/services/task.service"; // added for business function lookup
+import { BusinessFunctionService } from "@/lib/services/business-function.service"; // import for business function name lookup
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -25,6 +27,7 @@ export async function POST(req: Request) {
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
+    const userId = authResult.userId;
     const jobs = body.generateSuggestionsForJobs;
     // Accept context (e.g. latest messages) to tailor suggestions if a convo is open
     const convoContext = Array.isArray(body.conversationContext)
@@ -32,8 +35,45 @@ export async function POST(req: Request) {
       : [];
 
     try {
+      const jobService = new JobService();
+      const taskService = new TaskService();
+      const businessFunctionService = new BusinessFunctionService();
+
       const suggestions = await Promise.all(
-        jobs.map(async (job: { tasks: any[]; title: any; }) => {
+        jobs.map(async (job: { tasks: any[]; title: any; id?: any; taskId?: any }) => {
+          // Fetch job details for businessFunction
+          let businessFunction = "none";
+          let jobDetails = null;
+
+          // Find job info either by id or title
+          if (job.id) {
+            jobDetails = await jobService.getJobById(job.id, userId!);
+          } else if (job.title) {
+            const allJobs = await jobService.getAllJobs(userId!);
+            jobDetails = allJobs.find((j: any) => j.title === job.title);
+          }
+
+          // Fetch the business function name if available
+          if (jobDetails && jobDetails.businessFunctionId) {
+            const allBFs = await businessFunctionService.getAllBusinessFunctions(userId!);
+const bfObj = allBFs.find(bf => bf.id === jobDetails.businessFunctionId || bf._id === jobDetails.businessFunctionId);
+businessFunction = bfObj && bfObj.name ? bfObj.name : "";
+          }
+
+          // If this is a task context, use the business function from the linked job (tasks don't have business functions)
+          if (job.taskId) {
+            const taskDetails = await taskService.getTaskById(job.taskId, userId!);
+            if (taskDetails && taskDetails.jobId && !businessFunction) {
+              // Get the job for the task and use its business function
+              const linkedJob = await jobService.getJobById(taskDetails.jobId, userId!);
+              if (linkedJob && linkedJob.businessFunctionId) {
+              const allBFs2 = await businessFunctionService.getAllBusinessFunctions(userId!);
+const bfObj2 = allBFs2.find(bf => bf.id === linkedJob.businessFunctionId || bf._id === linkedJob.businessFunctionId);
+businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
+              }
+            }
+          }
+
           // Compose a more contextual prompt if there's conversation context
           let contextPrompt = "";
           if (convoContext.length > 0) {
@@ -42,12 +82,25 @@ export async function POST(req: Request) {
               convoContext.map((msg: any) => `- ${msg}`).join("\n") +
               "\n";
           }
+
+          // Add business function to the context
+          let businessFunctionPrompt = "";
+          if (businessFunction) {
+            businessFunctionPrompt = `\nThis job is associated with the business function: "${businessFunction}".`;
+          }
+
           const tasksStr = job.tasks && job.tasks.length
             ? `\nThe job "${job.title}" has the following sub-tasks: ${job.tasks.join(", ")}.`
             : "";
+
+          // Tailored prompt for suggestions, now includes business function and instructs the AI to match suggestions to the job/task
           const prompt =
             `${contextPrompt}A job represents a high-level goal and a task is a sub-task under that job.` +
-            ` Suggest 3 practical, actionable and distinct questions or things a user might want to ask or do about the job "${job.title}".${tasksStr} Respond with only a JSON array of strings.`;
+            `${businessFunctionPrompt}` +
+            ` Suggest 3 practical, actionable and distinct questions or things a user might want to ask or do about the job "${job.title}".` +
+            `${tasksStr}` +
+            ` Make sure your suggestions are relevant to the business function and the specific nature of the job/task. Respond with only a JSON array of strings.`;
+
           const resp = await openaiDirect.chat.completions.create({
             model: "gpt-4-turbo",
             messages: [{ role: "user", content: prompt }],
