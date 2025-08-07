@@ -1,6 +1,6 @@
-
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
+import OpenAI from "openai";
 import { JobService } from "@/lib/services/job.service";
 import { ChatService } from "@/lib/services/chat.service";
 import { BusinessInfoService } from "@/lib/services/business-info.service";
@@ -8,24 +8,137 @@ import { validateAuth } from "@/lib/utils/auth-utils";
 import { MappingService } from "@/lib/services/pi-job-mapping.service";
 import { PIQBOMappingService } from "@/lib/services/pi-qbo-mapping.service";
 import { QBOService } from "@/lib/services/qbo.service";
+import { TaskService } from "@/lib/services/task.service"; // added for business function lookup
+import { BusinessFunctionService } from "@/lib/services/business-function.service"; // import for business function name lookup
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
+// You may want to memoize/reuse this if called often
+const openaiDirect = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
 export async function POST(req: Request) {
-  // Extract the data from the body of the request
   const body = await req.json();
+
+  // --- AI suggestion generator branch ---
+  if (body.generateSuggestionsForJobs && Array.isArray(body.generateSuggestionsForJobs)) {
+    // Get user ID from auth
+    const authResult = await validateAuth();
+    if (!authResult.isAuthorized) {
+      return authResult.response;
+    }
+    const userId = authResult.userId;
+    const jobs = body.generateSuggestionsForJobs;
+    // Accept context (e.g. latest messages) to tailor suggestions if a convo is open
+    const convoContext = Array.isArray(body.conversationContext)
+      ? body.conversationContext
+      : [];
+
+    try {
+      const jobService = new JobService();
+      const taskService = new TaskService();
+      const businessFunctionService = new BusinessFunctionService();
+
+      const suggestions = await Promise.all(
+        jobs.map(async (job: { tasks: any[]; title: any; id?: any; taskId?: any }) => {
+          // Fetch job details for businessFunction
+          let businessFunction = "none";
+          let jobDetails = null;
+
+          // Find job info either by id or title
+          if (job.id) {
+            jobDetails = await jobService.getJobById(job.id, userId!);
+          } else if (job.title) {
+            const allJobs = await jobService.getAllJobs(userId!);
+            jobDetails = allJobs.find((j: any) => j.title === job.title);
+          }
+
+          // Fetch the business function name if available
+          if (jobDetails && jobDetails.businessFunctionId) {
+            const allBFs = await businessFunctionService.getAllBusinessFunctions(userId!);
+const bfObj = allBFs.find(bf => bf.id === jobDetails.businessFunctionId || bf._id === jobDetails.businessFunctionId);
+businessFunction = bfObj && bfObj.name ? bfObj.name : "";
+          }
+
+          // If this is a task context, use the business function from the linked job (tasks don't have business functions)
+          if (job.taskId) {
+            const taskDetails = await taskService.getTaskById(job.taskId, userId!);
+            if (taskDetails && taskDetails.jobId && !businessFunction) {
+              // Get the job for the task and use its business function
+              const linkedJob = await jobService.getJobById(taskDetails.jobId, userId!);
+              if (linkedJob && linkedJob.businessFunctionId) {
+              const allBFs2 = await businessFunctionService.getAllBusinessFunctions(userId!);
+const bfObj2 = allBFs2.find(bf => bf.id === linkedJob.businessFunctionId || bf._id === linkedJob.businessFunctionId);
+businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
+              }
+            }
+          }
+
+          // Compose a more contextual prompt if there's conversation context
+          let contextPrompt = "";
+          if (convoContext.length > 0) {
+            contextPrompt =
+              `Here is the recent conversation context for the user about their business and jobs:\n` +
+              convoContext.map((msg: any) => `- ${msg}`).join("\n") +
+              "\n";
+          }
+
+          // Add business function to the context
+          let businessFunctionPrompt = "";
+          if (businessFunction) {
+            businessFunctionPrompt = `\nThis job is associated with the business function: "${businessFunction}".`;
+          }
+
+          const tasksStr = job.tasks && job.tasks.length
+            ? `\nThe job "${job.title}" has the following sub-tasks: ${job.tasks.join(", ")}.`
+            : "";
+
+          // Tailored prompt for suggestions, now includes business function and instructs the AI to match suggestions to the job/task
+          const prompt =
+            `${contextPrompt}A job represents a high-level goal and a task is a sub-task under that job.` +
+            `${businessFunctionPrompt}` +
+            ` Suggest 3 practical, actionable and distinct questions or things a user might want to ask or do about the job "${job.title}".` +
+            `${tasksStr}` +
+            ` Make sure your suggestions are relevant to the business function and the specific nature of the job/task. Respond with only a JSON array of strings.`;
+
+          const resp = await openaiDirect.chat.completions.create({
+            model: "gpt-4-turbo",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 150,
+            temperature: 0.7,
+          });
+          const text = resp.choices[0].message.content || "[]";
+          let suggestions = [];
+          try {
+            suggestions = JSON.parse(text);
+          } catch {
+            // fallback: split by line if not valid JSON
+            suggestions = text
+              .split("\n")
+              .map(s => s.replace(/^- /, "").replace(/^["']|["']$/g, "").trim())
+              .filter(Boolean);
+          }
+          return { title: job.title, suggestions };
+        })
+      );
+      return Response.json({ suggestions });
+    } catch (e) {
+      return Response.json({ suggestions: [] }, { status: 200 });
+    }
+  }
+
+  // --- Normal chat branch ---
+
+  // Extract other params safely
   const { messages, id, source, jobId, taskId, jobTitle } = body;
-  const chatId = id || crypto.randomUUID(); // Use provided ID or generate a new one
+  const chatId = id || crypto.randomUUID();
 
   // Get user ID from auth
   const authResult = await validateAuth();
-      
-      if (!authResult.isAuthorized) {
-        return authResult.response;
-      }
-      
-      const userId = authResult.userId;
+  if (!authResult.isAuthorized) {
+    return authResult.response;
+  }
+  const userId = authResult.userId;
 
   // Get mission statement from business-info
   const businessInfoService = new BusinessInfoService();
@@ -64,12 +177,12 @@ export async function POST(req: Request) {
         let outcomeDetails = '';
         let connectionSection = '';
         if (task.jobId) {
-          const job = await jobService.getJobById(task.jobId, userId);
+          const job = await jobService.getJobById(task.jobId, userId!);
           if (job) {
             jobLine = `Job: ${job.title}`;
             const piMappings = await mappingService.getMappingsByJobId(job._id || job.id);
             const qboIdSet = new Set();
-            const qboDetails: any[] = [];
+            const qboDetails = [];
             for (const piMapping of piMappings) {
               const piQboMappings = await piQboMappingService.getMappingsForPI(piMapping.piId, userId);
               for (const piQbo of piQboMappings) {
@@ -175,12 +288,12 @@ export async function POST(req: Request) {
   try {
     const chatService = new ChatService();
 
-    // Call the language model
+    // Call the language model for streaming chat
     const result = streamText({
       model: openai("gpt-4-turbo"),
       system: systemPrompt,
       messages,
-      async onFinish({ text, toolCalls, toolResults, usage, finishReason }) {
+      async onFinish({ text }) {
         // Store chat history
         const allMessages = [...messages, { role: "assistant", content: text }];
         await chatService.saveChatHistory(userId!, chatId, allMessages);

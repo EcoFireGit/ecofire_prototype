@@ -271,6 +271,18 @@ export function TaskCard({
                         >
                             <Copy className="h-4 w-4" />
                         </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Duplicate Task"
+                            onClick={e => {
+                                e.stopPropagation();
+                                if (onDuplicate) onDuplicate(task);
+                            }}
+                        >
+                            <Copy className="h-4 w-4" />
+                        </Button>
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={e => e.stopPropagation()} title="Delete Task">
