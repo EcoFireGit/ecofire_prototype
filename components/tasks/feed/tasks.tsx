@@ -9,7 +9,8 @@ import {
   Smile,
   FileText,
   PawPrint,
-  Target
+  Target,
+  Copy
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface NextTasksProps {
   onEditTask?: (task: any) => void;
   onDeleteTask?: (id: string) => void;
   isNextTask: (task: any) => boolean;
+  onDuplicate?: (task: any) => void;
 }
 
 export function NextTasks({
@@ -45,6 +47,7 @@ export function NextTasks({
   onEditTask,
   onDeleteTask,
   isNextTask,
+  onDuplicate,
 }: NextTasksProps) {
   const router = useRouter();
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({});
@@ -250,6 +253,21 @@ export function NextTasks({
                       <PawPrint className="h-4 w-4 mr-1" />
                       Ask Jija
                     </Button>
+
+                    {onDuplicate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDuplicate(task);
+                        }}
+                        title="Duplicate task"
+                      >
+                        <Copy className="h-4 w-4 mr-1" />
+                      </Button>
+                    )}
 
                     {onDeleteTask && (
                       <Button

@@ -31,6 +31,7 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
+    
 
     const tasks = await taskService.getTasksByJobId(jobId, userId!);
    

@@ -31,6 +31,7 @@ interface Job {
   dueDate?: Date;
   notes?: string;
   isDone: boolean;
+
 }
 
 interface Task {

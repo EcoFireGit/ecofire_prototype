@@ -23,6 +23,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Job } from "./table/columns";
 import { CreateDialog } from "@/components/business-functions/create-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { RecurrenceInterval } from "@/components/tasks/types";
 
 interface BusinessFunction {
   id: string;
@@ -40,10 +41,12 @@ interface JobDialogProps {
 const emptyFormState = {
   title: "",
   notes: "",
-  owner: "",
-  businessFunctionId: undefined as string | undefined,
+  owner: "none",
+  businessFunctionId: "none",
   dueDate: "",
   isDone: false,
+  isRecurring: false,
+  recurrenceInterval: undefined as RecurrenceInterval | undefined,
 };
 
 export function JobDialog({
@@ -69,6 +72,8 @@ export function JobDialog({
         dueDate: initialData.dueDate
           ? new Date(initialData.dueDate).toISOString().split("T")[0]
           : "",
+        isRecurring: initialData.isRecurring || false,
+        recurrenceInterval: initialData.recurrenceInterval || undefined,
       });
     } else if (mode === "create") {
       setFormData(emptyFormState);
@@ -175,7 +180,7 @@ export function JobDialog({
     }
     setFormData(prev => ({
       ...prev,
-      businessFunctionId: value === "none" ? undefined : value,
+      businessFunctionId: value === "none" ? "none" : value,
     }));
   };
 
@@ -265,6 +270,48 @@ export function JobDialog({
                 />
               </div>
             </div>
+            {/* Recurring Job Section */}
+            <div className="grid grid-cols-4 items-center gap-4 mb-4">
+              <Label htmlFor="isRecurring" className="text-right">
+                Recurring Job
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <input
+                  id="isRecurring"
+                  type="checkbox"
+                  checked={!!formData.isRecurring}
+                  onChange={e => setFormData({ ...formData, isRecurring: e.target.checked, recurrenceInterval: e.target.checked ? formData.recurrenceInterval : undefined })}
+                  className="h-4 w-4 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm">Set as recurring</span>
+              </div>
+            </div>
+            {formData.isRecurring && (
+              <div className="grid grid-cols-4 items-center gap-4 mb-4">
+                <Label htmlFor="recurrenceInterval" className="text-right">
+                  Recurrence Interval
+                </Label>
+                <div className="col-span-3">
+                  <Select
+                    value={formData.recurrenceInterval || "none"}
+                    onValueChange={value => setFormData({ ...formData, recurrenceInterval: value === "none" ? undefined : value as RecurrenceInterval })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select interval" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value={RecurrenceInterval.Daily}>Daily</SelectItem>
+                      <SelectItem value={RecurrenceInterval.Weekly}>Weekly</SelectItem>
+                      <SelectItem value={RecurrenceInterval.Biweekly}>Biweekly</SelectItem>
+                      <SelectItem value={RecurrenceInterval.Monthly}>Monthly</SelectItem>
+                      <SelectItem value={RecurrenceInterval.Quarterly}>Quarterly</SelectItem>
+                      <SelectItem value={RecurrenceInterval.Annually}>Annually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             <DialogFooter>
               <Button type="submit" disabled={loading || isSubmitting}>
                 {isSubmitting ? 

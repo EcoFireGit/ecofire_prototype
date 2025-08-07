@@ -31,6 +31,7 @@ import {
   X,
   Info,
   Trash2,
+  RefreshCcw,
 } from "lucide-react";
 import { TaskDialog } from "./tasks-dialog-jobselector";
 import { Task } from "./types";
@@ -42,6 +43,8 @@ import { TaskCard } from "./tasks-card";
 import { useTaskContext } from "@/hooks/task-context";
 import { useRouter } from "next/navigation";
 import { TaskDetailsSidebar } from "@/components/tasks/task-details-sidebar";
+import { DuplicateTaskDialog } from "./duplicate-task-dialog";
+import { RecurrenceInterval } from "@/components/tasks/types";
 
 // DnD Kit imports
 import {
@@ -79,6 +82,7 @@ interface SortableTaskItemProps {
   ownerMap: Record<string, string>;
   onAddToCalendar?: (task: Task) => void;
   onOpenTaskDetails?: (task: Task) => void;
+  onDuplicate?: () => void;
 }
 type EditableJobField = 'title' | 'dueDate' | 'notes' | 'businessFunction';
 
@@ -91,6 +95,7 @@ function SortableTaskItem({
   ownerMap,
   onAddToCalendar,
   onOpenTaskDetails,
+  onDuplicate,
 }: SortableTaskItemProps) {
   const {
     attributes,
@@ -134,6 +139,7 @@ function SortableTaskItem({
             ownerMap={ownerMap}
             onAddToCalendar={onAddToCalendar}
             onOpenTaskDetails={onOpenTaskDetails}
+            onDuplicate={onDuplicate}
           />
         </div>
       </div>
@@ -177,11 +183,14 @@ export function TasksSidebar({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [taskDetailsSidebarOpen, setTaskDetailsSidebarOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [taskToDuplicate, setTaskToDuplicate] = useState<Task | null>(null);
 
   // Job inline editing state
   const [editingJobField, setEditingJobField] = useState<EditableJobField | null>(null);
   const [editingJobValue, setEditingJobValue] = useState<string>('');
   const [isSavingJob, setIsSavingJob] = useState(false);
+  const [recurringEdit, setRecurringEdit] = useState<{ isEditing: boolean; interval: string | undefined }>({ isEditing: false, interval: undefined });
 
   // This flag will track if we've already done the initial sort
   const initialSortDoneRef = useRef(false);
@@ -230,6 +239,7 @@ export function TasksSidebar({
   );
 
   const handleOpenTaskDetails = (task: Task) => {
+    if (duplicateDialogOpen) return; // Block opening details if duplicating
     setSelectedTaskForDetails(task);
     setTaskDetailsSidebarOpen(true);
   };
@@ -1349,6 +1359,20 @@ export function TasksSidebar({
     });
   };
 
+  // Helper to refresh selectedJob from backend
+  async function refreshSelectedJob(jobId: string) {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`);
+      const result = await response.json();
+      if (result.success && result.data && selectedJob) {
+        Object.assign(selectedJob, result.data);
+        if (typeof onRefreshJobs === "function") onRefreshJobs();
+      }
+    } catch (err) {
+      // Ignore errors, fallback to local state
+    }
+  }
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -1550,6 +1574,83 @@ export function TasksSidebar({
                   )}
                 </div>
               </CardContent>
+              {/* Recurring Job Section */}
+              <CardContent className="pt-0">
+                <div className="mb-4 pb-4 border-b">
+                  <div className="flex gap-8">
+                    {/* Recurring Section */}
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <RefreshCcw className="h-4 w-4 mr-2 text-gray-500" />
+                        <h3 className="text-sm text-gray-600">Recurring</h3>
+                      </div>
+                      <div className="pl-6">
+                        {selectedJob.isRecurring ? (
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm flex items-center gap-1"><RefreshCcw className="h-4 w-4 inline text-blue-500" />{selectedJob.recurrenceInterval}</span>
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              // Disable recurrence
+                              const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ isRecurring: false, recurrenceInterval: null }),
+                              });
+                              const result = await response.json();
+                              if (result.success) {
+                                await refreshSelectedJob(selectedJob.id);
+                                setRecurringEdit({ isEditing: false, interval: undefined });
+                                toast({ title: "Success", description: "Job will no longer recur." });
+                              } else {
+                                toast({ title: "Error", description: result.error || "Failed to update job", variant: "destructive" });
+                              }
+                            }}>Stop Recurring</Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={recurringEdit.interval || ""}
+                                onValueChange={(value) => setRecurringEdit(prev => ({ ...prev, interval: value }))}
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Interval" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="daily">Daily</SelectItem>
+                                  <SelectItem value="weekly">Weekly</SelectItem>
+                                  <SelectItem value="biweekly">Biweekly</SelectItem>
+                                  <SelectItem value="monthly">Monthly</SelectItem>
+                                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                                  <SelectItem value="annually">Annually</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" onClick={async () => {
+                                if (!recurringEdit.interval) {
+                                  toast({ title: "Error", description: "Please select a recurrence interval.", variant: "destructive" });
+                                  return;
+                                }
+                                const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ isRecurring: true, recurrenceInterval: recurringEdit.interval }),
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                  await refreshSelectedJob(selectedJob.id);
+                                  setRecurringEdit({ isEditing: false, interval: undefined });
+                                  toast({ title: "Success", description: "Job set as recurring." });
+                                } else {
+                                  toast({ title: "Error", description: result.error || "Failed to update job", variant: "destructive" });
+                                }
+                              }}>Make Recurring</Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
 
             {/* Next Task Selector */}
@@ -1598,6 +1699,10 @@ export function TasksSidebar({
                           ownerMap={ownerMap}
                           onAddToCalendar={handleAddToCalendar}
                           onOpenTaskDetails={handleOpenTaskDetails}
+                          onDuplicate={() => {
+                            setTaskToDuplicate(task);
+                            setDuplicateDialogOpen(true);
+                          }}
                         />
                       ))}
                     </SortableContext>
@@ -1655,6 +1760,42 @@ export function TasksSidebar({
         onTaskUpdated={handleTaskUpdated}
         onNavigateToJob={handleNavigateToJob}
         onDeleteTask={handleDeleteTask}
+      />
+
+      {/* Duplicate Task Dialog */}
+      <DuplicateTaskDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => {
+          setDuplicateDialogOpen(open);
+          if (!open) setTaskToDuplicate(null);
+        }}
+        sourceTask={taskToDuplicate as Task}
+        onSubmit={(newTask) => {
+          const mappedTask: Task = {
+            id: (newTask.id || (newTask as any)._id || Math.random().toString(36)) as string,
+            title: newTask.title || '',
+            owner: newTask.owner,
+            date: newTask.date,
+            requiredHours: newTask.requiredHours,
+            focusLevel: newTask.focusLevel,
+            joyLevel: newTask.joyLevel,
+            notes: newTask.notes,
+            tags: newTask.tags || [],
+            jobId: newTask.jobId || '',
+            completed: newTask.completed ?? false,
+            isNextTask: false,
+            createdDate: newTask.createdDate,
+            endDate: newTask.endDate,
+            timeElapsed: newTask.timeElapsed,
+            isRecurring: newTask.isRecurring,
+            recurrenceInterval: newTask.recurrenceInterval,
+          };
+          if (mappedTask.jobId === selectedJob?.id) {
+            setTasks((prev) => [mappedTask, ...prev]);
+          }
+          setDuplicateDialogOpen(false);
+          setTaskToDuplicate(null);
+        }}
       />
     </>
   );
