@@ -245,7 +245,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
                     {/* Expected Outcome Bar */}
                     <div className="relative h-5 mb-1 group">
                       <div
-                        className="absolute bg-blue-500 h-full rounded"
+                        className="absolute bg-blue-500 h-full rounded-full"
                         style={{ width: `${item.expectedOutcome}%` }}
                       ></div>
                       <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10">
@@ -256,7 +256,7 @@ const QBOProgressChart: React.FC<QBOProgressChartProps> = ({
                     {/* Achieved Outcome Bar - No longer clickable */}
                     <div className="relative h-5 group">
                       <div
-                        className="absolute bg-green-500 h-full rounded"
+                        className="absolute bg-green-500 h-full rounded-full"
                         style={{ width: `${item.achievedOutcome}%` }}
                       ></div>
                       <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 z-10">
