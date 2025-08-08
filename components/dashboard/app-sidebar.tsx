@@ -54,6 +54,12 @@ import { usePathname } from "next/navigation";
 
 // Menu items.
 const items = [
+    {
+    title: "Jobs",
+    url: "/jobs",
+    icon: Calendar,
+    id: "jobs",
+  },
   {
     title: "Jija",
     url: "/jija?source=sidepanel",
@@ -312,34 +318,6 @@ export function AppSidebar() {
                   </CollapsibleContent>
                 )}
               </Collapsible>
-
-              {/* Jobs */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  size={"lg"}
-                  asChild
-                  className="flex items-center"
-                >
-                  <Link href="/jobs">
-                    <Calendar
-                      className={`${isJobsSectionActive() ? "text-[#F05523]" : ""} ${
-                        !isMobile && effectiveState === "collapsed" ? "mx-auto" : ""
-                      }`}
-                    />
-                    <span
-                      className={`${
-                        !isMobile && effectiveState === "collapsed" ? "hidden" : ""
-                      } ${
-                        isJobsSectionActive()
-                          ? "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
-                          : ""
-                      }`}
-                    >
-                      Jobs
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
 
               {/* Regular menu items */}
               {items.map((item) => {
