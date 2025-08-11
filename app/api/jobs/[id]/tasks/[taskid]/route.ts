@@ -20,11 +20,15 @@ export async function PUT( request: NextRequest,
     
     const userId = authResult.userId;
     const updateData = await request.json();
-    const updatedTask = await taskService.updateTask(taskid, userId!, updateData);
-   
-
-    if(updateData.completed === true){//set next task if nextTaskId is same as taskid
     
+    let updatedTask;
+    if ('completed' in updateData) {
+      updatedTask = await taskService.markCompleted(taskid, userId!, updateData.completed);
+    } else {
+      updatedTask = await taskService.updateTask(taskid, userId!, updateData);
+    }
+
+    if(updateData.completed === true){
       const updtedJob = await jobService.setIncompleteTaskAsNextStep(id, taskid);
     }
 

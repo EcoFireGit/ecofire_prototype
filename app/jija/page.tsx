@@ -34,6 +34,24 @@ interface ProcessedMessage {
 }
 
 export default function Chat() {
+  const welcomeMessages = [
+    "Welcome! How can I help you today?",
+    "Hi there! What would you like to talk about?",
+    "Hello! Ask me anything.",
+    "Ready when you are. What's on your mind?",
+    "Greetings! How can I assist you?",
+    "Hey! I'm here to help—what do you need?",
+    "Good to see you! How can I support you today?",
+    "Hi! Feel free to ask me anything at all.",
+    "Need assistance? I'm just a message away!",
+    "Let’s get started. What can I do for you?",
+    "Hello there! Got questions? I've got answers.",
+    "Hi! What brings you here today?",
+    "Welcome back! How can I be of service?"
+  ];
+  
+  
+
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -47,8 +65,13 @@ export default function Chat() {
   const LIMIT = 3;
   const { userId } = useAuth();
   const searchParams = useSearchParams();
+  const source = searchParams.get("source") || "sidepanel";
+  const jobId = searchParams.get("jobId") || undefined;
+  const taskId = searchParams.get("taskId") || undefined;
   const jobTitle = searchParams.get("jobTitle");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [hasAutoLoadedLatestChat, setHasAutoLoadedLatestChat] = useState(false);
+  const [welcomeText, setWelcomeText] = useState("");
 
   const {
     error,
@@ -71,6 +94,9 @@ export default function Chat() {
       fetchRecentChats(0);
     },
   });
+
+  
+
 
   // Set prefilled input when jobTitle is present
   useEffect(() => {
@@ -219,6 +245,28 @@ export default function Chat() {
     fetchRecentChats();
   }, [userId]);
 
+  useEffect(() => {
+    // Only auto-load if:
+    // - We have recent chats
+    // - No chat is currently selected
+    // - We haven't already auto-loaded
+    // - There's no jobTitle parameter (NEW CONDITION)
+    if (
+      !selectedChatId &&
+      recentChats.length > 0 &&
+      !hasAutoLoadedLatestChat &&
+      !jobTitle  // Don't auto-load if jobTitle is present
+    ) {
+      const latestChat = recentChats[0]; // Most recent chat is first
+      if (latestChat && latestChat.chatId) {
+        loadChatSession(latestChat.chatId);
+        setHasAutoLoadedLatestChat(true); // Prevent future auto-loads
+      }
+    }
+  }, [recentChats, selectedChatId, hasAutoLoadedLatestChat]);
+  
+
+
   // Get a preview of the conversation (first user message and assistant response)
   const getChatPreview = (chat: ChatSession) => {
     const userMessage =
@@ -244,12 +292,14 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col w-full max-w-4xl pb-48 p-10 mx-auto">
-      {/* Header - Fixed at the top */}
-      <div className="flex justify-between items-center mb-6 w-full">
-        <h1 className="text-2xl font-bold">Jija Assistant</h1>
+    <div className="flex flex-col w-full max-w-4xl pb-48 p-4 sm:p-6 lg:p-10 mx-auto min-h-screen">
+      <div className="mb-6 w-full">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 text-left sm:text-left">
+          Jija Assistant
+        </h1>
         
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-col sm:flex-row sm:justify-end items-center gap-2 sm:gap-3">
           {/* Close Conversation Button - Only visible when a chat is selected */}
           {selectedChatId && (
             <Button
@@ -259,7 +309,7 @@ export default function Chat() {
                 setInput("");
               }}
               variant="outline"
-              className="flex items-center gap-2"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm"
             >
               <span>Close Conversation</span>
             </Button>
@@ -267,19 +317,20 @@ export default function Chat() {
           
           {/* Archive Button */}
           {recentChats.length > 0 && (
-            <div className="relative" ref={archiveRef}>
+            <div className="relative w-full sm:w-auto" ref={archiveRef}>
               <Button
                 variant="outline"
-                className="flex items-center gap-2"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm"
                 onClick={() => setShowArchive(!showArchive)}
               >
-                <Archive size={18} />
-                <span>Recent Conversations</span>
+                <Archive size={16} />
+                <span className="hidden sm:inline">Recent Conversations</span>
+                <span className="sm:hidden">Recent Conversations</span>
               </Button>
               
               {/* Archive Dropdown */}
               {showArchive && (
-                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="absolute left-0 sm:right-0 mt-2 w-full sm:w-80 max-h-96 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="p-2">
                     {recentChats.map((chat) => {
                       const preview = getChatPreview(chat);
@@ -349,14 +400,14 @@ export default function Chat() {
               }`}
             >
               <div
-                className={`whitespace-pre-wrap p-3 rounded-lg relative max-w-[80%] ${
+                className={`whitespace-pre-wrap p-3 rounded-lg relative max-w-[85%] sm:max-w-[80%] ${
                   m.role === "user"
                     ? "bg-blue-100 text-blue-900"
                     : "bg-gray-100 text-gray-900"
                 }`}
               >
                 <div className="flex justify-between items-start gap-2">
-                  <span className="font-medium">
+                  <span className="font-medium text-sm sm:text-base">
                     {m.role === "user" ? "You: " : "Jija: "}
                   </span>
                   <button
@@ -372,16 +423,16 @@ export default function Chat() {
                       }
                     }}
                     id={`copy-btn-${m.id}`}
-                    className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1 rounded"
+                    className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1 rounded flex-shrink-0"
                     title="Copy message"
                   >
-                    <Clipboard size={14} />
+                    <Clipboard size={12} className="sm:w-4 sm:h-4" />
                   </button>
                 </div>
-                <div className="mt-1">
+                <div className="mt-1 text-sm sm:text-base">
                   {m.role === "assistant" && m.html ? (
                     <div
-                      className="prose dark:prose-invert max-w-none"
+                      className="prose dark:prose-invert max-w-none prose-sm sm:prose-base"
                       dangerouslySetInnerHTML={{ __html: m.html }}
                     />
                   ) : (
@@ -398,7 +449,7 @@ export default function Chat() {
             {status === "submitted" && <div>Loading...</div>}
             <button
               type="button"
-              className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
+              className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md w-full sm:w-auto"
               onClick={stop}
             >
               Stop
@@ -411,7 +462,7 @@ export default function Chat() {
             <div className="text-red-500">An error occurred.</div>
             <button
               type="button"
-              className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md"
+              className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md w-full sm:w-auto"
               onClick={() => reload()}
             >
               Retry
@@ -419,32 +470,62 @@ export default function Chat() {
           </div>
         )}
 
-        <div className="fixed bottom-0 w-full max-w-4xl mb-8">
-          <form onSubmit={handleSubmit} className="relative flex items-center">
-            <TextareaAutosize
-              className="w-full p-2 border border-gray-300 rounded shadow-xl resize-none pr-10"
-              value={input}
-              placeholder="Ask Jija something..."
-              onChange={handleInputChange}
-              disabled={status !== "ready"}
-              ref={textareaRef}
-              style={{ overflow: 'hidden', lineHeight: '28px' }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (input.trim() && status === "ready") {
-                    handleSubmit(e);
+
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 sm:relative sm:bottom-auto sm:border-t-0 sm:bg-transparent sm:p-0 sm:mt-8">
+          {/* Welcome Text */}
+          {selectedChatId === null && (
+            <div className="mb-4 text-base sm:text-lg text-gray-700 font-semibold text-center">
+              {welcomeText}
+            </div>
+          )}
+
+          <form
+            onSubmit={e => {
+              handleSubmit(e, {
+                body: {
+                  source,
+                  jobId,
+                  taskId,
+                  jobTitle,
+                },
+              });
+            }}
+            className="relative flex items-end gap-2 max-w-4xl mx-auto"
+          >
+            <div className="flex-1 relative">
+              <TextareaAutosize
+                className="w-full p-3 pr-12 border border-gray-300 rounded-lg shadow-xl resize-none text-sm sm:text-base"
+                value={input}
+                placeholder="Ask Jija something..."
+                onChange={handleInputChange}
+                disabled={status !== "ready"}
+                ref={textareaRef}
+                maxRows={4}
+                style={{ overflow: 'hidden', lineHeight: '1.5' }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (input.trim() && status === "ready") {
+                      handleSubmit(e, {
+                        body: {
+                          source,
+                          jobId,
+                          taskId,
+                          jobTitle,
+                        },
+                      });
+                    }
                   }
-                }
-              }}
-            />
-            <Button
-              type="submit"
-              disabled={status !== "ready"}
-              className="absolute right-2 top-1/2 -translate-y-1/2"
-            >
-              Send
-            </Button>
+                }}
+              />
+              <Button
+                type="submit"
+                disabled={status !== "ready"}
+              className="absolute right-2 top-2"
+              >
+                Send
+              </Button>
+          </div>
           </form>
         </div>
       </div>

@@ -11,6 +11,8 @@ import { PIs } from "@/lib/models/pi.model";
 import { QBOs } from "@/lib/models/qbo.model";
 import { useUser } from "@clerk/nextjs";
 import { Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function PIQBOMappingsPage() {
   const [mappings, setMappings] = useState<PIQBOMapping[]>([]);
@@ -21,6 +23,8 @@ export default function PIQBOMappingsPage() {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [selectedMapping, setSelectedMapping] = useState<PIQBOMapping | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [piSearchTerm, setPiSearchTerm] = useState("");
+  const [qboSearchTerm, setQboSearchTerm] = useState("");
   
   const { toast } = useToast();
   const { user, isLoaded } = useUser();
@@ -165,6 +169,14 @@ export default function PIQBOMappingsPage() {
     }
   };
 
+  const filteredTableData = tableData.filter((item) => {
+    const matchesPI = piSearchTerm === "" || 
+      item.piName.toLowerCase().includes(piSearchTerm.toLowerCase());
+    const matchesQBO = qboSearchTerm === "" || 
+      item.qboName.toLowerCase().includes(qboSearchTerm.toLowerCase());
+    return matchesPI && matchesQBO;
+  });
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
@@ -180,10 +192,37 @@ export default function PIQBOMappingsPage() {
           <p>Loading...</p>
         </div>
       ) : (
-        <PIQBOMappingTable
-          columns={columns(handleEditMapping, handleDeleteMapping)}
-          data={tableData}
-        />
+        <>
+          <div className="flex gap-4 mb-4">
+            <div className="flex-1">
+              <Label htmlFor="pi-search" className="text-sm font-medium mb-2 block">
+                Search by Output name
+              </Label>
+              <Input
+                placeholder="Search by Output name..."
+                value={piSearchTerm}
+                onChange={(e) => setPiSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <div className="flex-1">
+              <Label htmlFor="qbo-search" className="text-sm font-medium mb-2 block">
+                Search by Outcome name
+              </Label>
+              <Input
+                placeholder="Search by Outcome name..."
+                value={qboSearchTerm}
+                onChange={(e) => setQboSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+          </div>
+
+          <PIQBOMappingTable
+            columns={columns(handleEditMapping, handleDeleteMapping)}
+            data={filteredTableData} 
+          />
+        </>
       )}
 
       <PIQBOMappingDialog

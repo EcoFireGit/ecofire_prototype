@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@clerk/nextjs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function PiJobMappingPage() {
   const [data, setData] = useState<MappingJP[]>([]);
@@ -17,6 +19,8 @@ export default function PiJobMappingPage() {
   const [editingPI, setEditingPI] = useState<MappingJP | undefined>(undefined);
   const [pisList, setPisList] = useState<any[]>([]);
   const [jobsList, setJobsList] = useState<any[]>([]);
+  const [piSearchTerm, setPiSearchTerm] = useState("");
+  const [jobSearchTerm, setJobSearchTerm] = useState("");
   
   const { toast } = useToast();
   const { user, isLoaded } = useUser();
@@ -198,6 +202,14 @@ export default function PiJobMappingPage() {
     );
   }
 
+  const filteredData = data.filter((item) => {
+    const matchesPI = piSearchTerm === "" || 
+      item.piName.toLowerCase().includes(piSearchTerm.toLowerCase());
+    const matchesJob = jobSearchTerm === "" || 
+      item.jobName.toLowerCase().includes(jobSearchTerm.toLowerCase());
+    return matchesPI && matchesJob;
+  });
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
@@ -207,10 +219,33 @@ export default function PiJobMappingPage() {
           Add Mapping
         </Button>
       </div>
-      
+      <div className="flex gap-4 mb-4"> 
+        <div className="flex-1">
+          <Label htmlFor="job-search" className="text-sm font-medium mb-2 block">
+            Search by Job name
+          </Label>
+          <Input
+            placeholder="Search by Job name..."
+            value={jobSearchTerm}
+            onChange={(e) => setJobSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+        <div className="flex-1">
+          <Label htmlFor="pi-search" className="text-sm font-medium mb-2 block">
+            Search by Output name
+          </Label>
+          <Input
+            placeholder="Search by Output name..."
+            value={piSearchTerm}
+            onChange={(e) => setPiSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+      </div>
       <MappingJPTable 
         columns={columns(handleOpenEdit, handleDelete)} 
-        data={data} 
+        data={filteredData} 
       />
 
       <MappingDialog

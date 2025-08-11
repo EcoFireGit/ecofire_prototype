@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export default function SettingsPage() {
+export default function AdvancedSettingsPage() {
   const [preferences, setPreferences] = useState({
     enableBackstage: false,
     enableTableView: false,

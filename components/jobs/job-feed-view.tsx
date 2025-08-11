@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Jobs } from "@/lib/models/job.model";
 import { BusinessFunctionForDropdown } from "@/lib/models/business-function.model";
 import { Job, columns } from "@/components/jobs/table/columns";
@@ -19,6 +19,7 @@ import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
 import { QBOCircles } from "@/components/qbo/qbo-circles";
 import { JobSkeletonGroup } from "@/components/jobs/job-skeleton";
+import { OPEN_TASKS_SIDEBAR_EVENT } from "@/components/landing_page/navbar";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -33,15 +34,19 @@ function convertJobsToTableData(
 
     return {
       id: job._id,
+      jobNumber: job.jobNumber,
       title: job.title,
       notes: job.notes || undefined,
       businessFunctionId: job.businessFunctionId || undefined,
       businessFunctionName: businessFunction?.name || undefined,
       dueDate: job.dueDate ? new Date(job.dueDate).toISOString() : undefined,
+      createdDate: new Date(job.createdDate!).toISOString(),
       isDone: job.isDone || false,
       nextTaskId: job.nextTaskId || undefined,
       tasks: job.tasks || [],
       impact: job.impact || 0,
+      isRecurring: job.isRecurring || false,
+      recurrenceInterval: job.recurrenceInterval || undefined,
       // Owner removed as it's now derived from the next task
     };
   });
@@ -77,22 +82,132 @@ export default function JobsPage() {
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   const [isTableViewEnabled, setIsTableViewEnabled] = useState(false);
-  const [creatingJob, setCreatingJob] = useState(false); //State to track job creation
+  const [creatingJob, setCreatingJob] = useState(false);
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  
+  // Define the event handler outside useEffect
+  const handleOpenTasksSidebarEvent = useCallback((event: CustomEvent) => {
+    const { jobId, jobData } = event.detail;
+    console.log('Job-feed-view received open-tasks-sidebar event for jobId:', jobId);
+    console.log('Job data provided in event:', jobData);
+    console.log('Available activeJobs:', activeJobs.map(j => ({ id: j.id, title: j.title })));
+    console.log('Available completedJobs:', completedJobs.map(j => ({ id: j.id, title: j.title })));
+    
+    // First try to use the job data provided in the event
+    if (jobData) {
+      console.log('Using job data from event:', jobData.title);
+      // Convert the job data to the format expected by handleOpenTasksSidebar
+      const convertedJob = {
+        id: jobData._id || jobData.id,
+        jobNumber: jobData.jobNumber,
+        title: jobData.title,
+        notes: jobData.notes,
+        businessFunctionId: jobData.businessFunctionId,
+        businessFunctionName: jobData.businessFunctionName,
+        dueDate: jobData.dueDate,
+        createdDate: jobData.createdDate,
+        isDone: jobData.isDone,
+        nextTaskId: jobData.nextTaskId,
+        tasks: jobData.tasks,
+        impact: jobData.impact,
+      };
+      handleOpenTasksSidebar(convertedJob);
+      return;
+    }
+    
+    // Fallback to finding the job in the arrays
+    let job = activeJobs.find(j => j.id === jobId) || completedJobs.find(j => j.id === jobId);
+    
+    if (job) {
+      console.log('Found job to open:', job.title);
+      handleOpenTasksSidebar(job);
+    } else {
+      console.log('Job not found in activeJobs or completedJobs');
+      console.log('Looking for jobId:', jobId);
+      console.log('Active jobs IDs:', activeJobs.map(j => j.id));
+      console.log('Completed jobs IDs:', completedJobs.map(j => j.id));
+      console.log('Job not found - this might be because the job data needs to be refreshed');
+    }
+  }, [activeJobs, completedJobs]);
+  
+  const jobs = React.useMemo(() => {
+    const jobsMap: Record<string, any> = {};
+    
+    [...activeJobs, ...completedJobs].forEach(job => {
+      jobsMap[job.id] = {
+        _id: job.id,
+        title: job.title,
+        jobNumber: job.jobNumber,
+        businessFunctionId: job.businessFunctionId,
+        businessFunctionName: job.businessFunctionName,
+        dueDate: job.dueDate,
+        isDone: job.isDone,
+        nextTaskId: job.nextTaskId,
+        tasks: job.tasks,
+        impact: job.impact,
+        notes: job.notes,
+        createdDate: job.createdDate
+      };
+    });
+    
+    return jobsMap;
+  }, [activeJobs, completedJobs]);
+
+  useEffect(() => {
+    // Event handler to open the dialog
+    const handleOpenDialog = () => {
+      setEditingJob(undefined);
+      setDialogOpen(true);
+    };
+
+    // Event handler for editing a job from TasksSidebar
+    const handleEditJob = (event: any) => {
+      if (event.detail && event.detail.job) {
+        setEditingJob(event.detail.job);
+        setDialogOpen(true);
+      }
+    };
+
+    // Listen for refreshJobsList event to fetch new jobs after creation
+    const handleRefreshJobsList = () => {
+      fetchJobs();
+    };
+
+    const handleForceJobsRefresh = (event: CustomEvent) => {
+      console.log('Force refreshing jobs due to completion status change:', event.detail);
+      fetchJobs();
+    };
+
+
+
+    window.addEventListener("openJobDialog", handleOpenDialog);
+    window.addEventListener("open-job-edit", handleEditJob);
+    window.addEventListener("refreshJobsList", handleRefreshJobsList);
+    window.addEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
+    window.addEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
+
+    return () => {
+      window.removeEventListener("openJobDialog", handleOpenDialog);
+      window.removeEventListener("open-job-edit", handleEditJob);
+      window.removeEventListener("refreshJobsList", handleRefreshJobsList);
+      window.removeEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
+      window.removeEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
+    };
+  }, [handleOpenTasksSidebarEvent]);
 
   // New: Check for businessFunction in URL params for initial filtering
   useEffect(() => {
     const businessFunctionName = searchParams.get("businessFunction");
     if (businessFunctionName && businessFunctions?.length) {
       const bf = businessFunctions.find(
-        (b) => b.name.toLowerCase() === businessFunctionName.toLowerCase()
+        (b) => b.name.toLowerCase() === businessFunctionName.toLowerCase(),
       );
       if (bf) {
-        setActiveFilters(prev => ({
+        setActiveFilters((prev) => ({
           ...prev,
-          businessFunctionId: bf.id
+          businessFunctionId: bf.id,
         }));
       }
     }
@@ -120,40 +235,40 @@ export default function JobsPage() {
     });
   };
 
- // Add this effect to fetch the user preferences
-useEffect(() => {
-  const fetchUserPreferences = async () => {
-    try {
-      const response = await fetch("/api/user/preferences");
-      const result = await response.json();
+  // Add this effect to fetch the user preferences
+  useEffect(() => {
+    const fetchUserPreferences = async () => {
+      try {
+        const response = await fetch("/api/user/preferences");
+        const result = await response.json();
 
-      if (result.success) {
-        setIsTableViewEnabled(result.data.enableTableView);
+        if (result.success) {
+          setIsTableViewEnabled(result.data.enableTableView);
 
-        // If table view is not enabled, ensure we're using grid view
-        if (!result.data.enableTableView) {
-          setViewMode("grid");
-        } else {
-          // If it is enabled, we can use the stored preference
-          const savedViewMode = localStorage.getItem("jobViewMode") as
-            | "grid"
-            | "table";
-          if (
-            savedViewMode &&
-            (savedViewMode === "grid" || savedViewMode === "table")
-          ) {
-            setViewMode(savedViewMode);
+          // If table view is not enabled, ensure we're using grid view
+          if (!result.data.enableTableView) {
+            setViewMode("grid");
+          } else {
+            // If it is enabled, we can use the stored preference
+            const savedViewMode = localStorage.getItem("jobViewMode") as
+              | "grid"
+              | "table";
+            if (
+              savedViewMode &&
+              (savedViewMode === "grid" || savedViewMode === "table")
+            ) {
+              setViewMode(savedViewMode);
+            }
           }
         }
+      } catch (error) {
+        console.error("Failed to fetch user preferences:", error);
       }
-    } catch (error) {
-      console.error("Failed to fetch user preferences:", error);
-    }
-  };
+    };
 
-  fetchUserPreferences();
-}, []); // Empty dependency array is correct here as we only want to run this once
-  // Fetch business functions
+    fetchUserPreferences();
+  }, []); // Empty dependency array is correct here as we only want to run this once
+
   const fetchBusinessFunctions = async () => {
     try {
       const response = await fetch("/api/business-functions");
@@ -356,6 +471,9 @@ useEffect(() => {
         title: "Success",
         description: "Selected jobs marked as complete",
       });
+
+      // Always refresh jobs to show new recurring instance
+      await fetchJobs();
     } catch (error) {
       console.error("Error marking jobs as done:", error);
       toast({
@@ -421,7 +539,7 @@ useEffect(() => {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-
+    
       // First fetch business functions
       const bfResponse = await fetch("/api/business-functions");
       const bfResult = await bfResponse.json();
@@ -440,11 +558,11 @@ useEffect(() => {
       await fetchOwners();
       // Fetch tags for filters
       await fetchTags();
-
+      
       // Then fetch jobs
       const jobsResponse = await fetch("/api/jobs");
       const jobsResult = await jobsResponse.json();
-
+      
       if (jobsResult.success) {
         // Collect all next task IDs to fetch their owners
         const taskIds = jobsResult.data
@@ -454,6 +572,9 @@ useEffect(() => {
         // Fetch task owners if any tasks exist
         if (taskIds.length > 0) {
           await fetchTaskOwners(taskIds);
+        } else {
+          setTaskOwnerMap({});
+          setTaskDetails({});
         }
 
         // Use the business functions we just fetched
@@ -502,43 +623,12 @@ useEffect(() => {
     }
   }, [searchParams]);
 
-  // Add this new useEffect to listen for the custom event from the Navbar
-  useEffect(() => {
-    // Event handler to open the dialog
-    const handleOpenDialog = () => {
-      setEditingJob(undefined);
-      setDialogOpen(true);
-    };
-
-    // Event handler for editing a job from TasksSidebar
-    const handleEditJob = (event: any) => {
-      if (event.detail && event.detail.job) {
-        setEditingJob(event.detail.job);
-        setDialogOpen(true);
-      }
-    };
-
-    // Add the event listeners
-    window.addEventListener("openJobDialog", handleOpenDialog);
-    window.addEventListener("open-job-edit", handleEditJob);
-
-    // Clean up the event listeners when component unmounts
-    return () => {
-      window.removeEventListener("openJobDialog", handleOpenDialog);
-      window.removeEventListener("open-job-edit", handleEditJob);
-    };
-  }, []);
-
-  // Function to handle filter changes
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
 
     if (Object.keys(filters).length === 0) {
-      // If no filters are active, show all jobs
       setFilteredActiveJobs(activeJobs);
       setFilteredCompletedJobs(completedJobs);
-
-      // Apply recommended sort to unfiltered jobs
       setSortedActiveJobs(sortByRecommended(activeJobs));
       setSortedCompletedJobs(sortByRecommended(completedJobs));
       return;
@@ -554,162 +644,180 @@ useEffect(() => {
     delete nonStatusFilters.isDone;
 
     const filteredCompleted = completedJobs.filter((job) => {
-      // If isDone filter is true, show completed jobs, otherwise hide them
       if (filters.isDone === true) {
         return matchesFilters(job, nonStatusFilters);
       } else {
-        return false; // Hide completed jobs if not explicitly showing them
+        return false;
       }
     });
 
     setFilteredActiveJobs(filteredActive);
     setFilteredCompletedJobs(filteredCompleted);
-
-    // Apply recommended sorting immediately
     setSortedActiveJobs(sortByRecommended(filteredActive));
     setSortedCompletedJobs(sortByRecommended(filteredCompleted));
   };
 
-  // Helper function to check if a job matches filters
-  const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
-    let matches = true;
+// Helper function to check if a job matches filters
+const matchesFilters = (job: Job, filters: Record<string, any>): boolean => {
+  let matches = true;
 
-    // Get the associated task for this job (if it has a nextTaskId)
-    const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
+  // Get the associated task for this job (if it has a nextTaskId)
+  const nextTask = job.nextTaskId ? taskDetails[job.nextTaskId] : null;
 
-    // Process each filter
-    Object.entries(filters).forEach(([key, value]) => {
-      // Skip empty values or "any" values
-      if (
-        value === "" ||
-        value === null ||
-        value === undefined ||
-        value === "any"
-      )
-        return;
+  // Process each filter
+  Object.entries(filters).forEach(([key, value]) => {
+    // Skip empty values or "any" values
+    if (
+      value === "" ||
+      value === null ||
+      value === undefined ||
+      value === "any"
+    )
+      return;
 
-      switch (key) {
-        // Job filters
-        case "businessFunctionId":
-          if (job.businessFunctionId !== value) matches = false;
-          break;
-        case "dueDate":
-          if (!job.dueDate || new Date(job.dueDate) > new Date(value))
+    switch (key) {
+      // Job filters
+      case "businessFunctionId":
+        if (job.businessFunctionId !== value) matches = false;
+        break;
+      case "dueDate":
+        if (!job.dueDate || new Date(job.dueDate) > new Date(value))
+          matches = false;
+        break;
+      case "isDone":
+        if (job.isDone !== value) matches = false;
+        break;
+
+      // Task filters (applied to the job's next task)
+      case "focusLevel":
+        if (!nextTask || nextTask.focusLevel !== value) matches = false;
+        break;
+      case "joyLevel":
+        if (!nextTask || nextTask.joyLevel !== value) matches = false;
+        break;
+      case "owner":
+        if (value === "none") {
+          // Check if the displayed owner name would be "Not assigned"
+          // This covers both cases: no nextTask, or nextTask with no owner
+          const nextTaskId = job.nextTaskId;
+          const displayedOwner = nextTaskId && taskOwnerMap && taskOwnerMap[nextTaskId] 
+            ? taskOwnerMap[nextTaskId] 
+            : "Not assigned";
+          
+          if (displayedOwner !== "Not assigned") {
             matches = false;
-          break;
-        case "isDone":
-          if (job.isDone !== value) matches = false;
-          break;
-
-        // Task filters (applied to the job's next task)
-        case "focusLevel":
-          if (!nextTask || nextTask.focusLevel !== value) matches = false;
-          break;
-        case "joyLevel":
-          if (!nextTask || nextTask.joyLevel !== value) matches = false;
-          break;
-        case "owner":
-          if (!nextTask || nextTask.owner !== value) matches = false;
-          break;
-        case "minHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours < value
-          )
+          }
+        } else {
+          // For specific owner filtering, check the actual task owner
+          if (!nextTask || nextTask.owner !== value) {
             matches = false;
-          break;
-        case "maxHours":
-          if (
-            !nextTask ||
-            !nextTask.requiredHours ||
-            nextTask.requiredHours > value
-          )
-            matches = false;
-          break;
-        case "tags":
-          if (!Array.isArray(value) || value.length === 0) break;
+          }
+        }
+        break;
+      case "minHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours < value
+        )
+          matches = false;
+        break;
+      case "maxHours":
+        if (
+          !nextTask ||
+          !nextTask.requiredHours ||
+          nextTask.requiredHours > value
+        )
+          matches = false;
+        break;
+      case "tags":
+        if (!Array.isArray(value) || value.length === 0) break;
 
+        if (value.includes("none")) {
+          if (!nextTask) {
+            matches = false;
+          } else if (nextTask.tags && nextTask.tags.length > 0) {
+            matches = false;
+          }
+        } else {
           if (!nextTask || !nextTask.tags || !Array.isArray(nextTask.tags)) {
             matches = false;
-            break;
+          } else {
+            const selectedTagNames = value
+              .map((tagId) => {
+                const tag = tags.find((t) => t._id === tagId);
+                return tag ? tag.name : null;
+              })
+              .filter(Boolean);
+
+            if (!selectedTagNames.every((tagName) => nextTask.tags.includes(tagName))) {
+              matches = false;
+            }
           }
+        }
+        break;
+    }
+  });
 
-          // Convert selected tag IDs to tag names for comparison
-          const selectedTagNames = value
-            .map((tagId) => {
-              const tag = tags.find((t) => t._id === tagId);
-              return tag ? tag.name : null;
-            })
-            .filter(Boolean); // Remove any null values
+  return matches;
+};
 
-          // Compare using tag names instead of IDs
-          if (
-            !selectedTagNames.every((tagName) =>
-              nextTask.tags.includes(tagName),
-            )
-          ) {
-            matches = false;
-          }
-          break;
-      }
-    });
-
-    return matches;
-  };
-
-  // Effect to reapply filters when jobs are loaded
   useEffect(() => {
-    // Only run this when we have loaded jobs and are not in loading state
     if (!loading && activeJobs.length > 0) {
-      // Check if we have activeFilters already set (from initialFilters or previous state)
       if (Object.keys(activeFilters).length > 0) {
-        console.log(
-          "Reapplying filters on page navigation/load:",
-          activeFilters,
-        );
-
-        // Filter active jobs
         const filteredActive = activeJobs.filter((job) => {
           return matchesFilters(job, activeFilters);
         });
 
-        // Filter completed jobs - only apply non-status filters
         const nonStatusFilters = { ...activeFilters };
         delete nonStatusFilters.isDone;
 
         const filteredCompleted = completedJobs.filter((job) => {
-          // If isDone filter is true, show completed jobs, otherwise hide them
           if (activeFilters.isDone === true) {
             return matchesFilters(job, nonStatusFilters);
           } else {
-            return false; // Hide completed jobs if not explicitly showing them
+            return false;
           }
         });
 
-        // Update the filtered jobs lists
         setFilteredActiveJobs(filteredActive);
         setFilteredCompletedJobs(filteredCompleted);
-
-        // Apply the recommended sort immediately
         setSortedActiveJobs(sortByRecommended(filteredActive));
         setSortedCompletedJobs(sortByRecommended(filteredCompleted));
       }
     }
-  }, [loading, activeJobs, completedJobs, activeFilters]);
-
-  // Handler for sort changes
+  }, [loading, activeJobs, completedJobs, activeFilters, taskDetails, tags]);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobIdToOpen = params.get("openTaskSidebarFor");
+    if (jobIdToOpen) {
+      // Find the job in active or completed jobs
+      const job =
+        activeJobs.find((j) => j.id === jobIdToOpen) ||
+        completedJobs.find((j) => j.id === jobIdToOpen);
+      if (job) {
+        handleOpenTasksSidebar(job);
+        // Remove the param so it doesn't reopen on further updates
+        params.delete("openTaskSidebarFor");
+        window.history.replaceState({}, "", `${window.location.pathname}?${params}`);
+      }
+    }
+  }, [activeJobs, completedJobs]);
+  
   const handleActiveSortChange = (sortedJobs: Job[]) => {
     setSortedActiveJobs(sortedJobs);
   };
 
-  // Handler for completed jobs sort changes
   const handleCompletedSortChange = (sortedJobs: Job[]) => {
     setSortedCompletedJobs(sortedJobs);
   };
 
+  // ---- CRITICAL FIXES ----
+
+  // Only allow sidebar to open for a job after jobs have been refreshed!
   const handleCreate = async (jobData: Partial<Job>) => {
-    setCreatingJob(true); // Set creating job state to true
+    setCreatingJob(true);
     try {
       const response = await fetch("/api/jobs", {
         method: "POST",
@@ -718,23 +826,25 @@ useEffect(() => {
         },
         body: JSON.stringify({
           ...jobData,
-          // Ensure we're sending businessFunctionId, not businessFunctionName
           businessFunctionId: jobData.businessFunctionId,
-          // No need to send owner as it's derived from the next task
         }),
       });
 
       const result = await response.json();
+
+     
 
       if (result.success) {
         toast({
           title: "Success",
           description: "Job successfully created",
         });
-        await fetchJobs(); // Refresh jobs and wait for it to complete
-
-        // Now we can close the dialog after jobs have been refreshed
+        await fetchJobs(); // Wait to fetch new jobs before closing dialog
         setDialogOpen(false);
+       
+         
+  
+
       } else {
         throw new Error(result.error);
       }
@@ -745,7 +855,7 @@ useEffect(() => {
         variant: "destructive",
       });
     } finally {
-      setCreatingJob(false); // Reset creating job state
+      setCreatingJob(false);
     }
   };
 
@@ -760,9 +870,7 @@ useEffect(() => {
         },
         body: JSON.stringify({
           ...jobData,
-          // Ensure we're sending businessFunctionId, not businessFunctionName
           businessFunctionId: jobData.businessFunctionId,
-          // No need to send owner as it's derived from the next task
         }),
       });
 
@@ -773,12 +881,9 @@ useEffect(() => {
           title: "Success",
           description: "Job updated successfully",
         });
-        // First close the dialog
         setDialogOpen(false);
-        // Then clear the editing job state
         setEditingJob(undefined);
-        // Finally fetch updated jobs
-        fetchJobs();
+        await fetchJobs(); // Ensure data is fresh before sidebar can open
       } else {
         throw new Error(result.error);
       }
@@ -821,65 +926,27 @@ useEffect(() => {
     setEditingJob(job);
     setDialogOpen(true);
   };
-
-  // Function to handle dialog close
   const handleDialogOpenChange = (open: boolean) => {
     setDialogOpen(open);
     if (!open) {
-      // If dialog is closing, reset editing job
       setEditingJob(undefined);
     }
   };
-
-  // Function to handle opening the tasks sidebar
+  // Always open sidebar with the most up-to-date job object
   const handleOpenTasksSidebar = (job: Job) => {
-    setSelectedJob(job);
+    // Find the most up-to-date job object from state
+    const latestJob = activeJobs.find(j => j.id === job.id) || completedJobs.find(j => j.id === job.id) || job;
+    setSelectedJob({ ...latestJob }); // Force new object for rerender
     setTasksSidebarOpen(true);
-    // Reset the needs refresh flag when opening sidebar
     setNeedsRefresh(false);
   };
+
   const handleSidebarClose = (open: boolean) => {
-    // If the sidebar is being closed and we need a refresh
-    if (!open && needsRefresh) {
+    if (!open) {
       fetchJobs();
     }
-
-    // Update the sidebar state
     setTasksSidebarOpen(open);
-  };
-
-  const updateJobProgressById = async (jobId: string) => {
-    try {
-      const response = await fetch(`/api/jobs/${jobId}`);
-      const result = await response.json();
-
-      if (result.success) {
-        // Update the job in the state
-        const updatedJob = result.data;
-        setActiveJobs((prevActiveJobs) =>
-          prevActiveJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setCompletedJobs((prevCompletedJobs) =>
-          prevCompletedJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setFilteredActiveJobs((prevFilteredActiveJobs) =>
-          prevFilteredActiveJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-        setFilteredCompletedJobs((prevFilteredCompletedJobs) =>
-          prevFilteredCompletedJobs.map((job) =>
-            job.id === updatedJob.id ? updatedJob : job,
-          ),
-        );
-      }
-    } catch (error) {
-      console.error("Error updating job progress:", error);
-    }
+    if (!open) setSelectedJob(null); // Clear selected job and avoid stale sidebar data
   };
 
   if (loading) {
@@ -892,8 +959,6 @@ useEffect(() => {
             <div className="w-32 h-10 bg-gray-200 rounded-md animate-pulse"></div>
           </div>
         </div>
-
-        {/* Filter controls skeletons */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[1, 2, 3, 4, 5].map((i) => (
             <div
@@ -902,14 +967,10 @@ useEffect(() => {
             ></div>
           ))}
         </div>
-
-        {/* Job skeletons */}
         <div className="flex flex-col xl:flex-row gap-8">
           <div className="w-full xl:w-1/2 xl:pr-6">
             <JobSkeletonGroup count={4} />
           </div>
-
-          {/* QBO Circles skeleton */}
           <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:border-l border-gray-200">
             <div className="h-64 rounded-md bg-gray-100 flex items-center justify-center">
               <div className="w-32 h-32 rounded-full bg-gray-200 animate-pulse"></div>
@@ -961,7 +1022,6 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Show Recalculate Impact button only in table view */}
             {viewMode === "table" && (
               <Button
                 variant="outline"
@@ -977,7 +1037,7 @@ useEffect(() => {
                         title: "Success",
                         description: `${result.message}`,
                       });
-                      fetchJobs(); // Refresh jobs to show updated impact values
+                      fetchJobs();
                     } else {
                       throw new Error(result.error);
                     }
@@ -995,8 +1055,6 @@ useEffect(() => {
             )}
           </div>
         </div>
-
-        {/* Filter and Sort controls */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
           <FilterComponent
             onFilterChange={handleFilterChange}
@@ -1005,20 +1063,17 @@ useEffect(() => {
             tags={tags}
             initialFilters={activeFilters}
           />
-
           <SortingComponent
             onSortChange={handleActiveSortChange}
             jobs={filteredActiveJobs}
             taskDetails={taskDetails}
           />
         </div>
-
         <div className="flex flex-col xl:flex-row gap-8">
-          {/* Main job grid/table - takes appropriate space based on screen size */}
           <div className="w-full xl:w-1/2 xl:pr-6">
             {viewMode === "grid" ? (
               <JobsGrid
-                data={sortedActiveJobs} // Use sorted jobs instead of filtered
+                data={sortedActiveJobs}
                 onEdit={handleOpenEdit}
                 onDelete={handleDelete}
                 onSelect={handleActiveSelect}
@@ -1035,16 +1090,13 @@ useEffect(() => {
                   handleOpenTasksSidebar,
                   taskOwnerMap,
                 )}
-                data={sortedActiveJobs} // Use sorted jobs instead of filtered
+                data={sortedActiveJobs}
               />
             )}
           </div>
-
-          {/* QBO Circles Component - takes appropriate space with padding */}
           <div className="w-full xl:w-1/2 mb-8 xl:sticky xl:top-20 xl:self-start xl:pl-6 xl:border-l border-gray-200">
             <QBOCircles
               onSelectJob={(jobId) => {
-                // Find the job and open its tasks sidebar
                 const job = [...activeJobs, ...completedJobs].find(
                   (j) => j.id === jobId,
                 );
@@ -1055,8 +1107,6 @@ useEffect(() => {
             />
           </div>
         </div>
-
-        {/* Show completed jobs section if there are any to display or if no filters are active */}
         {(filteredCompletedJobs.length > 0 ||
           activeFilters.isDone === true ||
           Object.keys(activeFilters).length === 0) && (
@@ -1069,10 +1119,9 @@ useEffect(() => {
                 taskDetails={taskDetails}
               />
             </div>
-
             {viewMode === "grid" ? (
               <JobsGrid
-                data={sortedCompletedJobs} // Use sorted jobs instead of filtered
+                data={sortedCompletedJobs}
                 onEdit={handleOpenEdit}
                 onDelete={handleDelete}
                 onSelect={handleCompletedSelect}
@@ -1089,7 +1138,7 @@ useEffect(() => {
                   handleOpenTasksSidebar,
                   taskOwnerMap,
                 )}
-                data={sortedCompletedJobs} // Use sorted jobs instead of filtered
+                data={sortedCompletedJobs}
               />
             )}
           </>
@@ -1104,13 +1153,15 @@ useEffect(() => {
         />
 
         <TasksSidebar
+          key={selectedJob?.id}
           open={tasksSidebarOpen}
           onOpenChange={handleSidebarClose}
           selectedJob={selectedJob}
           onRefreshJobs={() => setNeedsRefresh(true)}
+          onDeleteJob={handleDelete}
+          jobs={jobs} 
         />
 
-        {/* Toast for active jobs selection */}
         {selectedActiveJobs.size > 0 && (
           <div className="fixed bottom-4 right-4 flex items-center gap-2 bg-background/80 backdrop-blur-sm p-4 rounded-lg border shadow-lg z-50">
             <span className="text-sm font-medium">
@@ -1130,7 +1181,6 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Toast for completed jobs selection */}
         {selectedCompletedJobs.size > 0 && (
           <div className="fixed bottom-4 right-4 flex items-center gap-2 bg-background/80 backdrop-blur-sm p-4 rounded-lg border shadow-lg z-50">
             <span className="text-sm font-medium">
@@ -1154,4 +1204,3 @@ useEffect(() => {
     </div>
   );
 }
-

@@ -17,16 +17,20 @@ import { TasksButton } from "@/components/tasks/tasks-button";
 
 export type Job = {
   id: string;
+  jobNumber: number;
   title: string;
   notes?: string;
   businessFunctionId?: string;
   businessFunctionName?: string;
   dueDate?: string;
+  createdDate: string;
   isDone: boolean;
   nextTaskId?: string;  // Added field to track the next task
   tasks?: string[];     // Added field to store task IDs
   // Owner field removed as it's now derived from next task
   impact?: number;
+  isRecurring?: boolean;
+  recurrenceInterval?: import("@/components/tasks/types").RecurrenceInterval;
 };
 
 export const columns = (
@@ -57,6 +61,20 @@ export const columns = (
     ),
     enableSorting: false,
     enableHiding: false,
+  },
+  {
+    accessorKey: "jobNumber",
+    header: "Job No.",
+    cell: ({ row }) => {
+      const jobNumber = row.getValue("jobNumber") as number;
+      return (
+        <span className="font-mono text-sm text-gray-600">
+          #{jobNumber}
+        </span>
+      );
+    },
+    enableSorting: true,
+    size: 60,
   },
   {
     accessorKey: "title",
@@ -120,6 +138,27 @@ export const columns = (
         month: "short",
         day: "numeric",
       });
+    },
+  },
+  {
+    accessorKey: "createdDate",
+    header: "Created",
+    enableSorting: true,
+    cell: ({ row }) => {
+      const createdDate = row.getValue("createdDate") as string;
+      const date = new Date(createdDate);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    },
+    sortingFn: (rowA, rowB) => {
+      const dateA = rowA.getValue("createdDate") as string;
+      const dateB = rowB.getValue("createdDate") as string;
+      return new Date(dateA).getTime() - new Date(dateB).getTime();
     },
   },
   {

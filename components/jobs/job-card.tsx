@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, PawPrint, Copy } from "lucide-react";
+import { Trash2, PawPrint, Copy, RefreshCcw } from "lucide-react";
 import { DuplicateJobDialog } from "./duplicate-job-dialog";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -77,7 +77,6 @@ export function JobCard({
     const handleOwnerUpdate = (e: CustomEvent<{ jobId: string }>) => {
       // Check if this is the job that needs to be updated
       if (e.detail.jobId === job.id) {
-        console.log(`Updating owner for job ${job.id}`);
         fetchJobData();
       }
     };
@@ -150,74 +149,96 @@ export function JobCard({
   const getBusinessFunctionColor = () => {
     const businessFunctionName = currentJob.businessFunctionName || "None";
     // Generate a hash code from the function name
-    const hashCode = businessFunctionName.split('').reduce((acc, char) => {
+    const hashCode = businessFunctionName.split("").reduce((acc, char) => {
       return char.charCodeAt(0) + ((acc << 5) - acc);
     }, 0);
-    
+
     // Map to HSL color space for better distribution of colors
     const h = Math.abs(hashCode % 360);
     const s = 85; // Keep saturation fixed for better readability
     const l = 88; // Higher lightness for background with dark text
-    
+
     return {
       backgroundColor: `hsl(${h},${s}%,${l}%)`,
-      color: `hsl(${h},${s}%,30%)`
+      color: `hsl(${h},${s}%,30%)`,
     };
   };
 
+  const jobId = currentJob.id || (currentJob as any)._id;
+
   return (
-    <div
-      style={{ width: "100%", minHeight: "180px" }}
-      className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
-        isSelected ? "ring-2 ring-primary" : ""
-      }`}
-      onClick={() => onOpenTasksSidebar(currentJob)}
-    >
-      <div className="p-4 cursor-pointer">
-        {/* Top section with checkbox, function name, and owner */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            {!hideCheckbox && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
-                  aria-label="Select job"
-                />
-              </div>
-            )}
-            <span 
-              className="px-2 py-1 text-xs font-medium rounded"
-              style={getBusinessFunctionColor()}
-            >
-              {currentJob.businessFunctionName || "No function"}
-            </span>
-          </div>
-          <span className="text-sm font-medium">{getOwnerName()}</span>
+  <div
+    style={{ width: "100%", minHeight: "180px" }}
+    className={`bg-[#F4F4F4] border rounded-md shadow-sm ${
+      isSelected ? "ring-2 ring-primary" : ""
+    }`}
+    onClick={() => onOpenTasksSidebar(currentJob)}
+  >
+    <div className="p-4 cursor-pointer">
+      {/* Top section with checkbox, function name, and owner */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          {!hideCheckbox && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(value) => onSelect(currentJob.id, !!value)}
+                aria-label="Select job"
+              />
+            </div>
+          )}
+          <span
+            className="px-2 py-1 text-xs font-medium rounded"
+            style={getBusinessFunctionColor()}
+          >
+            {currentJob.businessFunctionName || "No function"}
+          </span>
         </div>
-
-        {/* Job title */}
-        <div className="mb-6 pl-6">
-          <h3 className="text-base font-semibold">{currentJob.title}</h3>
-        </div>
-
-        {/* Bottom section with task count and due date */}
-        <div className="flex items-center justify-between pl-6">
-          <div className="space-y-1">
-            <p className="text-sm text-gray-500">{getTaskCount()}</p>
-            <p className="text-sm text-gray-500">
-              Due date: {formatDate(currentJob.dueDate)}
-            </p>
-          </div>
-        </div>
+        <span className="text-sm font-medium">{getOwnerName()}</span>
       </div>
 
-      {/* Action buttons */}
-      <div
-        className="flex justify-end p-2 border-t"
-        onClick={(e) => e.stopPropagation()}
+        {/* Job title with job number */}
+        <div className="mb-6 pl-6">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {currentJob.title}
+              {currentJob.isRecurring && currentJob.recurrenceInterval && (
+                <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
+                  <RefreshCcw className="h-4 w-4 inline" />
+                  {currentJob.recurrenceInterval}
+                </span>
+              )}
+            </h3>
+          </div>
+        </div>
+
+      {/* Bottom section with task count and due date */}
+      <div className="flex items-center justify-between pl-6">
+        <div className="space-y-1">
+          <p className="text-sm text-gray-500">{getTaskCount()}</p>
+          <p className="text-sm text-gray-500">
+            Due date: {formatDate(currentJob.dueDate)}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Bottom section with job number and action buttons */}
+    <div
+      className="flex justify-between items-center p-2 border-t"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center gap-1 ml-2">
+      <span 
+        className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded ml-2"
+        title="Job number"
       >
+        #{currentJob.jobNumber}
+      </span>
+      </div>
+      <div className="flex">
         <Button
+          title="Duplicate job"
           variant="ghost"
           size="icon"
           className="h-8 w-8"
@@ -236,9 +257,11 @@ export function JobCard({
           title="Ask Jija about this job"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(
-              `/jija?jobTitle=${encodeURIComponent(currentJob.title)}`,
-            );
+            const params = new URLSearchParams();
+            params.set("source", "job");
+            if (jobId) params.set("jobId", jobId);
+            if (currentJob.title) params.set("jobTitle", currentJob.title);
+            router.push(`/jija?${params.toString()}`);
           }}
         >
           <PawPrint className="h-4 w-4  text-[#F05523] fill-[#F05523]" />
@@ -246,7 +269,7 @@ export function JobCard({
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button title="Delete job" variant="ghost" size="icon" className="h-8 w-8">
               <Trash2 className="h-4 w-4" />
             </Button>
           </AlertDialogTrigger>
@@ -267,13 +290,14 @@ export function JobCard({
           </AlertDialogContent>
         </AlertDialog>
       </div>
-
-      <DuplicateJobDialog
-        open={isDuplicateDialogOpen}
-        onOpenChange={setIsDuplicateDialogOpen}
-        sourceJob={currentJob}
-        onSubmit={() => {}} // The actual duplication logic is handled inside DuplicateJobDialog
-      />
     </div>
-  );
+
+    <DuplicateJobDialog
+      open={isDuplicateDialogOpen}
+      onOpenChange={setIsDuplicateDialogOpen}
+      sourceJob={currentJob}
+      onSubmit={() => {}} // The actual duplication logic is handled inside DuplicateJobDialog
+    />
+  </div>
+);
 }

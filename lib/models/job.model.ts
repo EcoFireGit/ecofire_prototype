@@ -1,5 +1,14 @@
 import mongoose from "mongoose";
 
+export enum RecurrenceInterval {
+  Daily = "daily",
+  Weekly = "weekly",
+  Biweekly = "biweekly",
+  Monthly = "monthly",
+  Quarterly = "quarterly",
+  Annually = "annually"
+}
+
 export interface Jobs extends mongoose.Document {
   _id: string;
   title: string;
@@ -7,13 +16,16 @@ export interface Jobs extends mongoose.Document {
   businessFunctionId: string;   
   userId: string;
   dueDate?: Date;
+  createdDate?: Date;
   isDone: boolean;
   impact?: number;
   nextTaskId?: string; // Field to track the next task
   tasks?: string[]; // Array of task IDs associated with this job
   // owner field removed as it's now derived from the next task's owner
   isDeleted: boolean; // Soft delete flag
-
+  jobNumber: number;
+  isRecurring?: boolean;
+  recurrenceInterval?: RecurrenceInterval;
 }
 
 enum level {
@@ -39,11 +51,17 @@ const JobSchema = new mongoose.Schema<Jobs>({
   },
   businessFunctionId: {
     type: String, 
+    default: "none",
     required: false,
   },
   dueDate: {
     type: Date,
     required: false,
+  },
+  createdDate: {
+    type: Date,
+    default: Date.now,
+    required: false
   },
   isDone: {
     type: Boolean,
@@ -68,6 +86,22 @@ const JobSchema = new mongoose.Schema<Jobs>({
     type: Boolean,
     default: false,
     required: true
+  },
+  jobNumber: {
+    type: Number,
+    required: true,
+    index: true
+  },
+  isRecurring: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
+  recurrenceInterval: {
+    type: String,
+    enum: Object.values(RecurrenceInterval),
+    required: false,
+    default: undefined
   }
 });
 
