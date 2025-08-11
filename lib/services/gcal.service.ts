@@ -199,7 +199,7 @@ export async function createPrioriCalendar(
       summary: "Prioriwise",
       description: "Prioriwise Calendar to manage your business jobs",
       etag: "Prioriwise",
-      timeZone: "America/Los_Angeles",
+      timeZone: "America/New_York",
     };
 
     // const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
