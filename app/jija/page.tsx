@@ -338,17 +338,16 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, status]);
 
+  // Close both welcome message and suggestions
+  const closeSuggestionsAndWelcome = () => {
+    setShowSuggestions(false);
+    setWelcomeMessage("");
+  };
+
   // Always show suggestions bar, even if no convo is open
   const suggestionsBar = showSuggestions ? (
-    <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center relative"
+    <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center"
          style={{ borderRadius: "0 0 0.75rem 0.75rem" }}>
-      <button
-        onClick={() => setShowSuggestions(false)}
-        className="absolute top-1 right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-        title="Close suggestions"
-      >
-        <X size={14} />
-      </button>
       {loadingSuggestions && (
         <span className="text-gray-400 text-sm">Loading suggestions...</span>
       )}
@@ -612,8 +611,15 @@ export default function Chat() {
         {/* --- Welcome message, suggestions bar, and input at the bottom --- */}
         <div className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-4xl bg-white z-50 shadow-[0_-2px_16px_#0001] rounded-b-2xl px-3 pt-2">
           {welcomeMessage && (
-            <div className="w-full pb-1 text-center text-base md:text-lg text-gray-700 font-semibold tracking-tight">
+            <div className="w-full pb-1 text-center text-base md:text-lg text-gray-700 font-semibold tracking-tight relative">
               {welcomeMessage}
+              <button
+                onClick={closeSuggestionsAndWelcome}
+                className="absolute top-0 right-0 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                title="Close welcome message and suggestions"
+              >
+                <X size={16} />
+              </button>
             </div>
           )}
           {suggestionsBar}
