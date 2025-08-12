@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard, Archive } from "lucide-react";
+import { Clipboard, Archive, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextareaAutosize from "react-textarea-autosize";
 
@@ -88,6 +88,7 @@ export default function Chat() {
   const [welcomeMessage, setWelcomeMessage] = useState<string>("");
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
 
   const suggestionsCallCountRef = useRef(0);
 
@@ -338,9 +339,16 @@ export default function Chat() {
   }, [messages, status]);
 
   // Always show suggestions bar, even if no convo is open
-  const suggestionsBar = (
-    <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center"
+  const suggestionsBar = showSuggestions ? (
+    <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center relative"
          style={{ borderRadius: "0 0 0.75rem 0.75rem" }}>
+      <button
+        onClick={() => setShowSuggestions(false)}
+        className="absolute top-1 right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+        title="Close suggestions"
+      >
+        <X size={14} />
+      </button>
       {loadingSuggestions && (
         <span className="text-gray-400 text-sm">Loading suggestions...</span>
       )}
@@ -358,7 +366,7 @@ export default function Chat() {
       <span className="ml-4 text-xs text-gray-400 font-mono" title="Suggestions API call count">
       </span>
     </div>
-  );
+  ) : null;
 
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
