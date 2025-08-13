@@ -135,7 +135,7 @@ export default function Chat() {
   // Prefill input if jobTitle or taskName is present
   useEffect(() => {
     if (jobTitle) {
-      setInput(`Can you help me with doing "${jobTitle}"?`);
+      setInput(`Can you help me with the job "${jobTitle}"?`);
     }
     // Only prefill on first mount, not on every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
