@@ -533,7 +533,7 @@ export default function Chat() {
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
         {/* Chat Messages */}
-        <div className="flex flex-col space-y-4">
+        <div className="flex flex-col space-y-4 mb-48">
           {processedMessages.map((m, i) => (
             <div
               key={m.id || i}
