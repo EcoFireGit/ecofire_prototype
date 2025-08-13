@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard, Archive } from "lucide-react";
+import { Clipboard, Archive, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextareaAutosize from "react-textarea-autosize";
 
@@ -89,6 +89,7 @@ export default function Chat() {
   const [welcomeMessage, setWelcomeMessage] = useState<string>("");
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
 
   const suggestionsCallCountRef = useRef(0);
 
@@ -348,8 +349,14 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, status]);
 
+  // Close both welcome message and suggestions
+  const closeSuggestionsAndWelcome = () => {
+    setShowSuggestions(false);
+    setWelcomeMessage("");
+  };
+
   // Always show suggestions bar, even if no convo is open
-  const suggestionsBar = (
+  const suggestionsBar = showSuggestions ? (
     <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center"
          style={{ borderRadius: "0 0 0.75rem 0.75rem" }}>
       {loadingSuggestions && (
@@ -369,7 +376,7 @@ export default function Chat() {
       <span className="ml-4 text-xs text-gray-400 font-mono" title="Suggestions API call count">
       </span>
     </div>
-  );
+  ) : null;
 
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
@@ -535,7 +542,7 @@ export default function Chat() {
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
         {/* Chat Messages */}
-        <div className="flex flex-col space-y-4">
+        <div className="flex flex-col space-y-4 mb-48">
           {processedMessages.map((m, i) => (
             <div
               key={m.id || i}
@@ -613,8 +620,15 @@ export default function Chat() {
         {/* --- Welcome message, suggestions bar, and input at the bottom --- */}
         <div className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-4xl bg-white z-50 shadow-[0_-2px_16px_#0001] rounded-b-2xl px-3 pt-2">
           {welcomeMessage && (
-            <div className="w-full pb-1 text-center text-base md:text-lg text-gray-700 font-semibold tracking-tight">
+            <div className="w-full pb-1 text-center text-base md:text-lg text-gray-700 font-semibold tracking-tight relative">
               {welcomeMessage}
+              <button
+                onClick={closeSuggestionsAndWelcome}
+                className="absolute top-0 right-0 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                title="Close welcome message and suggestions"
+              >
+                <X size={16} />
+              </button>
             </div>
           )}
           {suggestionsBar}
