@@ -4,9 +4,9 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard, Archive } from "lucide-react";
+import { Clipboard, Archive, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import TextareaAutosize from 'react-textarea-autosize';
+import TextareaAutosize from "react-textarea-autosize";
 
 interface ChatSession {
   _id: string;
@@ -20,46 +20,60 @@ interface ChatSession {
   updatedAt: string;
 }
 
-interface ChatResponse {
-  chats: ChatSession[];
-  total: number;
-  hasMore: boolean;
+interface Task {
+  id: string;
+  name: string;
+  isDone?: boolean;
 }
 
-interface ProcessedMessage {
+interface Job {
   id: string;
-  role: "user" | "assistant";
-  content: string;
-  html?: string;
+  title: string;
+  impactValue?: number;
+  tasks?: Task[];
+  isDone?: boolean;
+}
+
+const WELCOME_MESSAGES = [
+  "👋 Welcome back! What can I help you accomplish today?",
+  "Hi there! Ready to tackle your top priorities?",
+  "Welcome! Ask me anything about your jobs or tasks.",
+  "Hello again! What job are we working on today?",
+  "Hey! How can I assist you with your current goals?"
+];
+
+// Utility to robustly extract JSON array of suggestions from a string (handles code blocks, plain text, etc)
+function extractJsonArray(text: string): string[] {
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/im;
+  let jsonStr = text;
+  const match = text.match(codeBlockRegex);
+  if (match) {
+    jsonStr = match[1];
+  }
+  try {
+    const parsed = JSON.parse(jsonStr.trim());
+    if (Array.isArray(parsed)) return parsed;
+  } catch {}
+  return jsonStr
+    .split("\n")
+    .map((s) => s.replace(/^- /, "").replace(/^["']|["']$/g, "").trim())
+    .filter(
+      (line) =>
+        !!line &&
+        !/^```/.test(line) &&
+        !/^These Image numbers:/i.test(line) &&
+        !/may be referenced by subsequent user messages\./i.test(line) &&
+        line !== "["
+    );
 }
 
 export default function Chat() {
-  const welcomeMessages = [
-    "Welcome! How can I help you today?",
-    "Hi there! What would you like to talk about?",
-    "Hello! Ask me anything.",
-    "Ready when you are. What's on your mind?",
-    "Greetings! How can I assist you?",
-    "Hey! I'm here to help—what do you need?",
-    "Good to see you! How can I support you today?",
-    "Hi! Feel free to ask me anything at all.",
-    "Need assistance? I'm just a message away!",
-    "Let’s get started. What can I do for you?",
-    "Hello there! Got questions? I've got answers.",
-    "Hi! What brings you here today?",
-    "Welcome back! How can I be of service?"
-  ];
-  
-  
-
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [processedMessages, setProcessedMessages] = useState<
-    ProcessedMessage[]
-  >([]);
+  const [processedMessages, setProcessedMessages] = useState<any[]>([]);
   const [showArchive, setShowArchive] = useState(false);
   const archiveRef = useRef<HTMLDivElement>(null);
   const LIMIT = 3;
@@ -69,9 +83,18 @@ export default function Chat() {
   const jobId = searchParams.get("jobId") || undefined;
   const taskId = searchParams.get("taskId") || undefined;
   const jobTitle = searchParams.get("jobTitle");
+  const taskName = searchParams.get("taskName"); // <-- Added for task context
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [hasAutoLoadedLatestChat, setHasAutoLoadedLatestChat] = useState(false);
-  const [welcomeText, setWelcomeText] = useState("");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [welcomeMessage, setWelcomeMessage] = useState<string>("");
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+
+  const suggestionsCallCountRef = useRef(0);
+
+  // Debounce timer for suggestions
+  const suggestionDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     error,
@@ -86,83 +109,79 @@ export default function Chat() {
     setInput,
   } = useChat({
     id: selectedChatId || undefined,
-    onFinish(message, { usage, finishReason }) {
-      console.log("Usage", usage);
-      console.log("FinishReason", finishReason);
-      // Reset pagination and fetch fresh chats
+    onFinish() {
       setPage(0);
       fetchRecentChats(0);
     },
   });
 
-  
+  // Fetch Jobs
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const response = await fetch("/api/jobs");
+        if (response.ok) {
+          const jobsData = await response.json();
+          const jobsArr = Array.isArray(jobsData.data) ? jobsData.data : [];
+          setJobs(jobsArr);
+        }
+      } catch (e) {
+        setJobs([]);
+      }
+    };
+    fetchJobs();
+  }, []);
 
-
-  // Set prefilled input when jobTitle is present
+  // Prefill input if jobTitle or taskName is present
   useEffect(() => {
     if (jobTitle) {
-      setInput(`Can you help me with doing "${jobTitle}?"`);
+      setInput(`Can you help me with the job "${jobTitle}"?`);
     }
-  }, [jobTitle, setInput]);
+    // Only prefill on first mount, not on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobTitle, taskName, setInput]);
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [input]);
 
-  // Close archive dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (archiveRef.current && !archiveRef.current.contains(event.target as Node)) {
         setShowArchive(false);
       }
     }
-
-    // Add event listener
-    document.addEventListener('mousedown', handleClickOutside);
-    
-    // Clean up
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [archiveRef]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const processMessages = async () => {
       if (messages.length) {
         const processed = await Promise.all(
           messages.map(async (msg) => {
-            // Filter messages to only include user and assistant roles
-            if (msg.role === "user" || msg.role === "assistant") {
-              if (msg.role === "assistant") {
-                try {
-                  const response = await fetch("/api/markdown", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ markdown: msg.content }),
-                  });
-
-                  if (response.ok) {
-                    const { html } = await response.json();
-                    return { ...msg, html };
-                  }
-                } catch (error) {
-                  console.error("Error processing markdown:", error);
+            if (msg.role === "assistant") {
+              try {
+                const response = await fetch("/api/markdown", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ markdown: msg.content }),
+                });
+                if (response.ok) {
+                  const { html } = await response.json();
+                  return { ...msg, html };
                 }
+              } catch {
+                // ignore
               }
-              return msg;
             }
-            return null;
-          }),
+            return msg;
+          })
         );
-        // Filter out null values resulted from invalid roles
-        setProcessedMessages(
-          processed.filter((msg) => msg !== null) as ProcessedMessage[],
-        );
+        setProcessedMessages(processed);
       } else {
         setProcessedMessages([]);
       }
@@ -170,36 +189,214 @@ export default function Chat() {
     processMessages();
   }, [messages]);
 
+  // Fetch recent chats on mount
+  useEffect(() => {
+    fetchRecentChats(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // When recentChats is updated, auto-open the last conversation if none is open
+  useEffect(() => {
+    if (recentChats.length > 0 && !selectedChatId) {
+      // Sort by updatedAt descending just in case
+      const sorted = [...recentChats].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+      setSelectedChatId(sorted[0].chatId);
+      loadChatSession(sorted[0].chatId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recentChats]);
+
+  // Welcome message
+  useEffect(() => {
+    setWelcomeMessage(
+      WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]
+    );
+  }, []);
+
+  // Only include jobs and tasks that are not completed
+  function getTopUncompletedJobs(jobs: Job[], count: number = 3): Job[] {
+    const filteredJobs = jobs.filter(job => job.isDone !== true);
+    const jobsWithUncompletedTasks = filteredJobs.map(job => ({
+      ...job,
+      tasks: job.tasks
+        ? job.tasks.filter(task => task.isDone !== true)
+        : [],
+    }));
+    const validJobs = jobsWithUncompletedTasks.filter(
+      job => !job.tasks || job.tasks.length > 0
+    );
+    return validJobs.sort((a, b) => (b.impactValue || 0) - (a.impactValue || 0)).slice(0, count);
+  }
+
+  // Track last assistant response to trigger suggestions after a new answer
+  const lastAssistantResponseRef = useRef<string | null>(null);
+  // Track last jobs snapshot for proper suggestions on load
+  const jobsSnapshotRef = useRef<string>("");
+
+  // Debounced suggestion fetcher
+  function scheduleFetchAISuggestions() {
+    if (loadingSuggestions) return;
+    if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
+    suggestionDebounceRef.current = setTimeout(() => {
+      fetchAISuggestionsOnce();
+    }, 750); // Debounce delay, adjust as needed
+  }
+
+  // Fetch suggestions (runs only when scheduled)
+  async function fetchAISuggestionsOnce() {
+    let contextJobTitles: string[] = [];
+    let contextJobTasks: { [jobTitle: string]: string[] } = {};
+    let convoContext: string[] = [];
+
+    // ----------- SUGGESTIONS LOGIC PATCH -------------
+    // If invoked from a job/task, base suggestions on that job/task only
+    if ((source === "job" && jobTitle) || (source === "task" && taskName)) {
+      // Get job/task context
+      if (source === "job" && jobTitle) {
+        contextJobTitles = [jobTitle];
+        const jobObj = jobs.find(j => j.title === jobTitle);
+        if (jobObj && jobObj.tasks) {
+          contextJobTasks[jobTitle] = jobObj.tasks.map(t => t.name);
+        } else {
+          contextJobTasks[jobTitle] = [];
+        }
+      } else if (source === "task" && taskName) {
+        // Find task within jobs
+        let foundJob = jobs.find(j => j.tasks && j.tasks.some(t => t.name === taskName));
+        contextJobTitles = foundJob ? [foundJob.title] : [];
+        contextJobTasks[foundJob?.title ?? ""] = foundJob?.tasks?.map(t => t.name) ?? [];
+      }
+      convoContext = messages.slice(-10).map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
+    } else {
+      // Default: show top jobs
+      const topJobs = getTopUncompletedJobs(jobs, 3);
+      contextJobTitles = topJobs.map((j) => j.title);
+      topJobs.forEach((job) => {
+        if (job.tasks) contextJobTasks[job.title] = job.tasks.map((t) => t.name);
+      });
+      convoContext = [];
+    }
+    // -------------------------------------------------
+
+    if (contextJobTitles.length === 0) {
+      setAiSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+    setLoadingSuggestions(true);
+    suggestionsCallCountRef.current += 1;
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generateSuggestionsForJobs: contextJobTitles.map((title) => ({
+            title,
+            tasks: contextJobTasks[title] ?? [],
+          })),
+          conversationContext: convoContext,
+        }),
+      });
+      const data = await response.json();
+      let all: string[] = [];
+      if (Array.isArray(data.suggestions)) {
+        for (const sug of data.suggestions) {
+          if (Array.isArray(sug.suggestions)) {
+            sug.suggestions.forEach((s: string) => {
+              extractJsonArray(s).forEach(str => all.push(str));
+            });
+          }
+          if (all.length >= 3) break;
+        }
+      }
+      setAiSuggestions(all.slice(0, 3));
+    } catch {
+      setAiSuggestions([]);
+    }
+    setLoadingSuggestions(false);
+  }
+
+  // Always run on jobs load or change (including initial load and jobs update)
+  useEffect(() => {
+    const jobsString = JSON.stringify(jobs.map(j => ({
+      title: j.title,
+      completed: j.isDone,
+      tasks: j.tasks?.map(t => ({ name: t.name, done: t.isDone }))
+    })));
+    if (jobsString !== jobsSnapshotRef.current) {
+      jobsSnapshotRef.current = jobsString;
+      scheduleFetchAISuggestions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs]);
+
+  // Run suggestions after a new assistant response
+  useEffect(() => {
+    const assistantMessages = messages.filter(m => m.role === "assistant");
+    const latestAssistantMsg = assistantMessages.length
+      ? assistantMessages[assistantMessages.length - 1].content
+      : null;
+    if (
+      status === "ready" &&
+      latestAssistantMsg &&
+      latestAssistantMsg !== lastAssistantResponseRef.current
+    ) {
+      scheduleFetchAISuggestions();
+      lastAssistantResponseRef.current = latestAssistantMsg;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, status]);
+
+  // Close both welcome message and suggestions
+  const closeSuggestionsAndWelcome = () => {
+    setShowSuggestions(false);
+    setWelcomeMessage("");
+  };
+
+  // Always show suggestions bar, even if no convo is open
+  const suggestionsBar = showSuggestions ? (
+    <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center"
+         style={{ borderRadius: "0 0 0.75rem 0.75rem" }}>
+      {loadingSuggestions && (
+        <span className="text-gray-400 text-sm">Loading suggestions...</span>
+      )}
+      {!loadingSuggestions &&
+        aiSuggestions.slice(0, 3).map((suggestion, idx) => (
+          <button
+            key={idx}
+            type="button"
+            className="transition bg-blue-50 border border-blue-100 text-blue-800 text-xs md:text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-100 hover:border-blue-200 focus:outline-none"
+            onClick={() => setInput(suggestion)}
+          >
+            {suggestion}
+          </button>
+        ))}
+      <span className="ml-4 text-xs text-gray-400 font-mono" title="Suggestions API call count">
+      </span>
+    </div>
+  ) : null;
+
   const fetchRecentChats = async (pageToFetch = page) => {
     if (!userId) return;
-
     try {
       const skip = pageToFetch * LIMIT;
-      const response = await fetch(
-        `/api/recent-chats?limit=${LIMIT}&skip=${skip}`,
-      );
-
+      const response = await fetch(`/api/recent-chats?limit=${LIMIT}&skip=${skip}`);
       if (response.ok) {
-        const data = (await response.json()) as ChatResponse;
-
+        const data = await response.json();
         if (pageToFetch === 0) {
-          // First page - replace current chats
           setRecentChats(data.chats);
         } else {
-          // Additional pages - append to current chats
           setRecentChats((prev) => [...prev, ...data.chats]);
         }
-
         setHasMoreChats(data.hasMore);
       }
-    } catch (error) {
-      console.error("Error fetching recent chats:", error);
-    }
+    } catch {}
   };
 
   const loadMoreChats = async () => {
     if (isLoadingMore || !hasMoreChats) return;
-
     setIsLoadingMore(true);
     const nextPage = page + 1;
     setPage(nextPage);
@@ -209,72 +406,33 @@ export default function Chat() {
 
   const loadChatSession = async (chatId: string) => {
     try {
-      // Clear the current state first for better UX
       setSelectedChatId(chatId);
-      setInput("");
-
+      // Don't clear setInput("") here, so prefilled text remains
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
-
-        // Set the chat messages to continue the conversation
         if (data && data.messages && data.messages.length > 0) {
-          // Create messages in the format expected by useChat
           const formattedMessages = data.messages.map(
             (msg: any, index: number) => ({
               id: `msg-${index}`,
               role: msg.role,
               content: msg.content,
-            }),
+            })
           );
-
-          // Use a slight delay to ensure UI updates properly
           setTimeout(() => {
             setMessages(formattedMessages);
           }, 10);
         }
-      } else {
-        console.error("Failed to fetch chat history:", response.status);
       }
-    } catch (error) {
-      console.error("Error loading chat session:", error);
-    }
+    } catch {}
   };
 
-  useEffect(() => {
-    fetchRecentChats();
-  }, [userId]);
-
-  useEffect(() => {
-    // Only auto-load if:
-    // - We have recent chats
-    // - No chat is currently selected
-    // - We haven't already auto-loaded
-    // - There's no jobTitle parameter (NEW CONDITION)
-    if (
-      !selectedChatId &&
-      recentChats.length > 0 &&
-      !hasAutoLoadedLatestChat &&
-      !jobTitle  // Don't auto-load if jobTitle is present
-    ) {
-      const latestChat = recentChats[0]; // Most recent chat is first
-      if (latestChat && latestChat.chatId) {
-        loadChatSession(latestChat.chatId);
-        setHasAutoLoadedLatestChat(true); // Prevent future auto-loads
-      }
-    }
-  }, [recentChats, selectedChatId, hasAutoLoadedLatestChat]);
-  
-
-
-  // Get a preview of the conversation (first user message and assistant response)
   const getChatPreview = (chat: ChatSession) => {
     const userMessage =
       chat.messages.find((m) => m.role === "user")?.content || "No message";
     const aiResponse =
       chat.messages.find((m) => m.role === "assistant")?.content ||
       "No response";
-
     return {
       userMessage:
         userMessage.length > 60
@@ -297,8 +455,6 @@ export default function Chat() {
         <h1 className="text-xl sm:text-2xl font-bold mb-4 text-left sm:text-left">
           Jija Assistant
         </h1>
-        
-
         <div className="flex flex-col sm:flex-row sm:justify-end items-center gap-2 sm:gap-3">
           {/* Close Conversation Button - Only visible when a chat is selected */}
           {selectedChatId && (
@@ -306,7 +462,7 @@ export default function Chat() {
               onClick={() => {
                 setSelectedChatId(null);
                 setMessages([]);
-                setInput("");
+                setInput(""); // User closes, okay to clear
               }}
               variant="outline"
               className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm"
@@ -314,8 +470,6 @@ export default function Chat() {
               <span>Close Conversation</span>
             </Button>
           )}
-          
-          {/* Archive Button */}
           {recentChats.length > 0 && (
             <div className="relative w-full sm:w-auto" ref={archiveRef}>
               <Button
@@ -327,8 +481,6 @@ export default function Chat() {
                 <span className="hidden sm:inline">Recent Conversations</span>
                 <span className="sm:hidden">Recent Conversations</span>
               </Button>
-              
-              {/* Archive Dropdown */}
               {showArchive && (
                 <div className="absolute left-0 sm:right-0 mt-2 w-full sm:w-80 max-h-96 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="p-2">
@@ -344,6 +496,7 @@ export default function Chat() {
                           }`}
                           onClick={(e) => {
                             e.preventDefault();
+                            setSelectedChatId(chat.chatId);
                             loadChatSession(chat.chatId);
                             setShowArchive(false);
                           }}
@@ -364,8 +517,6 @@ export default function Chat() {
                         </div>
                       );
                     })}
-                    
-                    {/* Load More Button */}
                     {hasMoreChats && (
                       <div className="p-2 text-center">
                         <button
@@ -391,13 +542,11 @@ export default function Chat() {
       {/* Current Chat Section */}
       <div className="flex flex-col w-full stretch">
         {/* Chat Messages */}
-        <div className="flex flex-col space-y-4">
-          {processedMessages.map((m) => (
+        <div className="flex flex-col space-y-4 mb-48">
+          {processedMessages.map((m, i) => (
             <div
-              key={m.id}
-              className={`flex ${
-                m.role === "user" ? "justify-end" : "justify-start"
-              }`}
+              key={m.id || i}
+              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`whitespace-pre-wrap p-3 rounded-lg relative max-w-[85%] sm:max-w-[80%] ${
@@ -413,8 +562,7 @@ export default function Chat() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(m.content);
-                      // Optional: Add a visual indication that content was copied
-                      const button = document.getElementById(`copy-btn-${m.id}`);
+                      const button = document.getElementById(`copy-btn-${m.id || i}`);
                       if (button) {
                         button.classList.add("text-green-500");
                         setTimeout(() => {
@@ -422,7 +570,7 @@ export default function Chat() {
                         }, 2000);
                       }
                     }}
-                    id={`copy-btn-${m.id}`}
+                    id={`copy-btn-${m.id || i}`}
                     className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1 rounded flex-shrink-0"
                     title="Copy message"
                   >
@@ -447,85 +595,68 @@ export default function Chat() {
         {(status === "submitted" || status === "streaming") && (
           <div className="mt-4 text-gray-500">
             {status === "submitted" && <div>Loading...</div>}
-            <button
+            <Button
               type="button"
               className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md w-full sm:w-auto"
               onClick={stop}
             >
               Stop
-            </button>
+            </Button>
           </div>
         )}
-
         {error && (
           <div className="mt-4">
             <div className="text-red-500">An error occurred.</div>
-            <button
+            <Button
               type="button"
               className="px-4 py-2 mt-4 text-blue-500 border border-blue-500 rounded-md w-full sm:w-auto"
               onClick={() => reload()}
             >
               Retry
-            </button>
+            </Button>
           </div>
         )}
 
-
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 sm:relative sm:bottom-auto sm:border-t-0 sm:bg-transparent sm:p-0 sm:mt-8">
-          {/* Welcome Text */}
-          {selectedChatId === null && (
-            <div className="mb-4 text-base sm:text-lg text-gray-700 font-semibold text-center">
-              {welcomeText}
+        {/* --- Welcome message, suggestions bar, and input at the bottom --- */}
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-0 w-full max-w-4xl bg-white z-50 shadow-[0_-2px_16px_#0001] rounded-b-2xl px-3 pt-2">
+          {welcomeMessage && (
+            <div className="w-full pb-1 text-center text-base md:text-lg text-gray-700 font-semibold tracking-tight relative">
+              {welcomeMessage}
+              <button
+                onClick={closeSuggestionsAndWelcome}
+                className="absolute top-0 right-0 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                title="Close welcome message and suggestions"
+              >
+                <X size={16} />
+              </button>
             </div>
           )}
-
-          <form
-            onSubmit={e => {
-              handleSubmit(e, {
-                body: {
-                  source,
-                  jobId,
-                  taskId,
-                  jobTitle,
-                },
-              });
-            }}
-            className="relative flex items-end gap-2 max-w-4xl mx-auto"
-          >
-            <div className="flex-1 relative">
-              <TextareaAutosize
-                className="w-full p-3 pr-12 border border-gray-300 rounded-lg shadow-xl resize-none text-sm sm:text-base"
-                value={input}
-                placeholder="Ask Jija something..."
-                onChange={handleInputChange}
-                disabled={status !== "ready"}
-                ref={textareaRef}
-                maxRows={4}
-                style={{ overflow: 'hidden', lineHeight: '1.5' }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (input.trim() && status === "ready") {
-                      handleSubmit(e, {
-                        body: {
-                          source,
-                          jobId,
-                          taskId,
-                          jobTitle,
-                        },
-                      });
-                    }
+          {suggestionsBar}
+          <form onSubmit={handleSubmit} className="relative flex items-center pb-2">
+            <TextareaAutosize
+              className="w-full p-2 border border-gray-300 rounded shadow-xl resize-none pr-10"
+              value={input}
+              placeholder="Ask Jija something..."
+              onChange={handleInputChange}
+              disabled={status !== "ready"}
+              ref={textareaRef}
+              style={{ overflow: "hidden", lineHeight: "28px" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim() && status === "ready") {
+                    handleSubmit(e);
                   }
-                }}
-              />
-              <Button
-                type="submit"
-                disabled={status !== "ready"}
+                }
+              }}
+            />
+            <Button
+              type="submit"
+              disabled={status !== "ready"}
               className="absolute right-2 top-2"
-              >
-                Send
-              </Button>
-          </div>
+            >
+              Send
+            </Button>
           </form>
         </div>
       </div>

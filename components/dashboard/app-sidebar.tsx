@@ -522,7 +522,7 @@ export function AppSidebar() {
               asChild
               className="flex items-center"
             >
-              <Link href="/dashboard/settings">
+              <Link href="/settings">
                 <Settings className={!isMobile && effectiveState === "collapsed" ? "mx-auto" : ""} />
                 <span className={!isMobile && effectiveState === "collapsed" ? "hidden" : ""}>
                   Settings

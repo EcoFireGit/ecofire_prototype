@@ -10,6 +10,7 @@ import {
   FileText,
   PawPrint,
   Target,
+  Sun,
   Copy
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,6 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
+import { TaskCard } from "@/components/tasks/tasks-card";
 
 interface NextTasksProps {
   tasks: any[];
@@ -32,6 +34,7 @@ interface NextTasksProps {
   onEditTask?: (task: any) => void;
   onDeleteTask?: (id: string) => void;
   isNextTask: (task: any) => boolean;
+  onToggleMyDay?: (task: any, value: boolean) => void;
   onDuplicate?: (task: any) => void;
 }
 
@@ -47,8 +50,10 @@ export function NextTasks({
   onEditTask,
   onDeleteTask,
   isNextTask,
+  onToggleMyDay,
   onDuplicate,
 }: NextTasksProps) {
+  console.log('Rendering NextTasks', { onComplete, onViewTask });
   const router = useRouter();
   const [isHovered, setIsHovered] = useState<Record<string, boolean>>({});
 
@@ -159,46 +164,73 @@ export function NextTasks({
   }
 
   return (
-    <div className="space-y-4 w-full">
+    <div className="space-y-3 sm:space-y-4 w-full">
       {tasks.map((task, index) => {
-        const taskId = getTaskId(task, index);
+        const taskId = task.id || task._id;
+        const realId = taskId;
         const taskIsNext = isNextTask(task);
         return (
           <Card
             key={taskId}
             className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
               taskIsNext ? "border-orange-500 border-2" : ""
-            }`}
-            onClick={() => onViewTask(task)}
+            } ${task.completed ? "bg-gray-100 text-gray-400 opacity-60" : "bg-white"}`}
+            onClick={() => {
+              onViewTask({
+                id: task.id || task._id,
+                title: task.title,
+                owner: task.owner,
+                date: task.date,
+                requiredHours: task.requiredHours,
+                focusLevel: task.focusLevel,
+                joyLevel: task.joyLevel,
+                notes: task.notes,
+                tags: task.tags || [],
+                jobId: task.jobId,
+                completed: task.completed,
+                isNextTask: taskIsNext,
+                createdDate: task.createdDate,
+                endDate: task.endDate,
+                timeElapsed: task.timeElapsed,
+                isRecurring: task.isRecurring,
+                recurrenceInterval: task.recurrenceInterval,
+                myDay: task.myDay,
+              });
+            }}
           >
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="flex flex-col">
-                <div className="flex items-start gap-3 mb-3">
+                <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <div 
                     className="pt-1"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
                   >
                     <Checkbox
                       checked={task.completed === true}
-                      onCheckedChange={(value) => onComplete(taskId, !!value)}
+                      onCheckedChange={(value) => {
+                        onComplete(realId, !!value);
+                      }}
                       aria-label="Mark as completed"
                     />
                   </div>
 
-                  <div className="flex-1">
-                    <div className="mb-2 flex justify-between items-start">
-                      <div className="flex items-center">
-                        <h3 className="text-base font-semibold hover:text-primary transition-colors flex items-center gap-2">
-                          {task.title}
+                  <div className="flex-1 min-w-0">
+                    <div className="mb-2 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                      <div className="flex items-center min-w-0">
+                        <h3 className="text-sm sm:text-base font-semibold hover:text-primary transition-colors flex flex-wrap items-start gap-1 sm:gap-2 min-w-0">
+                          <span className="break-words">{task.title}</span>
                           {taskIsNext && (
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300">
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300 text-xs shrink-0">
                               Next
                             </Badge>
                           )}
                           {task.isRecurring && task.recurrenceInterval && (
-                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal">
-                              <RefreshCcw className="h-4 w-4 inline" />
-                              {task.recurrenceInterval}
+                            <span className="flex items-center gap-1 text-blue-500 text-xs font-normal shrink-0">
+                              <RefreshCcw className="h-3 w-3 sm:h-4 sm:w-4 inline" />
+                              <span className="hidden sm:inline">{task.recurrenceInterval}</span>
+                              <span className="sm:hidden">Recurring</span>
                             </span>
                           )}
                         </h3>
@@ -206,53 +238,71 @@ export function NextTasks({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center text-sm text-muted-foreground">
+                      <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
                         <Briefcase className="h-3 w-3 mr-1" />
-                        <span>{getJobTitle(task.jobId)}</span>
+                        <span className="truncate">{getJobTitle(task.jobId)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Compact action buttons - all in one horizontal row */}
+                  {/* Compact action buttons - responsive layout */}
                   <div 
-                    className="flex gap-1"
+                    className="flex flex-row gap-1 shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {onAddToCalendar && (
+                    {/* First column: My Day and Calendar */}
+                    <div className="flex flex-col gap-1">
+                      {onToggleMyDay && (
+                        <Button
+                          variant={task.myDay ? "secondary" : "outline"}
+                          size="sm"
+                          className="h-7 sm:h-8 w-7 sm:w-8 flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
+                          onClick={e => {
+                            e.stopPropagation();
+                            onToggleMyDay(task, !task.myDay);
+                          }}
+                          title={task.myDay ? "Remove from My Day" : "Add to My Day"}
+                        >
+                          <Sun className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      )}
+                      
+                      {onAddToCalendar && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 sm:h-8 w-7 sm:w-8 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddToCalendar(task);
+                          }}
+                          title="Add to Calendar"
+                        >
+                          <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {/* Second column: Jija and Delete */}
+                    <div className="flex flex-col gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                        className="h-7 sm:h-8 w-7 sm:w-8 flex items-center justify-center text-muted-foreground hover:text-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onAddToCalendar(task);
+                          const params = new URLSearchParams();
+                          params.set("source", "task");
+                          if (task.jobId) params.set("jobId", task.jobId);
+                          if (task.title) params.set("jobTitle", task.title);
+                          if (task._id) params.set("taskId", task._id);
+                          else if (task.id) params.set("taskId", task.id);
+                          router.push(`/jija?${params.toString()}`);
                         }}
-                        title="Add to calendar"
+                        title="Ask Jija about this task"
                       >
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Add to Calendar
+                        <PawPrint className="h-3 w-3 sm:h-4 sm:w-4 text-[#F05523] fill-[#F05523]" />
                       </Button>
-                    )}
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const params = new URLSearchParams();
-                        params.set("source", "task");
-                        if (task.jobId) params.set("jobId", task.jobId);
-                        if (task.title) params.set("jobTitle", task.title);
-                        if (task._id) params.set("taskId", task._id);
-                        else if (task.id) params.set("taskId", task.id);
-                        router.push(`/jija?${params.toString()}`);
-                      }}
-                      title="Ask Jija about this task"
-                    >
-                      <PawPrint className="h-4 w-4 mr-1" />
-                      Ask Jija
-                    </Button>
 
                     {onDuplicate && (
                       <Button
@@ -269,49 +319,50 @@ export function NextTasks({
                       </Button>
                     )}
 
-                    {onDeleteTask && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 flex items-center justify-center text-muted-foreground hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            window.confirm(
-                              "Are you sure you want to delete this task?",
-                            )
-                          ) {
-                            onDeleteTask(taskId);
-                          }
-                        }}
-                        title="Delete task"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                      {onDeleteTask && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 sm:h-8 w-7 sm:w-8 flex items-center justify-center text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              window.confirm(
+                                "Are you sure you want to delete this task?",
+                              )
+                            ) {
+                              onDeleteTask(taskId);
+                            }
+                          }}
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center gap-16 pl-4">
-                  <div>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-16 pl-4">
+                  <div className="flex flex-wrap gap-2">
                     {getBusinessFunctionName(task.jobId) && (
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="text-xs">
                         {getBusinessFunctionName(task.jobId)}
                       </Badge>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
                     {task.focusLevel && (
                       <div className="flex items-center">
                         <Circle
-                          className={`h-4 w-4 mr-1 ${getFocusLevelColor(
+                          className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 ${getFocusLevelColor(
                             task.focusLevel,
                           )}`}
                           fill="currentColor"
                         />
-                        <span className="text-sm text-gray-600">
-                          Focus: <span className="text-sm font-bold">{task.focusLevel}</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          Focus: <span className="text-xs sm:text-sm font-bold">{task.focusLevel}</span>
                         </span>
                       </div>
                     )}
@@ -319,34 +370,34 @@ export function NextTasks({
                     {task.joyLevel && (
                       <div className="flex items-center">
                         <Smile
-                          className={`h-4 w-4 mr-1 ${getJoyLevelColor(
+                          className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 ${getJoyLevelColor(
                             task.joyLevel,
                           )}`}
                         />
-                        <span className="text-sm text-gray-600">Joy: <span className="text-sm font-bold">{task.joyLevel}</span></span>
+                        <span className="text-xs sm:text-sm text-gray-600">Joy: <span className="text-xs sm:text-sm font-bold">{task.joyLevel}</span></span>
                       </div>
                     )}
 
                     {task.date && (
                       <div className="flex items-center text-muted-foreground">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        <span className="text-sm text-gray-600">Do Date: <span className="text-sm font-bold">{formatDate(task.date)}</span></span>
+                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="text-xs sm:text-sm text-gray-600">Do Date: <span className="text-xs sm:text-sm font-bold">{formatDate(task.date)}</span></span>
                       </div>
                     )}
 
                     {task.requiredHours !== undefined && (
                       <div className="flex items-center text-muted-foreground">
-                        <Clock className="h-4 w-4 mr-1" />
-                        <span className="text-sm text-gray-600">
-                          Hrs Reqd: <span className="text-sm font-bold">{task.requiredHours} hrs</span>
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          Hrs Reqd: <span className="text-xs sm:text-sm font-bold">{task.requiredHours} hrs</span>
                         </span>
                       </div>
                     )}
                     <div className="flex items-center">
-                      <div className="h-6 w-6 rounded-full bg-secondary overflow-hidden flex items-center justify-center text-xs font-medium mr-2">
+                      <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-secondary overflow-hidden flex items-center justify-center text-xs font-medium mr-1 sm:mr-2">
                         {getOwnerName(task.owner).charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-sm">
+                      <span className="text-xs sm:text-sm truncate">
                         {getOwnerName(task.owner)}
                       </span>
                     </div>
@@ -363,31 +414,31 @@ export function NextTasks({
 
 function NextTasksSkeletonLoader() {
   return (
-    <div className="space-y-4 w-full">
+    <div className="space-y-3 sm:space-y-4 w-full">
       <div className="flex justify-between items-center mb-4">
         <Skeleton className="h-7 w-32" />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i} className="overflow-hidden w-full">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-start gap-2 sm:gap-3">
                 <Skeleton className="h-5 w-5 rounded-sm mt-1" />
                 <div className="flex-1">
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-5 w-1/2 mb-2" />
-                  <div className="flex flex-wrap gap-4">
-                    <Skeleton className="h-6 w-24" />
-                    <Skeleton className="h-6 w-16" />
-                    <Skeleton className="h-6 w-28" />
-                    <Skeleton className="h-6 w-28" />
+                  <Skeleton className="h-5 sm:h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 sm:h-5 w-1/2 mb-2" />
+                  <div className="flex flex-wrap gap-2 sm:gap-4">
+                    <Skeleton className="h-5 sm:h-6 w-20 sm:w-24" />
+                    <Skeleton className="h-5 sm:h-6 w-12 sm:w-16" />
+                    <Skeleton className="h-5 sm:h-6 w-20 sm:w-28" />
+                    <Skeleton className="h-5 sm:h-6 w-20 sm:w-28" />
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-8 w-8" />
+                <div className="flex flex-col sm:flex-row gap-1">
+                  <Skeleton className="h-7 sm:h-8 w-16 sm:w-20" />
+                  <Skeleton className="h-7 sm:h-8 w-12 sm:w-16" />
+                  <Skeleton className="h-7 sm:h-8 w-6 sm:w-8" />
                 </div>
               </div>
             </CardContent>
