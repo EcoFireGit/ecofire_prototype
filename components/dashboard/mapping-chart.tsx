@@ -67,6 +67,9 @@ const MappingChart: React.FC<MappingChartProps> = () => {
   const [itemColors, setItemColors] = useState<Map<string, string>>(new Map());
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [hoveredBarItem, setHoveredBarItem] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [tooltipContent, setTooltipContent] = useState<string>('');
+  const [tooltipStyle, setTooltipStyle] = useState({ left: 0, top: 0 });
   const { toast } = useToast();
 
   const fetchUserPreferences = async () => {
@@ -178,6 +181,40 @@ const MappingChart: React.FC<MappingChartProps> = () => {
   // Get the color for an item (colors are pre-generated)
   const getItemColor = (itemName: string) => {
     return itemColors.get(itemName) || '#6B7280'; // fallback gray color
+  };
+
+  // Helper function to update tooltip position with screen boundary checks
+  const updateTooltipPosition = (clientX: number, clientY: number) => {
+    const tooltipWidth = 150; // Approximate tooltip width
+    const tooltipHeight = 30; // Approximate tooltip height
+    const offsetX = 10;
+    const offsetY = 30;
+    
+    let left = clientX + offsetX;
+    let top = clientY - offsetY;
+    
+    // Check right edge
+    if (left + tooltipWidth > window.innerWidth) {
+      left = clientX - tooltipWidth - offsetX;
+    }
+    
+    // Check left edge
+    if (left < 0) {
+      left = 10;
+    }
+    
+    // Check top edge
+    if (top < 0) {
+      top = clientY + offsetY;
+    }
+    
+    // Check bottom edge
+    if (top + tooltipHeight > window.innerHeight) {
+      top = clientY - tooltipHeight - offsetY;
+    }
+    
+    setTooltipStyle({ left, top });
+    setTooltipPosition({ x: clientX, y: clientY });
   };
 
   // Shared function to get normalized output percentages for an outcome
@@ -342,9 +379,18 @@ const MappingChart: React.FC<MappingChartProps> = () => {
                       width: `${job.impact}%`,
                       backgroundColor: getItemColor(job.jobName)
                     }}
-                    title={`"${job.jobName}" contributes ${job.impact.toFixed(1)}%`}
-                    onMouseEnter={() => setHoveredBarItem(job.jobName)}
-                    onMouseLeave={() => setHoveredBarItem(null)}
+                    onMouseEnter={(e) => {
+                      setHoveredBarItem(job.jobName);
+                      setTooltipContent(`${job.jobName}: ${job.impact.toFixed(1)}%`);
+                      updateTooltipPosition(e.clientX, e.clientY);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredBarItem(null);
+                      setTooltipContent('');
+                    }}
+                    onMouseMove={(e) => {
+                      updateTooltipPosition(e.clientX, e.clientY);
+                    }}
                   />
                 );
               })}
@@ -354,7 +400,7 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               {outcome.jobs.map((job, jobIndex) => (
                 <div 
                   key={jobIndex} 
-                  className="flex items-center text-xs cursor-pointer"
+                  className="flex items-center text-xs cursor-pointer group relative"
                   onMouseEnter={() => setHoveredItem(job.jobName)}
                   onMouseLeave={() => setHoveredItem(null)}
                 >
@@ -362,12 +408,13 @@ const MappingChart: React.FC<MappingChartProps> = () => {
                     className="w-3 h-3 rounded mr-1"
                     style={{ backgroundColor: getItemColor(job.jobName) }}
                   ></div>
-                  <span className={`text-gray-600 ${(hoveredItem === job.jobName || hoveredBarItem === job.jobName) ? '' : 'truncate max-w-[80px]'}`}>
-                    {(hoveredItem === job.jobName || hoveredBarItem === job.jobName)
-                      ? <>{job.jobName} <span className="text-gray-400">({job.impact.toFixed(1)}%)</span></>
-                      : (job.jobName.length > 10 ? `${job.jobName.substring(0, 10)}...` : job.jobName)
-                    }
+                  <span className="text-gray-600">
+                    {job.jobName}
                   </span>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded z-10 whitespace-nowrap">
+                    {job.impact.toFixed(1)}%
+                  </div>
                 </div>
               ))}
             </div>
@@ -455,9 +502,18 @@ const MappingChart: React.FC<MappingChartProps> = () => {
                       width: `${job.impact}%`,
                       backgroundColor: getItemColor(job.jobName)
                     }}
-                    title={`"${job.jobName}" contributes ${job.impact.toFixed(1)}%`}
-                    onMouseEnter={() => setHoveredBarItem(job.jobName)}
-                    onMouseLeave={() => setHoveredBarItem(null)}
+                    onMouseEnter={(e) => {
+                      setHoveredBarItem(job.jobName);
+                      setTooltipContent(`${job.jobName}: ${job.impact.toFixed(1)}%`);
+                      updateTooltipPosition(e.clientX, e.clientY);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredBarItem(null);
+                      setTooltipContent('');
+                    }}
+                    onMouseMove={(e) => {
+                      updateTooltipPosition(e.clientX, e.clientY);
+                    }}
                   />
                 );
               })}
@@ -467,7 +523,7 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               {output.jobs.map((job, jobIndex) => (
                 <div 
                   key={jobIndex} 
-                  className="flex items-center text-xs cursor-pointer"
+                  className="flex items-center text-xs cursor-pointer group relative"
                   onMouseEnter={() => setHoveredItem(job.jobName)}
                   onMouseLeave={() => setHoveredItem(null)}
                 >
@@ -475,12 +531,13 @@ const MappingChart: React.FC<MappingChartProps> = () => {
                     className="w-3 h-3 rounded mr-1"
                     style={{ backgroundColor: getItemColor(job.jobName) }}
                   ></div>
-                  <span className={`text-gray-600 ${(hoveredItem === job.jobName || hoveredBarItem === job.jobName) ? '' : 'truncate max-w-[80px]'}`}>
-                    {(hoveredItem === job.jobName || hoveredBarItem === job.jobName)
-                      ? <>{job.jobName} <span className="text-gray-400">({job.impact.toFixed(1)}%)</span></>
-                      : (job.jobName.length > 10 ? `${job.jobName.substring(0, 10)}...` : job.jobName)
-                    }
+                  <span className="text-gray-600">
+                    {job.jobName}
                   </span>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded z-10 whitespace-nowrap">
+                    {job.impact.toFixed(1)}%
+                  </div>
                 </div>
               ))}
             </div>
@@ -570,9 +627,18 @@ const MappingChart: React.FC<MappingChartProps> = () => {
                       width: `${output.impact}%`,
                       backgroundColor: getItemColor(output.outputName)
                     }}
-                    title={`"${output.outputName}" contributes ${output.impact.toFixed(1)}%`}
-                    onMouseEnter={() => setHoveredBarItem(output.outputName)}
-                    onMouseLeave={() => setHoveredBarItem(null)}
+                    onMouseEnter={(e) => {
+                      setHoveredBarItem(output.outputName);
+                      setTooltipContent(`${output.outputName}: ${output.impact.toFixed(1)}%`);
+                      updateTooltipPosition(e.clientX, e.clientY);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredBarItem(null);
+                      setTooltipContent('');
+                    }}
+                    onMouseMove={(e) => {
+                      updateTooltipPosition(e.clientX, e.clientY);
+                    }}
                   />
                 );
               })}
@@ -582,7 +648,7 @@ const MappingChart: React.FC<MappingChartProps> = () => {
               {outcome.outputs.map((output, outputIndex) => (
                 <div 
                   key={outputIndex} 
-                  className="flex items-center text-xs cursor-pointer"
+                  className="flex items-center text-xs cursor-pointer group relative"
                   onMouseEnter={() => setHoveredItem(output.outputName)}
                   onMouseLeave={() => setHoveredItem(null)}
                 >
@@ -590,12 +656,13 @@ const MappingChart: React.FC<MappingChartProps> = () => {
                     className="w-3 h-3 rounded mr-1"
                     style={{ backgroundColor: getItemColor(output.outputName) }}
                   ></div>
-                  <span className={`text-gray-600 ${(hoveredItem === output.outputName || hoveredBarItem === output.outputName) ? '' : 'truncate max-w-[80px]'}`}>
-                    {(hoveredItem === output.outputName || hoveredBarItem === output.outputName)
-                      ? <>{output.outputName} <span className="text-gray-400">({output.impact.toFixed(1)}%)</span></>
-                      : (output.outputName.length > 10 ? `${output.outputName.substring(0, 10)}...` : output.outputName)
-                    }
+                  <span className="text-gray-600">
+                    {output.outputName}
                   </span>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded z-10 whitespace-nowrap">
+                    {output.impact.toFixed(1)}%
+                  </div>
                 </div>
               ))}
             </div>
@@ -712,6 +779,19 @@ const MappingChart: React.FC<MappingChartProps> = () => {
             <div className="mt-6">
               {renderJobOutcomeChart()}
             </div>
+          </div>
+        )}
+        
+        {/* Global tooltip that follows mouse cursor */}
+        {tooltipContent && (
+          <div 
+            className="fixed text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded z-50 whitespace-nowrap pointer-events-none"
+            style={{
+              left: tooltipStyle.left,
+              top: tooltipStyle.top,
+            }}
+          >
+            {tooltipContent}
           </div>
         )}
       </CardContent>
