@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useView } from "@/lib/contexts/view-context";
-import { Edit, Trash, Users } from "lucide-react";
+import { Edit, Trash, Users, Copy } from "lucide-react";
 import { OrganizationDialog } from "@/components/organizations/organization-dialog";
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Organization {
   _id: string;
@@ -42,6 +43,8 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [duplicatingOrg, setDuplicatingOrg] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleEdit = (org: Organization) => {
     setEditingOrg(org);
@@ -51,6 +54,44 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
   const handleDelete = (org: Organization) => {
     setOrgToDelete(org);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleDuplicate = async (org: Organization) => {
+    if (duplicatingOrg) return; // Prevent multiple simultaneous duplications
+    
+    setDuplicatingOrg(org._id);
+    
+    try {
+      const response = await fetch(`/api/organizations/${org._id}/duplicate`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: `Organization "${org.name}" has been duplicated successfully!`,
+        });
+        // Refresh the page to update the list
+        window.location.reload();
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to duplicate organization",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error duplicating organization:", error);
+      toast({
+        title: "Error",
+        description: "Failed to duplicate organization. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDuplicatingOrg(null);
+    }
   };
 
   const confirmDelete = async () => {
@@ -118,6 +159,20 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                       onClick={() => handleEdit(org)}
                     >
                       <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDuplicate(org)}
+                      disabled={org.userRole !== "admin" || duplicatingOrg === org._id}
+                      className={
+                        org.userRole !== "admin"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }
+                      title="Duplicate organization"
+                    >
+                      <Copy className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
