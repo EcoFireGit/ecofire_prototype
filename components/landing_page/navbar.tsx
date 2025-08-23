@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Search, Bell, HelpCircle, Clock, Menu } from "lucide-react";
+import { NotificationDropdown } from "@/components/ui/notification-dropdown";
 import { useState, useEffect, SetStateAction, useRef } from "react";
 import { JobDialog } from "@/components/jobs/job-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +50,8 @@ const TOUR_START_EVENT = "directTourStart";
 
 // NEW: Custom event name for opening the sidebar for a job
 const OPEN_TASKS_SIDEBAR_EVENT = "openTasksSidebarForJob";
+// NEW: Custom event name for opening the sidebar for a task
+const OPEN_TASK_SIDEBAR_EVENT = "openTaskSidebar";
 
 interface NotificationData {
   _id: {
@@ -681,17 +684,18 @@ const Navbar = () => {
             </PopoverContent>
           </Popover>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mr-4 relative"
-            onClick={handleNotificationClick}
-          >
-            <Bell className="h-6 w-6" />
-            {hasNotification && (
-              <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-[#f05523]" />
-            )}
-          </Button>
+          <div className="mr-4">
+            <NotificationDropdown 
+              onTaskClick={(taskId) => {
+                // Dispatch event to open task sidebar
+                window.dispatchEvent(
+                  new CustomEvent(OPEN_TASK_SIDEBAR_EVENT, {
+                    detail: { taskId }
+                  })
+                );
+              }}
+            />
+          </div>
           
           <JobDialog
             mode={editingJob ? "edit" : "create"}
@@ -755,4 +759,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
-export { TOUR_START_EVENT, OPEN_TASKS_SIDEBAR_EVENT };
+export { TOUR_START_EVENT, OPEN_TASKS_SIDEBAR_EVENT, OPEN_TASK_SIDEBAR_EVENT };

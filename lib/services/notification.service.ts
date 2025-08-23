@@ -35,6 +35,62 @@ export class NotificationService {
     }
   }
 
+  async getAllNotificationsForUser(userId: string): Promise<Notification[]> {
+    try {
+      await dbConnect();
+
+      const notifications = await Notification.find({
+        userId,
+      }).sort({ createdAt: -1 });
+
+      return notifications;
+    } catch (error) {
+      console.error("Error getting notifications:", error);
+      throw new Error("Failed to get notifications");
+    }
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    try {
+      await dbConnect();
+
+      const count = await Notification.countDocuments({
+        userId,
+        seen: false,
+      });
+
+      return count;
+    } catch (error) {
+      console.error("Error getting unread notification count:", error);
+      throw new Error("Failed to get unread notification count");
+    }
+  }
+
+  async createTaskAssignmentNotification(
+    userId: string,
+    taskId: string,
+    taskTitle: string,
+    assignedBy: string,
+  ): Promise<Notification> {
+    try {
+      await dbConnect();
+
+      const notification = await Notification.create({
+        userId,
+        type: "task_assignment",
+        message: `You have been assigned a new task: ${taskTitle}`,
+        taskId,
+        taskTitle,
+        seen: false,
+      });
+
+      return notification;
+    } catch (error) {
+      console.error("Error creating task assignment notification:", error);
+      throw new Error("Failed to create task assignment notification");
+    }
+  }
+
   async createNotificationIfDoesntExist(
     userId: string,
     type: string,
@@ -91,6 +147,25 @@ export class NotificationService {
     } catch (error) {
       console.error("Error marking notification as read:", error);
       throw new Error("Failed to mark notification as read");
+    }
+  }
+
+  async deleteNotification(
+    notificationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    try {
+      await dbConnect();
+
+      const result = await Notification.findOneAndDelete({
+        _id: notificationId,
+        userId,
+      });
+
+      return !!result;
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      throw new Error("Failed to delete notification");
     }
   }
 }

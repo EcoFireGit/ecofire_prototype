@@ -19,7 +19,7 @@ import { StartTourButton, WelcomeModal } from "../onboarding_tour";
 import { DebugTourElements } from "../onboarding_tour/debug-helper";
 import { QBOCircles } from "@/components/qbo/qbo-circles";
 import { JobSkeletonGroup } from "@/components/jobs/job-skeleton";
-import { OPEN_TASKS_SIDEBAR_EVENT } from "@/components/landing_page/navbar";
+import { OPEN_TASKS_SIDEBAR_EVENT, OPEN_TASK_SIDEBAR_EVENT } from "@/components/landing_page/navbar";
 
 // Updated to include business functions and remove owner
 function convertJobsToTableData(
@@ -131,6 +131,47 @@ export default function JobsPage() {
       console.log('Job not found - this might be because the job data needs to be refreshed');
     }
   }, [activeJobs, completedJobs]);
+
+  // Define the event handler for task notifications
+  const handleOpenTaskSidebarEvent = useCallback(async (event: CustomEvent) => {
+    const { taskId } = event.detail;
+    console.log('Job-feed-view received open-task-sidebar event for taskId:', taskId);
+    
+    try {
+      // Fetch the task to get its jobId
+      const response = await fetch(`/api/tasks/${taskId}`);
+      if (response.ok) {
+        const taskData = await response.json();
+        if (taskData.success && taskData.data) {
+          const task = taskData.data;
+          const jobId = task.jobId;
+          
+          // Find the job in our arrays
+          let job = activeJobs.find(j => j.id === jobId) || completedJobs.find(j => j.id === jobId);
+          
+          if (job) {
+            console.log('Found job for task:', job.title);
+            handleOpenTasksSidebar(job);
+          } else {
+            console.log('Job not found for task, refreshing jobs list...');
+            // Refresh jobs list and try again
+            await fetchJobs();
+            // Wait a bit for the state to update
+            setTimeout(() => {
+              const refreshedJob = activeJobs.find(j => j.id === jobId) || completedJobs.find(j => j.id === jobId);
+              if (refreshedJob) {
+                handleOpenTasksSidebar(refreshedJob);
+              } else {
+                console.log('Job still not found after refresh');
+              }
+            }, 1000);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching task:', error);
+    }
+  }, [activeJobs, completedJobs]);
   
   const jobs = React.useMemo(() => {
     const jobsMap: Record<string, any> = {};
@@ -187,6 +228,7 @@ export default function JobsPage() {
     window.addEventListener("refreshJobsList", handleRefreshJobsList);
     window.addEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
     window.addEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
+    window.addEventListener(OPEN_TASK_SIDEBAR_EVENT, handleOpenTaskSidebarEvent as unknown as EventListener);
 
     return () => {
       window.removeEventListener("openJobDialog", handleOpenDialog);
@@ -194,8 +236,9 @@ export default function JobsPage() {
       window.removeEventListener("refreshJobsList", handleRefreshJobsList);
       window.removeEventListener("force-jobs-refresh", handleForceJobsRefresh as EventListener);
       window.removeEventListener("open-tasks-sidebar", handleOpenTasksSidebarEvent as EventListener);
+      window.removeEventListener(OPEN_TASK_SIDEBAR_EVENT, handleOpenTaskSidebarEvent as unknown as EventListener);
     };
-  }, [handleOpenTasksSidebarEvent]);
+  }, [handleOpenTasksSidebarEvent, handleOpenTaskSidebarEvent]);
 
   // New: Check for businessFunction in URL params for initial filtering
   useEffect(() => {

@@ -5,6 +5,7 @@ import Job from "../models/job.model"; // Import the Job model
 import { calculateTimeElapsed } from "../utils/time-calculator";
 import { start } from "repl";
 import { RecurrenceInterval } from "../models/task.model";
+import TaskAssignmentNotificationService from "./task-assignment-notification.service";
 
 export class TaskService {
   /**
@@ -200,6 +201,18 @@ export class TaskService {
         createdDate: new Date(),
       });
       const savedTask = await task.save();
+      
+      // Create notification if task has an owner assigned
+      const taskDoc = savedTask.toObject() as TaskInterface;
+      if (taskDoc.owner && taskDoc.owner !== "none") {
+        await TaskAssignmentNotificationService.createNotificationForTaskAssignment(
+          taskDoc._id.toString(),
+          taskDoc.title,
+          taskDoc.owner,
+          userId,
+        );
+      }
+      
       return JSON.parse(JSON.stringify(savedTask));
     } catch (error) {
       throw new Error("Error creating task in database");
@@ -213,11 +226,28 @@ export class TaskService {
   ): Promise<TaskInterface | null> {
     try {
       await dbConnect();
+      
+      // Get the current task to check if owner is changing
+      const currentTask = await Task.findOne({ _id: id, userId }).lean() as TaskInterface | null;
+      const oldOwnerId = currentTask?.owner;
+      const newOwnerId = updateData.owner;
+      
       const updatedTask = await Task.findOneAndUpdate(
         { _id: id, userId },
         { $set: updateData },
         { new: true, runValidators: true }
-      ).lean();
+      ).lean() as TaskInterface | null;
+
+      // Create notification if owner changed
+      if (updatedTask && oldOwnerId !== newOwnerId) {
+        await TaskAssignmentNotificationService.createNotificationForTaskUpdate(
+          updatedTask._id.toString(),
+          updatedTask.title,
+          oldOwnerId || null,
+          newOwnerId || null,
+          userId,
+        );
+      }
 
       return updatedTask ? JSON.parse(JSON.stringify(updatedTask)) : null;
     } catch (error) {
