@@ -95,6 +95,7 @@ export default function Chat() {
   // NEW: Task suggestions state (per message) and controls
   const [taskCandidatesByMsgId, setTaskCandidatesByMsgId] = useState<Record<string, any[]>>({});
   const [extractingForMsgId, setExtractingForMsgId] = useState<string | null>(null);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
   const [creatingTaskFor, setCreatingTaskFor] = useState<{ msgId: string; idx: number } | null>(null);
   const [jobPicker, setJobPicker] = useState<{
     msgId: string;
@@ -434,10 +435,15 @@ export default function Chat() {
     return new Date(dateString).toLocaleString();
   };
 
-  // NEW: Call extraction explicitly (runs once per message or when user clicks)
+  // NEW: Call extraction explicitly (allow retry if failed or user wants to try again)
   async function extractCandidatesForMessage(msgId: string, assistantText: string) {
-    if (!assistantText || extractedOnceRef.current.has(msgId)) return;
+    if (!assistantText) return;
+    
+    // If already extracting, don't allow multiple concurrent requests
+    if (extractingForMsgId === msgId) return;
+    
     setExtractingForMsgId(msgId);
+    setExtractionError(null); // Clear any previous errors
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -448,17 +454,38 @@ export default function Chat() {
           context: { source, jobId, taskId, jobTitle },
         }),
       });
-      const data = await res.json();
-      if (Array.isArray(data.candidates) && data.candidates.length) {
-        setTaskCandidatesByMsgId((prev) => ({ ...prev, [msgId]: data.candidates }));
-        extractedOnceRef.current.add(msgId); // ensure only once
-      } else {
-        // mark as attempted to avoid repeated calls unless user asks again
-        extractedOnceRef.current.add(msgId);
+      
+      if (!res.ok) {
+        throw new Error(`API request failed with status: ${res.status}`);
       }
-    } catch {
-      // mark as attempted to avoid repeated calls unless user asks again
-      extractedOnceRef.current.add(msgId);
+      
+      const data = await res.json();
+//      console.log("Task extraction response:", data);
+      
+      if (Array.isArray(data.candidates) && data.candidates.length) {
+      //  console.log("Found candidates:", data.candidates);
+        setTaskCandidatesByMsgId((prev) => ({ ...prev, [msgId]: data.candidates }));
+        extractedOnceRef.current.add(msgId); // mark as successfully extracted
+      } else {
+     //   console.log("No candidates found or empty array");
+        // Clear any existing candidates for this message if no new ones found
+        setTaskCandidatesByMsgId((prev) => {
+          const newState = { ...prev };
+          delete newState[msgId];
+          return newState;
+        });
+        // Don't add to extractedOnceRef so user can try again
+      }
+    } catch (error) {
+      console.error("Failed to extract task candidates:", error);
+      setExtractionError("Failed to extract tasks. Please try again.");
+      // Clear any existing candidates for this message on error
+      setTaskCandidatesByMsgId((prev) => {
+        const newState = { ...prev };
+        delete newState[msgId];
+        return newState;
+      });
+      // Don't add to extractedOnceRef so user can retry on error
     }
     setExtractingForMsgId(null);
   }
@@ -662,10 +689,31 @@ export default function Chat() {
                             disabled={extractingForMsgId === msgKey}
                             onClick={() => extractCandidatesForMessage(msgKey, m.content)}
                           >
-                            {extractingForMsgId === msgKey ? "Finding..." : "Suggest tasks"}
+                            {extractingForMsgId === msgKey 
+                              ? "Finding..." 
+                              : (Array.isArray(taskCandidatesByMsgId[msgKey]) && taskCandidatesByMsgId[msgKey].length > 0)
+                                ? "Refresh tasks"
+                                : "Suggest tasks"
+                            }
                           </Button>
                         </div>
                       </div>
+
+                      {/* Error display */}
+                      {extractionError && extractingForMsgId !== msgKey && (
+                        <div className="mt-2 text-red-500 text-xs">
+                          {extractionError}
+                        </div>
+                      )}
+
+                      {/* No tasks found message */}
+                      {extractedOnceRef.current.has(msgKey) && 
+                       (!Array.isArray(taskCandidatesByMsgId[msgKey]) || taskCandidatesByMsgId[msgKey].length === 0) && 
+                       extractingForMsgId !== msgKey && (
+                        <div className="mt-2 text-gray-500 text-xs">
+                          No actionable tasks found in this response. Try a different message or ask for specific next steps.
+                        </div>
+                      )}
 
                       {Array.isArray(taskCandidatesByMsgId[msgKey]) &&
                         taskCandidatesByMsgId[msgKey].length > 0 && (

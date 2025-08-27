@@ -138,22 +138,35 @@ export async function POST(req: Request) {
 
     try {
       // Use OpenAI to extract task candidates from the assistant response
-      const prompt = `Analyze the following AI assistant response and extract 2-3 actionable tasks or next steps that a user might want to add to their task list.
+      const prompt = `You are a task extraction expert. Analyze the following AI assistant response and extract 2-3 specific, actionable tasks that a business user might want to add to their task list.
 
 Assistant response: "${assistantResponse}"
 
 Context: ${JSON.stringify(context)}
 
-Return a JSON array of task objects with this format:
+Look for:
+- Specific actions mentioned (research, create, contact, review, etc.)
+- Next steps suggested
+- Recommendations that require action
+- Follow-up items
+- Things that need to be done or completed
+
+Return ONLY a valid JSON array (no markdown, no explanation) with this exact format:
 [
   {
-    "title": "Brief task title",
-    "description": "Optional description",
-    "suggestedJobTitle": "Job this task might belong to"
+    "title": "Brief, actionable task title starting with a verb",
+    "description": "Brief explanation of what needs to be done",
+    "suggestedJobTitle": "Name of job/project this task belongs to"
   }
 ]
 
-Only return tasks that are specific, actionable, and mentioned or implied in the assistant response. If no clear tasks can be extracted, return an empty array.`;
+Examples of good task titles:
+- "Research market competitors for product X"
+- "Create budget proposal for Q1"
+- "Contact supplier about pricing"
+- "Review and update company policies"
+
+If no specific actionable tasks can be extracted, return: []`;
 
       const resp = await openaiDirect.chat.completions.create({
         model: "gpt-4-turbo",
@@ -163,14 +176,36 @@ Only return tasks that are specific, actionable, and mentioned or implied in the
       });
 
       const text = resp.choices[0].message.content || "[]";
+      console.log("Raw OpenAI response for task extraction:", text);
+      
       let candidates = [];
       try {
         candidates = JSON.parse(text);
-      } catch {
-        candidates = [];
+        console.log("Parsed candidates:", candidates);
+      } catch (parseError) {
+        console.log("JSON parse failed, trying to extract from text:", parseError);
+        // Fallback: try to extract tasks from non-JSON response
+        const lines = text.split('\n').filter(line => line.trim());
+        candidates = lines
+          .filter(line => 
+            line.includes('-') || 
+            line.toLowerCase().includes('task') || 
+            line.toLowerCase().includes('step') ||
+            line.toLowerCase().includes('action')
+          )
+          .slice(0, 3) // limit to 3 tasks
+          .map((line, idx) => ({
+            title: line.replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim(),
+            description: "",
+            suggestedJobTitle: context?.jobTitle || ""
+          }))
+          .filter(task => task.title.length > 5); // filter out very short titles
       }
 
-      return Response.json({ candidates: Array.isArray(candidates) ? candidates : [] });
+      const finalCandidates = Array.isArray(candidates) ? candidates : [];
+      console.log("Final candidates being returned:", finalCandidates);
+      
+      return Response.json({ candidates: finalCandidates });
     } catch (e) {
       console.error("Error extracting task candidates:", e);
       return Response.json({ candidates: [] });
