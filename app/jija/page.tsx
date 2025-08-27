@@ -67,6 +67,7 @@ function extractJsonArray(text: string): string[] {
     );
 }
 
+
 export default function Chat() {
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
   const [hasMoreChats, setHasMoreChats] = useState(false);
@@ -83,13 +84,25 @@ export default function Chat() {
   const jobId = searchParams.get("jobId") || undefined;
   const taskId = searchParams.get("taskId") || undefined;
   const jobTitle = searchParams.get("jobTitle");
-  const taskName = searchParams.get("taskName"); // <-- Added for task context
+  const taskName = searchParams.get("taskName");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [welcomeMessage, setWelcomeMessage] = useState<string>("");
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+
+  // NEW: Task suggestions state (per message) and controls
+  const [taskCandidatesByMsgId, setTaskCandidatesByMsgId] = useState<Record<string, any[]>>({});
+  const [extractingForMsgId, setExtractingForMsgId] = useState<string | null>(null);
+  const [creatingTaskFor, setCreatingTaskFor] = useState<{ msgId: string; idx: number } | null>(null);
+  const [jobPicker, setJobPicker] = useState<{
+    msgId: string;
+    idx: number;
+    options: { id: string; title: string }[];
+  } | null>(null);
+  // Track which messages we've already extracted for (to enforce "run once at the end or when asked")
+  const extractedOnceRef = useRef<Set<string>>(new Set());
 
   const suggestionsCallCountRef = useRef(0);
 
@@ -137,7 +150,6 @@ export default function Chat() {
     if (jobTitle) {
       setInput(`Can you help me with the job "${jobTitle}"?`);
     }
-    // Only prefill on first mount, not on every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobTitle, taskName, setInput]);
 
@@ -210,67 +222,57 @@ export default function Chat() {
 
   // Welcome message
   useEffect(() => {
-    setWelcomeMessage(
-      WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]
-    );
+    setWelcomeMessage(WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]);
   }, []);
 
   // Only include jobs and tasks that are not completed
   function getTopUncompletedJobs(jobs: Job[], count: number = 3): Job[] {
-    const filteredJobs = jobs.filter(job => job.isDone !== true);
-    const jobsWithUncompletedTasks = filteredJobs.map(job => ({
+    const filteredJobs = jobs.filter((job) => job.isDone !== true);
+    const jobsWithUncompletedTasks = filteredJobs.map((job) => ({
       ...job,
-      tasks: job.tasks
-        ? job.tasks.filter(task => task.isDone !== true)
-        : [],
+      tasks: job.tasks ? job.tasks.filter((task) => task.isDone !== true) : [],
     }));
-    const validJobs = jobsWithUncompletedTasks.filter(
-      job => !job.tasks || job.tasks.length > 0
-    );
-    return validJobs.sort((a, b) => (b.impactValue || 0) - (a.impactValue || 0)).slice(0, count);
+    const validJobs = jobsWithUncompletedTasks.filter((job) => !job.tasks || job.tasks.length > 0);
+    return validJobs
+      .sort((a, b) => (b.impactValue || 0) - (a.impactValue || 0))
+      .slice(0, count);
   }
 
-  // Track last assistant response to trigger suggestions after a new answer
+  // Suggestions logic (existing)
   const lastAssistantResponseRef = useRef<string | null>(null);
-  // Track last jobs snapshot for proper suggestions on load
   const jobsSnapshotRef = useRef<string>("");
 
-  // Debounced suggestion fetcher
   function scheduleFetchAISuggestions() {
     if (loadingSuggestions) return;
     if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
     suggestionDebounceRef.current = setTimeout(() => {
       fetchAISuggestionsOnce();
-    }, 750); // Debounce delay, adjust as needed
+    }, 750);
   }
 
-  // Fetch suggestions (runs only when scheduled)
   async function fetchAISuggestionsOnce() {
     let contextJobTitles: string[] = [];
     let contextJobTasks: { [jobTitle: string]: string[] } = {};
     let convoContext: string[] = [];
 
-    // ----------- SUGGESTIONS LOGIC PATCH -------------
-    // If invoked from a job/task, base suggestions on that job/task only
     if ((source === "job" && jobTitle) || (source === "task" && taskName)) {
-      // Get job/task context
       if (source === "job" && jobTitle) {
         contextJobTitles = [jobTitle];
-        const jobObj = jobs.find(j => j.title === jobTitle);
+        const jobObj = jobs.find((j) => j.title === jobTitle);
         if (jobObj && jobObj.tasks) {
-          contextJobTasks[jobTitle] = jobObj.tasks.map(t => t.name);
+          contextJobTasks[jobTitle] = jobObj.tasks.map((t) => t.name);
         } else {
           contextJobTasks[jobTitle] = [];
         }
       } else if (source === "task" && taskName) {
-        // Find task within jobs
-        let foundJob = jobs.find(j => j.tasks && j.tasks.some(t => t.name === taskName));
+        let foundJob = jobs.find((j) => j.tasks && j.tasks.some((t) => t.name === taskName));
         contextJobTitles = foundJob ? [foundJob.title] : [];
-        contextJobTasks[foundJob?.title ?? ""] = foundJob?.tasks?.map(t => t.name) ?? [];
+        contextJobTasks[foundJob?.title ?? ""] = foundJob?.tasks?.map((t) => t.name) ?? [];
       }
-      convoContext = messages.slice(-10).map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
+      convoContext = messages
+        .slice(-10)
+        .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`);
     } else {
-      // Default: show top jobs
       const topJobs = getTopUncompletedJobs(jobs, 3);
       contextJobTitles = topJobs.map((j) => j.title);
       topJobs.forEach((job) => {
@@ -278,7 +280,6 @@ export default function Chat() {
       });
       convoContext = [];
     }
-    // -------------------------------------------------
 
     if (contextJobTitles.length === 0) {
       setAiSuggestions([]);
@@ -305,7 +306,7 @@ export default function Chat() {
         for (const sug of data.suggestions) {
           if (Array.isArray(sug.suggestions)) {
             sug.suggestions.forEach((s: string) => {
-              extractJsonArray(s).forEach(str => all.push(str));
+              extractJsonArray(s).forEach((str) => all.push(str));
             });
           }
           if (all.length >= 3) break;
@@ -318,13 +319,14 @@ export default function Chat() {
     setLoadingSuggestions(false);
   }
 
-  // Always run on jobs load or change (including initial load and jobs update)
   useEffect(() => {
-    const jobsString = JSON.stringify(jobs.map(j => ({
-      title: j.title,
-      completed: j.isDone,
-      tasks: j.tasks?.map(t => ({ name: t.name, done: t.isDone }))
-    })));
+    const jobsString = JSON.stringify(
+      jobs.map((j) => ({
+        title: j.title,
+        completed: j.isDone,
+        tasks: j.tasks?.map((t) => ({ name: t.name, done: t.isDone })),
+      }))
+    );
     if (jobsString !== jobsSnapshotRef.current) {
       jobsSnapshotRef.current = jobsString;
       scheduleFetchAISuggestions();
@@ -332,17 +334,13 @@ export default function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs]);
 
-  // Run suggestions after a new assistant response
   useEffect(() => {
-    const assistantMessages = messages.filter(m => m.role === "assistant");
+    const assistantMessages = messages.filter((m) => m.role === "assistant");
     const latestAssistantMsg = assistantMessages.length
       ? assistantMessages[assistantMessages.length - 1].content
       : null;
-    if (
-      status === "ready" &&
-      latestAssistantMsg &&
-      latestAssistantMsg !== lastAssistantResponseRef.current
-    ) {
+    if (status === "ready" && latestAssistantMsg && latestAssistantMsg !== lastAssistantResponseRef.current) {
+      // Keep your existing behavior for "job suggestions" chips
       scheduleFetchAISuggestions();
       lastAssistantResponseRef.current = latestAssistantMsg;
     }
@@ -357,11 +355,11 @@ export default function Chat() {
 
   // Always show suggestions bar, even if no convo is open
   const suggestionsBar = showSuggestions ? (
-    <div className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center"
-         style={{ borderRadius: "0 0 0.75rem 0.75rem" }}>
-      {loadingSuggestions && (
-        <span className="text-gray-400 text-sm">Loading suggestions...</span>
-      )}
+    <div
+      className="flex flex-wrap gap-2 px-2 py-2 bg-white border-t border-gray-200 justify-center items-center"
+      style={{ borderRadius: "0 0 0.75rem 0.75rem" }}
+    >
+      {loadingSuggestions && <span className="text-gray-400 text-sm">Loading suggestions...</span>}
       {!loadingSuggestions &&
         aiSuggestions.slice(0, 3).map((suggestion, idx) => (
           <button
@@ -373,8 +371,7 @@ export default function Chat() {
             {suggestion}
           </button>
         ))}
-      <span className="ml-4 text-xs text-gray-400 font-mono" title="Suggestions API call count">
-      </span>
+      <span className="ml-4 text-xs text-gray-400 font-mono" title="Suggestions API call count"></span>
     </div>
   ) : null;
 
@@ -407,18 +404,15 @@ export default function Chat() {
   const loadChatSession = async (chatId: string) => {
     try {
       setSelectedChatId(chatId);
-      // Don't clear setInput("") here, so prefilled text remains
       const response = await fetch(`/api/chat-history/${chatId}`);
       if (response.ok) {
         const data = await response.json();
         if (data && data.messages && data.messages.length > 0) {
-          const formattedMessages = data.messages.map(
-            (msg: any, index: number) => ({
-              id: `msg-${index}`,
-              role: msg.role,
-              content: msg.content,
-            })
-          );
+          const formattedMessages = data.messages.map((msg: any, index: number) => ({
+            id: `msg-${index}`,
+            role: msg.role,
+            content: msg.content,
+          }));
           setTimeout(() => {
             setMessages(formattedMessages);
           }, 10);
@@ -428,20 +422,11 @@ export default function Chat() {
   };
 
   const getChatPreview = (chat: ChatSession) => {
-    const userMessage =
-      chat.messages.find((m) => m.role === "user")?.content || "No message";
-    const aiResponse =
-      chat.messages.find((m) => m.role === "assistant")?.content ||
-      "No response";
+    const userMessage = chat.messages.find((m) => m.role === "user")?.content || "No message";
+    const aiResponse = chat.messages.find((m) => m.role === "assistant")?.content || "No response";
     return {
-      userMessage:
-        userMessage.length > 60
-          ? `${userMessage.substring(0, 60)}...`
-          : userMessage,
-      aiResponse:
-        aiResponse.length > 60
-          ? `${aiResponse.substring(0, 60)}...`
-          : aiResponse,
+      userMessage: userMessage.length > 60 ? `${userMessage.substring(0, 60)}...` : userMessage,
+      aiResponse: aiResponse.length > 60 ? `${aiResponse.substring(0, 60)}...` : aiResponse,
     };
   };
 
@@ -449,20 +434,104 @@ export default function Chat() {
     return new Date(dateString).toLocaleString();
   };
 
+  // NEW: Call extraction explicitly (runs once per message or when user clicks)
+  async function extractCandidatesForMessage(msgId: string, assistantText: string) {
+    if (!assistantText || extractedOnceRef.current.has(msgId)) return;
+    setExtractingForMsgId(msgId);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          extractTaskCandidates: true,
+          assistantResponse: assistantText,
+          context: { source, jobId, taskId, jobTitle },
+        }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data.candidates) && data.candidates.length) {
+        setTaskCandidatesByMsgId((prev) => ({ ...prev, [msgId]: data.candidates }));
+        extractedOnceRef.current.add(msgId); // ensure only once
+      } else {
+        // mark as attempted to avoid repeated calls unless user asks again
+        extractedOnceRef.current.add(msgId);
+      }
+    } catch {
+      // mark as attempted to avoid repeated calls unless user asks again
+      extractedOnceRef.current.add(msgId);
+    }
+    setExtractingForMsgId(null);
+  }
+
+  // Helper: Create a task from a candidate
+  async function createTaskFromCandidate(msgKey: string, idx: number, jobIdOverride?: string) {
+    const candidates = taskCandidatesByMsgId[msgKey] || [];
+    const cand = candidates[idx];
+    if (!cand) return;
+
+    setCreatingTaskFor({ msgId: msgKey, idx });
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          createTaskFromSuggestion: true,
+          task: {
+            title: cand.title,
+            description: cand.description,
+            suggestedJobTitle: jobIdOverride ? undefined : cand.suggestedJobTitle,
+            jobId: jobIdOverride, // when user picked a job
+          },
+          context: { source, taskId, jobTitle },
+        }),
+      });
+      const data = await res.json();
+
+      if (data?.needsSelection && Array.isArray(data.jobs)) {
+        setJobPicker({
+          msgId: msgKey,
+          idx,
+          options: data.jobs.map((j: any) => ({ id: j.id, title: j.title })),
+        });
+      } else if (data?.createdTask) {
+        // Optimistically update local jobs state
+        setJobs((prev) => {
+          const copy = [...prev];
+          const jIdx = copy.findIndex(
+            (j) => j.id === data.createdTask.jobId || (j as any)._id === data.createdTask.jobId
+          );
+          if (jIdx >= 0) {
+            const job = copy[jIdx];
+            const newTask = { id: data.createdTask.id, name: data.createdTask.title, isDone: false };
+            copy[jIdx] = {
+              ...job,
+              tasks: Array.isArray(job.tasks) ? [...job.tasks, newTask] : [newTask],
+            };
+          }
+          return copy;
+        });
+      }
+    } catch {
+      // ignore
+    }
+    setCreatingTaskFor(null);
+  }
+
+  // Find latest assistant message for the “Suggest tasks” button
+  const latestAssistantMessage = [...processedMessages].reverse().find((m) => m.role === "assistant");
+  const latestAssistantMsgId = latestAssistantMessage?.id ?? null;
+
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 p-4 sm:p-6 lg:p-10 mx-auto min-h-screen">
       <div className="mb-6 w-full">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4 text-left sm:text-left">
-          Jija Assistant
-        </h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 text-left sm:text-left">Jija Assistant</h1>
         <div className="flex flex-col sm:flex-row sm:justify-end items-center gap-2 sm:gap-3">
-          {/* Close Conversation Button - Only visible when a chat is selected */}
           {selectedChatId && (
             <Button
               onClick={() => {
                 setSelectedChatId(null);
                 setMessages([]);
-                setInput(""); // User closes, okay to clear
+                setInput("");
               }}
               variant="outline"
               className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm"
@@ -490,9 +559,7 @@ export default function Chat() {
                         <div
                           key={chat._id}
                           className={`border-b border-gray-100 last:border-0 p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
-                            selectedChatId === chat.chatId
-                              ? "bg-blue-50"
-                              : ""
+                            selectedChatId === chat.chatId ? "bg-blue-50" : ""
                           }`}
                           onClick={(e) => {
                             e.preventDefault();
@@ -502,9 +569,7 @@ export default function Chat() {
                           }}
                         >
                           <div className="flex justify-between items-start mb-1">
-                            <span className="text-xs text-gray-500">
-                              {formatDate(chat.updatedAt)}
-                            </span>
+                            <span className="text-xs text-gray-500">{formatDate(chat.updatedAt)}</span>
                           </div>
                           <div className="mb-1">
                             <span className="font-medium text-sm">You: </span>
@@ -543,53 +608,107 @@ export default function Chat() {
       <div className="flex flex-col w-full stretch">
         {/* Chat Messages */}
         <div className="flex flex-col space-y-4 mb-48">
-          {processedMessages.map((m, i) => (
-            <div
-              key={m.id || i}
-              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`whitespace-pre-wrap p-3 rounded-lg relative max-w-[85%] sm:max-w-[80%] ${
-                  m.role === "user"
-                    ? "bg-blue-100 text-blue-900"
-                    : "bg-gray-100 text-gray-900"
-                }`}
-              >
-                <div className="flex justify-between items-start gap-2">
-                  <span className="font-medium text-sm sm:text-base">
-                    {m.role === "user" ? "You: " : "Jija: "}
-                  </span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(m.content);
-                      const button = document.getElementById(`copy-btn-${m.id || i}`);
-                      if (button) {
-                        button.classList.add("text-green-500");
-                        setTimeout(() => {
-                          button.classList.remove("text-green-500");
-                        }, 2000);
-                      }
-                    }}
-                    id={`copy-btn-${m.id || i}`}
-                    className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1 rounded flex-shrink-0"
-                    title="Copy message"
-                  >
-                    <Clipboard size={12} className="sm:w-4 sm:h-4" />
-                  </button>
-                </div>
-                <div className="mt-1 text-sm sm:text-base">
-                  {m.role === "assistant" && m.html ? (
-                    <div
-                      className="prose dark:prose-invert max-w-none prose-sm sm:prose-base"
-                      dangerouslySetInnerHTML={{ __html: m.html }}
-                    />
-                  ) : (
-                    m.content
+          {processedMessages.map((m, i) => {
+            const msgKey = m.id || `msg-${i}`;
+            return (
+              <div key={msgKey} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`whitespace-pre-wrap p-3 rounded-lg relative max-w-[85%] sm:max-w-[80%] ${
+                    m.role === "user" ? "bg-blue-100 text-blue-900" : "bg-gray-100 text-gray-900"
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="font-medium text-sm sm:text-base">
+                      {m.role === "user" ? "You: " : "Jija: "}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(m.content);
+                        const button = document.getElementById(`copy-btn-${msgKey}`);
+                        if (button) {
+                          button.classList.add("text-green-500");
+                          setTimeout(() => {
+                            button.classList.remove("text-green-500");
+                          }, 2000);
+                        }
+                      }}
+                      id={`copy-btn-${msgKey}`}
+                      className="text-blue-500 hover:text-blue-700 hover:bg-gray-100 p-1 rounded flex-shrink-0"
+                      title="Copy message"
+                    >
+                      <Clipboard size={12} className="sm:w-4 sm:h-4" />
+                    </button>
+                  </div>
+                  <div className="mt-1 text-sm sm:text-base">
+                    {m.role === "assistant" && m.html ? (
+                      <div
+                        className="prose dark:prose-invert max-w-none prose-sm sm:prose-base"
+                        dangerouslySetInnerHTML={{ __html: m.html }}
+                      />
+                    ) : (
+                      m.content
+                    )}
+                  </div>
+
+                  {/* Suggested tasks UI: visible only for assistant messages, and only when user asks */}
+                  {m.role === "assistant" && (
+                    <div className="mt-3 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold text-gray-600">Suggested tasks</div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            className="text-xs"
+                            disabled={extractingForMsgId === msgKey}
+                            onClick={() => extractCandidatesForMessage(msgKey, m.content)}
+                          >
+                            {extractingForMsgId === msgKey ? "Finding..." : "Suggest tasks"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {Array.isArray(taskCandidatesByMsgId[msgKey]) &&
+                        taskCandidatesByMsgId[msgKey].length > 0 && (
+                          <div className="mt-2 flex flex-col gap-2">
+                            {taskCandidatesByMsgId[msgKey].map((cand, idx2) => (
+                              <div
+                                key={`${msgKey}-cand-${idx2}`}
+                                className="flex items-start justify-between gap-2 bg-white/60 px-2 py-2 rounded border"
+                              >
+                                <div className="text-sm">
+                                  <div className="font-medium">{cand.title}</div>
+                                  {cand.description && (
+                                    <div className="text-gray-600">{cand.description}</div>
+                                  )}
+                                  {cand.suggestedJobTitle && (
+                                    <div className="text-gray-500 text-xs">
+                                      Suggested job: {cand.suggestedJobTitle}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    onClick={() => createTaskFromCandidate(msgKey, idx2)}
+                                    className="text-xs"
+                                    disabled={
+                                      creatingTaskFor?.msgId === msgKey && creatingTaskFor?.idx === idx2
+                                    }
+                                  >
+                                    {creatingTaskFor?.msgId === msgKey && creatingTaskFor?.idx === idx2
+                                      ? "Adding..."
+                                      : "Add task"}
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {(status === "submitted" || status === "streaming") && (
@@ -650,16 +769,40 @@ export default function Chat() {
                 }
               }}
             />
-            <Button
-              type="submit"
-              disabled={status !== "ready"}
-              className="absolute right-2 top-2"
-            >
+            <Button type="submit" disabled={status !== "ready"} className="absolute right-2 top-2">
               Send
             </Button>
           </form>
         </div>
       </div>
+
+      {/* Job selection modal */}
+      {jobPicker && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md">
+            <div className="font-semibold mb-2">Select a job</div>
+            <div className="max-h-64 overflow-y-auto border rounded">
+              {jobPicker.options.map((opt) => (
+                <button
+                  key={opt.id}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                  onClick={async () => {
+                    await createTaskFromCandidate(jobPicker.msgId, jobPicker.idx, opt.id);
+                    setJobPicker(null);
+                  }}
+                >
+                  {opt.title}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button variant="outline" onClick={() => setJobPicker(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

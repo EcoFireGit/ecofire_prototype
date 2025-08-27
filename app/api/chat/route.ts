@@ -56,8 +56,8 @@ export async function POST(req: Request) {
           // Fetch the business function name if available
           if (jobDetails && jobDetails.businessFunctionId) {
             const allBFs = await businessFunctionService.getAllBusinessFunctions(userId!);
-const bfObj = allBFs.find(bf => bf.id === jobDetails.businessFunctionId || bf._id === jobDetails.businessFunctionId);
-businessFunction = bfObj && bfObj.name ? bfObj.name : "";
+            const bfObj = allBFs.find(bf => bf.id === jobDetails.businessFunctionId || bf._id === jobDetails.businessFunctionId);
+            businessFunction = bfObj && bfObj.name ? bfObj.name : "";
           }
 
           // If this is a task context, use the business function from the linked job (tasks don't have business functions)
@@ -68,8 +68,8 @@ businessFunction = bfObj && bfObj.name ? bfObj.name : "";
               const linkedJob = await jobService.getJobById(taskDetails.jobId, userId!);
               if (linkedJob && linkedJob.businessFunctionId) {
               const allBFs2 = await businessFunctionService.getAllBusinessFunctions(userId!);
-const bfObj2 = allBFs2.find(bf => bf.id === linkedJob.businessFunctionId || bf._id === linkedJob.businessFunctionId);
-businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
+                const bfObj2 = allBFs2.find(bf => bf.id === linkedJob.businessFunctionId || bf._id === linkedJob.businessFunctionId);
+                businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
               }
             }
           }
@@ -124,6 +124,136 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
       return Response.json({ suggestions });
     } catch (e) {
       return Response.json({ suggestions: [] }, { status: 200 });
+    }
+  }
+
+  // --- Task extraction branch ---
+  if (body.extractTaskCandidates) {
+    const authResult = await validateAuth();
+    if (!authResult.isAuthorized) {
+      return authResult.response;
+    }
+    const userId = authResult.userId;
+    const { assistantResponse, context } = body;
+
+    try {
+      // Use OpenAI to extract task candidates from the assistant response
+      const prompt = `Analyze the following AI assistant response and extract 2-3 actionable tasks or next steps that a user might want to add to their task list.
+
+Assistant response: "${assistantResponse}"
+
+Context: ${JSON.stringify(context)}
+
+Return a JSON array of task objects with this format:
+[
+  {
+    "title": "Brief task title",
+    "description": "Optional description",
+    "suggestedJobTitle": "Job this task might belong to"
+  }
+]
+
+Only return tasks that are specific, actionable, and mentioned or implied in the assistant response. If no clear tasks can be extracted, return an empty array.`;
+
+      const resp = await openaiDirect.chat.completions.create({
+        model: "gpt-4-turbo",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 300,
+        temperature: 0.3,
+      });
+
+      const text = resp.choices[0].message.content || "[]";
+      let candidates = [];
+      try {
+        candidates = JSON.parse(text);
+      } catch {
+        candidates = [];
+      }
+
+      return Response.json({ candidates: Array.isArray(candidates) ? candidates : [] });
+    } catch (e) {
+      console.error("Error extracting task candidates:", e);
+      return Response.json({ candidates: [] });
+    }
+  }
+
+  // --- Task creation branch ---
+  if (body.createTaskFromSuggestion) {
+    const authResult = await validateAuth();
+    if (!authResult.isAuthorized) {
+      return authResult.response;
+    }
+    const userId = authResult.userId;
+    const { task, context } = body;
+
+    try {
+      const taskService = new TaskService();
+      const jobService = new JobService();
+      
+      let targetJobId = task.jobId;
+      
+      // If no specific jobId provided, try to find/create job based on suggestion
+      if (!targetJobId && task.suggestedJobTitle) {
+        const allJobs = await jobService.getAllJobs(userId!);
+        let matchingJob = allJobs.find(j => 
+          j.title.toLowerCase().includes(task.suggestedJobTitle.toLowerCase()) ||
+          task.suggestedJobTitle.toLowerCase().includes(j.title.toLowerCase())
+        );
+        
+        if (!matchingJob) {
+          // If multiple jobs found or no exact match, return job options for user to choose
+          const similarJobs = allJobs.filter(j => 
+            j.title.toLowerCase().includes(task.suggestedJobTitle.toLowerCase()) ||
+            task.suggestedJobTitle.toLowerCase().includes(j.title.toLowerCase())
+          );
+          
+          if (similarJobs.length === 0 && allJobs.length > 0) {
+            // No similar jobs, let user pick from all jobs
+            return Response.json({ 
+              needsSelection: true, 
+              jobs: allJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+            });
+          } else if (similarJobs.length > 1) {
+            // Multiple similar jobs, let user choose
+            return Response.json({ 
+              needsSelection: true, 
+              jobs: similarJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+            });
+          }
+        }
+        
+        if (matchingJob) {
+          targetJobId = matchingJob.id || matchingJob._id;
+        }
+      }
+      
+      // If still no job found, return job selection options
+      if (!targetJobId) {
+        const allJobs = await jobService.getAllJobs(userId!);
+        return Response.json({ 
+          needsSelection: true, 
+          jobs: allJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+        });
+      }
+      
+      // Create the task
+      const newTask = await taskService.createTask({
+        title: task.title,
+        notes: task.description || "",
+        jobId: targetJobId
+      }, userId!);
+      
+      return Response.json({ 
+        createdTask: {
+          id: newTask.id || newTask._id,
+          title: newTask.title,
+          jobId: targetJobId
+        }
+      });
+      
+    } catch (e) {
+      console.error("Error creating task:", e);
+      return Response.json({ error: "Failed to create task" }, { status: 500 });
     }
   }
 
@@ -287,7 +417,11 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
   }
   try {
     const chatService = new ChatService();
-
+if (!messages || !Array.isArray(messages) || messages.length ===
+   0) {
+    console.log("Fail");
+    return new Response("Bad Request: messages must be defined and non-empty", { status: 400 });
+  }
     // Call the language model for streaming chat
     const result = streamText({
       model: openai("gpt-4-turbo"),
