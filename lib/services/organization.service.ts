@@ -272,6 +272,7 @@ export class OrganizationService {
         tags: task.tags,
         jobId: newJobId,
         userId: savedNewOrg._id.toString(),
+        organizationId: savedNewOrg._id.toString(),
         completed: task.completed, // Preserve completion status
         isDeleted: false,
         createdDate: task.createdDate,
@@ -327,13 +328,14 @@ export class OrganizationService {
       }
     }
 
-    // Duplicate notes
-    const notes = await Note.find({ userId: originalOrgId });
+    // Duplicate notes scoped to the original organization
+    const notes = await Note.find({ userId: { $ne: null }, organizationId: originalOrgId });
     for (const note of notes) {
       await Note.create({
         title: note.title,
         content: note.content,
-        userId: savedNewOrg._id.toString(),
+        userId: note.userId, // preserve note owner
+        organizationId: savedNewOrg._id.toString(),
       });
     }
 
