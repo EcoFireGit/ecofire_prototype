@@ -28,12 +28,9 @@ export default function NotebookPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/notes");
-      console.log('Fetch notes response status:', res.status);
       const data = await res.json();
-      console.log('Fetch notes response data:', data);
       if (data.success) {
         setNotes(data.data);
-        console.log('Set notes count:', data.data.length);
       } else {
         console.error('Failed to fetch notes:', data.error);
         toast({
@@ -124,16 +121,13 @@ export default function NotebookPage() {
   const handleCreate = async () => {
     if (!title && !content) return;
     setSaving(true);
-    console.log('Creating note with title:', title, 'content length:', content?.length);
     try {
       const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content }),
       });
-      console.log('Create note response status:', res.status);
       const data = await res.json();
-      console.log('Create note response data:', data);
       setSaving(false);
       if (res.ok && data.success) {
         fetchNotes();
