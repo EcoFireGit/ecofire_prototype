@@ -418,18 +418,55 @@ export class TaskService {
     }
   }
 
-  async getNextTasks(userId: string): Promise<TaskInterface[]> {
+  async getNextTasks(userId: string, organizationId?: string | null): Promise<TaskInterface[]> {
     try {
       await dbConnect();
+      console.log('=== getNextTasks DEBUG ===');
+      console.log('Input - userId:', userId, 'organizationId:', organizationId);
+      
       // Find all tasks for this user that are marked as next tasks
       await this.migrateTaskForFilteringByUnassgined(userId);
 
-      const tasks = await Task.find({
-        userId,
+      let query: any = {
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
-      }).lean();
+      };
+
+      if (organizationId) {
+        // When in org view, filter by organization context
+        query.userId = organizationId;
+        console.log('Org view - using organizationId as userId:', organizationId);
+      } else {
+        // When in personal view, filter by actual user ID
+        query.userId = userId;
+        console.log('Personal view - using actual userId:', userId);
+      }
+
+      console.log('Final query:', JSON.stringify(query));
+      
+      // Let's also check what tasks exist in the database
+      const allTasks = await Task.find({}).limit(5).lean();
+      console.log('Sample of all tasks in DB:', allTasks.map(t => ({
+        _id: t._id,
+        userId: t.userId,
+        organizationId: t.organizationId,
+        createdByUserId: t.createdByUserId,
+        title: t.title?.substring(0, 20) + '...'
+      })));
+
+      const tasks = await Task.find(query).lean();
+      console.log('Found tasks count:', tasks.length);
+      console.log('Sample of found tasks:', tasks.slice(0, 3).map(t => ({
+        _id: t._id,
+        userId: t.userId,
+        organizationId: t.organizationId,
+        createdByUserId: t.createdByUserId,
+        title: t.title?.substring(0, 20) + '...'
+      })));
+      console.log('=== END getNextTasks DEBUG ===');
+      
       return JSON.parse(JSON.stringify(tasks));
     } catch (error) {
+      console.error('getNextTasks error:', error);
       throw new Error("Error fetching next tasks from database");
     }
   }
@@ -482,5 +519,47 @@ export class TaskService {
       { $set: { myDay: false } }
     );
     return result.modifiedCount || 0;
+  }
+
+  async debugTaskState(): Promise<void> {
+    try {
+      await dbConnect();
+      console.log('=== DEBUG TASK STATE ===');
+      
+      // Get all tasks
+      const allTasks = await Task.find({}).lean();
+      console.log('Total tasks in DB:', allTasks.length);
+      
+      // Group by userId
+      const tasksByUserId = allTasks.reduce((acc, task) => {
+        const userId = task.userId;
+        if (!acc[userId]) acc[userId] = [];
+        acc[userId].push(task);
+        return acc;
+      }, {} as Record<string, any[]>);
+      
+      console.log('Tasks grouped by userId:');
+      Object.entries(tasksByUserId).forEach(([userId, tasks]) => {
+        console.log(`  userId: ${userId} - ${tasks.length} tasks`);
+        console.log(`    Sample tasks:`, tasks.slice(0, 2).map(t => ({
+          _id: t._id,
+          title: t.title?.substring(0, 20) + '...',
+          organizationId: t.organizationId,
+          createdByUserId: t.createdByUserId
+        })));
+      });
+      
+      // Check for tasks with organizationId
+      const tasksWithOrgId = allTasks.filter(t => t.organizationId);
+      console.log('Tasks with organizationId:', tasksWithOrgId.length);
+      
+      // Check for tasks with createdByUserId
+      const tasksWithCreatedBy = allTasks.filter(t => t.createdByUserId);
+      console.log('Tasks with createdByUserId:', tasksWithCreatedBy.length);
+      
+      console.log('=== END DEBUG TASK STATE ===');
+    } catch (error) {
+      console.error('Error in debugTaskState:', error);
+    }
   }
 }
