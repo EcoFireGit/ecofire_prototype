@@ -18,20 +18,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Task, FocusLevel, JoyLevel, RecurrenceInterval } from "./types";
 import { Badge } from "@/components/ui/badge";
+import { TaskDetailsSidebar } from "./task-details-sidebar";
 import { useTaskContext } from "@/hooks/task-context";
 
 interface TaskCardProps {
     task: Task;
-    onEdit: (task: Task) => void;
-    onDelete: (id: string) => void;
-    onComplete: (id: string, jobid: string, completed: boolean) => void;
+    onEdit?: (task: Task) => void;
+    onDelete?: (id: string) => void;
+    onComplete?: (id: string, jobid:string, completed: boolean) => void;
     ownerMap: Record<string, string>;
-    onAddToCalendar?: (task: Task) => void;
     onOpenTaskDetails?: (task: Task) => void;
-    onCloseSidebar?: () => void;
     onToggleMyDay?: (task: Task, value: boolean) => void;
+    onAddToCalendar?: (task: Task) => void;
+    onDuplicate?: (task: Task) => void;
+    onCloseSidebar?: () => void;
+    nextTask?: Task;
+    onChangeNextTask?: (taskId: string) => void;
 }
-
 export function TaskCard({
     task,
     onEdit,
@@ -122,6 +125,11 @@ export function TaskCard({
         }
     };
 
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const handleNextTaskClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSidebarOpen(true);
+    };
     return (
         <div
             className={`rounded-md ${getBorderClasses()} bg-[#F4F4F4] w-full cursor-pointer hover:shadow-md transition-shadow`}
@@ -151,6 +159,15 @@ export function TaskCard({
                                         <span className="hidden sm:inline">{task.recurrenceInterval}</span>
                                         <span className="sm:hidden">Recurring</span>
                                     </span>
+                                )}
+                                {task.isNextTask && (
+                                    <Badge
+                                        className="bg-orange-100 text-orange-800 cursor-pointer ml-2"
+                                        onClick={handleNextTaskClick}
+                                        title="View and change next task"
+                                    >
+                                        Next Task
+                                    </Badge>
                                 )}
                             </h3>
                         </div>
@@ -305,6 +322,16 @@ export function TaskCard({
                     </div>
                 </div>
             </div>
+            {/* Sidebar for next task details */}
+            {sidebarOpen && (
+                <TaskDetailsSidebar
+                    open={sidebarOpen}
+                    onOpenChange={setSidebarOpen}
+                    selectedTask={task}
+                    onTaskUpdated={onEdit}
+                    // Add logic for changing next task and navigation as needed
+                />
+            )}
         </div>
     );
 }
