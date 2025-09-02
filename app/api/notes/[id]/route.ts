@@ -9,9 +9,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
-  const userId = authResult.userId;
+  // Notes are user-private and org-scoped
+  const userId = authResult.actualUserId;
+  const organizationId = authResult.isOrganization ? authResult.userId! : null;
   const { id } = await params;
-  const note = await Note.findOne({ _id: id, userId });
+  // Build query based on org context
+  const query: any = { _id: id, userId };
+  if (organizationId) {
+    query.organizationId = organizationId;
+  } else {
+    query.$or = [
+      { organizationId: null },
+      { organizationId: { $exists: false } }
+    ];
+  }
+  const note = await Note.findOne(query);
   if (!note) {
     return NextResponse.json({ success: false, error: "Note not found" }, { status: 404 });
   }
@@ -24,11 +36,24 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
-  const userId = authResult.userId;
+  // Notes are user-private and org-scoped
+  const userId = authResult.actualUserId;
+  const organizationId = authResult.isOrganization ? authResult.userId! : null;
   const { id } = await params;
   const { title, content } = await req.json();
 
-  const existingNote = await Note.findOne({ _id: id, userId });
+  // Build query based on org context
+  const query: any = { _id: id, userId };
+  if (organizationId) {
+    query.organizationId = organizationId;
+  } else {
+    query.$or = [
+      { organizationId: null },
+      { organizationId: { $exists: false } }
+    ];
+  }
+
+  const existingNote = await Note.findOne(query);
   if (!existingNote) {
     return NextResponse.json({ success: false, error: "Note not found or not authorized" }, { status: 404 });
   }
@@ -38,7 +63,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const note = await Note.findOneAndUpdate(
-    { _id: id, userId },
+    query,
     { title, content },
     { new: true }
   );
@@ -54,9 +79,21 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!authResult.isAuthorized) {
     return authResult.response;
   }
-  const userId = authResult.userId;
+  // Notes are user-private and org-scoped
+  const userId = authResult.actualUserId;
+  const organizationId = authResult.isOrganization ? authResult.userId! : null;
   const { id } = await params;
-  const note = await Note.findOneAndDelete({ _id: id, userId });
+  // Build query based on org context
+  const query: any = { _id: id, userId };
+  if (organizationId) {
+    query.organizationId = organizationId;
+  } else {
+    query.$or = [
+      { organizationId: null },
+      { organizationId: { $exists: false } }
+    ];
+  }
+  const note = await Note.findOneAndDelete(query);
   if (!note) {
     return NextResponse.json({ success: false, error: "Note not found or not authorized" }, { status: 404 });
   }

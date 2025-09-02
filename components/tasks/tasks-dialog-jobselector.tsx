@@ -429,44 +429,46 @@ export function TaskDialog({
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                      <Command>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" style={{ maxHeight: '300px' }}>
+                      <Command className="max-h-[300px] overflow-hidden">
                         <CommandInput 
                           placeholder="Search jobs..." 
                         />
-                        <CommandList>
-                          <CommandEmpty>No jobs found.</CommandEmpty>
-                          <CommandGroup>
-                            {filteredJobs.map(([id, job]: [string, any]) => (
+                        <div className="max-h-[250px] overflow-y-auto overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+                          <CommandList>
+                            <CommandEmpty>No jobs found.</CommandEmpty>
+                            <CommandGroup>
                               <CommandItem
-                                key={id}
-                                value={job.title}
+                                value="Create New Job"
                                 onSelect={() => {
-                                  setJobId(jobId === id ? undefined : id);
+                                  setIsJobDialogOpen(true);
                                   setJobComboboxOpen(false);
                                 }}
                               >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    jobId === id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {job.title}
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create New Job
                               </CommandItem>
-                            ))}
-                            <CommandItem
-                              value="Create New Job"
-                              onSelect={() => {
-                                setIsJobDialogOpen(true);
-                                setJobComboboxOpen(false);
-                              }}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Create New Job
-                            </CommandItem>
-                          </CommandGroup>
-                        </CommandList>
+                              {filteredJobs.map(([id, job]: [string, any]) => (
+                                <CommandItem
+                                  key={id}
+                                  value={job.title}
+                                  onSelect={() => {
+                                    setJobId(jobId === id ? undefined : id);
+                                    setJobComboboxOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      jobId === id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {job.title}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </div>
                       </Command>
                     </PopoverContent>
                   </Popover>

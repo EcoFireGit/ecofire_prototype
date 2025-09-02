@@ -26,9 +26,27 @@ export default function NotebookPage() {
 
   const fetchNotes = async () => {
     setLoading(true);
-    const res = await fetch("/api/notes");
-    const data = await res.json();
-    if (data.success) setNotes(data.data);
+    try {
+      const res = await fetch("/api/notes");
+      const data = await res.json();
+      if (data.success) {
+        setNotes(data.data);
+      } else {
+        console.error('Failed to fetch notes:', data.error);
+        toast({
+          title: "Error",
+          description: data.error || "Failed to fetch notes",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch notes",
+        variant: "destructive"
+      });
+    }
     setLoading(false);
   };
 
@@ -103,18 +121,36 @@ export default function NotebookPage() {
   const handleCreate = async () => {
     if (!title && !content) return;
     setSaving(true);
-    const res = await fetch("/api/notes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, content }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      fetchNotes();
-      setTitle("");
-      setContent("");
-      editor?.commands.setContent("");
-      setSelectedId(null);
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content }),
+      });
+      const data = await res.json();
+      setSaving(false);
+      if (res.ok && data.success) {
+        fetchNotes();
+        setTitle("");
+        setContent("");
+        editor?.commands.setContent("");
+        setSelectedId(null);
+      } else {
+        console.error('Failed to create note:', data.error);
+        toast({
+          title: "Error",
+          description: data.error || "Failed to create note",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error creating note:', error);
+      setSaving(false);
+      toast({
+        title: "Error",
+        description: "Failed to create note",
+        variant: "destructive"
+      });
     }
   };
 
