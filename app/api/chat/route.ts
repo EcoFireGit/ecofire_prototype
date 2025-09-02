@@ -139,7 +139,7 @@ export async function POST(req: Request) {
     try {
       // Get existing jobs to ensure we only suggest tasks for existing jobs
       const jobService = new JobService();
-      const existingJobs = await jobService.getAllJobs(userId);
+      const existingJobs = await jobService.getAllJobs(userId!);
       const jobTitles = existingJobs.map(job => job.title).join(", ");
       
       // Use OpenAI to extract task candidates from the assistant response
