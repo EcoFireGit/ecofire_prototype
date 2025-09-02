@@ -7,6 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { Clipboard, Archive, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextareaAutosize from "react-textarea-autosize";
+import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatSession {
   _id: string;
@@ -79,6 +81,7 @@ export default function Chat() {
   const archiveRef = useRef<HTMLDivElement>(null);
   const LIMIT = 3;
   const { userId } = useAuth();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const source = searchParams.get("source") || "sidepanel";
   const jobId = searchParams.get("jobId") || undefined;
@@ -96,11 +99,11 @@ export default function Chat() {
   const [taskCandidatesByMsgId, setTaskCandidatesByMsgId] = useState<Record<string, any[]>>({});
   const [extractingForMsgId, setExtractingForMsgId] = useState<string | null>(null);
   const [extractionError, setExtractionError] = useState<string | null>(null);
-  const [creatingTaskFor, setCreatingTaskFor] = useState<{ msgId: string; idx: number } | null>(null);
-  const [jobPicker, setJobPicker] = useState<{
-    msgId: string;
-    idx: number;
-    options: { id: string; title: string }[];
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [taskDialogData, setTaskDialogData] = useState<{
+    title: string;
+    notes: string;
+    suggestedJobTitle: string;
   } | null>(null);
   // Track which messages we've already extracted for (to enforce "run once at the end or when asked")
   const extractedOnceRef = useRef<Set<string>>(new Set());
@@ -490,46 +493,40 @@ export default function Chat() {
     setExtractingForMsgId(null);
   }
 
-  // Helper: Create a task from a candidate
-  async function createTaskFromCandidate(msgKey: string, idx: number, jobIdOverride?: string) {
+  // Helper: Open task dialog with pre-filled data from candidate
+  function openTaskDialogFromCandidate(msgKey: string, idx: number) {
     const candidates = taskCandidatesByMsgId[msgKey] || [];
     const cand = candidates[idx];
     if (!cand) return;
 
-    setCreatingTaskFor({ msgId: msgKey, idx });
+    setTaskDialogData({
+      title: cand.title,
+      notes: cand.description,
+      suggestedJobTitle: cand.suggestedJobTitle,
+    });
+    setShowTaskDialog(true);
+  }
+
+  // Handle task creation from dialog
+  async function handleTaskCreation(task: any) {
     try {
-      const res = await fetch("/api/chat", {
+      const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          createTaskFromSuggestion: true,
-          task: {
-            title: cand.title,
-            description: cand.description,
-            suggestedJobTitle: jobIdOverride ? undefined : cand.suggestedJobTitle,
-            jobId: jobIdOverride, // when user picked a job
-          },
-          context: { source, taskId, jobTitle },
-        }),
+        body: JSON.stringify(task),
       });
-      const data = await res.json();
-
-      if (data?.needsSelection && Array.isArray(data.jobs)) {
-        setJobPicker({
-          msgId: msgKey,
-          idx,
-          options: data.jobs.map((j: any) => ({ id: j.id, title: j.title })),
-        });
-      } else if (data?.createdTask) {
+      
+      if (response.ok) {
+        const createdTask = await response.json();
         // Optimistically update local jobs state
         setJobs((prev) => {
           const copy = [...prev];
           const jIdx = copy.findIndex(
-            (j) => j.id === data.createdTask.jobId || (j as any)._id === data.createdTask.jobId
+            (j) => j.id === task.jobId || (j as any)._id === task.jobId
           );
           if (jIdx >= 0) {
             const job = copy[jIdx];
-            const newTask = { id: data.createdTask.id, name: data.createdTask.title, isDone: false };
+            const newTask = { id: createdTask._id, name: createdTask.title, isDone: false };
             copy[jIdx] = {
               ...job,
               tasks: Array.isArray(job.tasks) ? [...job.tasks, newTask] : [newTask],
@@ -537,11 +534,27 @@ export default function Chat() {
           }
           return copy;
         });
+        
+        toast({
+          title: "Task created successfully",
+          description: `"${createdTask.title}" has been added to your tasks.`,
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Failed to create task",
+          description: errorData.error || "An error occurred while creating the task.",
+          variant: "destructive",
+        });
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast({
+        title: "Failed to create task",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
-    setCreatingTaskFor(null);
   }
 
   // Find latest assistant message for the “Suggest tasks” button
@@ -736,15 +749,10 @@ export default function Chat() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Button
-                                    onClick={() => createTaskFromCandidate(msgKey, idx2)}
+                                    onClick={() => openTaskDialogFromCandidate(msgKey, idx2)}
                                     className="text-xs"
-                                    disabled={
-                                      creatingTaskFor?.msgId === msgKey && creatingTaskFor?.idx === idx2
-                                    }
                                   >
-                                    {creatingTaskFor?.msgId === msgKey && creatingTaskFor?.idx === idx2
-                                      ? "Adding..."
-                                      : "Add task"}
+                                    Add task
                                   </Button>
                                 </div>
                               </div>
@@ -824,32 +832,26 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Job selection modal */}
-      {jobPicker && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md">
-            <div className="font-semibold mb-2">Select a job</div>
-            <div className="max-h-64 overflow-y-auto border rounded">
-              {jobPicker.options.map((opt) => (
-                <button
-                  key={opt.id}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50"
-                  onClick={async () => {
-                    await createTaskFromCandidate(jobPicker.msgId, jobPicker.idx, opt.id);
-                    setJobPicker(null);
-                  }}
-                >
-                  {opt.title}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex justify-end">
-              <Button variant="outline" onClick={() => setJobPicker(null)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
+      {/* Task Creation Dialog */}
+      {showTaskDialog && taskDialogData && (
+        <TaskDialog
+          mode="create"
+          open={showTaskDialog}
+          onOpenChange={setShowTaskDialog}
+          onSubmit={handleTaskCreation}
+          jobs={jobs.reduce((acc, job) => {
+            const key = job.id || job._id;
+            if (key) {
+              acc[key] = job;
+            }
+            return acc;
+          }, {} as Record<string, any>)}
+          prefilledData={{
+            title: taskDialogData.title,
+            notes: taskDialogData.notes,
+            suggestedJobTitle: taskDialogData.suggestedJobTitle,
+          }}
+        />
       )}
     </div>
   );

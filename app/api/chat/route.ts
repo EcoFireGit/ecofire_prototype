@@ -137,12 +137,19 @@ export async function POST(req: Request) {
     const { assistantResponse, context } = body;
 
     try {
+      // Get existing jobs to ensure we only suggest tasks for existing jobs
+      const jobService = new JobService();
+      const existingJobs = await jobService.getAllJobs(userId);
+      const jobTitles = existingJobs.map(job => job.title).join(", ");
+      
       // Use OpenAI to extract task candidates from the assistant response
       const prompt = `You are a task extraction expert. Analyze the following AI assistant response and extract 2-3 specific, actionable tasks that a business user might want to add to their task list.
 
 Assistant response: "${assistantResponse}"
 
 Context: ${JSON.stringify(context)}
+
+EXISTING JOBS (you MUST only suggest tasks for these existing jobs): ${jobTitles}
 
 Look for:
 - Specific actions mentioned (research, create, contact, review, etc.)
@@ -156,17 +163,12 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact for
   {
     "title": "Brief, actionable task title starting with a verb",
     "description": "Brief explanation of what needs to be done",
-    "suggestedJobTitle": "Name of job/project this task belongs to"
+    "suggestedJobTitle": "MUST be exactly one of these existing job titles: ${jobTitles}"
   }
 ]
 
-Examples of good task titles:
-- "Research market competitors for product X"
-- "Create budget proposal for Q1"
-- "Contact supplier about pricing"
-- "Review and update company policies"
-
-If no specific actionable tasks can be extracted, return: []`;
+CRITICAL: The suggestedJobTitle MUST be exactly one of the existing job titles listed above. Do not create new job names.
+If no specific actionable tasks can be extracted that relate to existing jobs, return: []`;
 
       const resp = await openaiDirect.chat.completions.create({
         model: "gpt-4-turbo",
