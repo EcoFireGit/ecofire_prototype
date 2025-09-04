@@ -72,16 +72,24 @@ export default function NoteDetailPage() {
           <ArrowLeft className="h-5 w-5 mr-1" /> Back
         </Button>
         <h1 className="text-2xl font-bold ml-2 flex-1">Edit Note</h1>
-        <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-          <Trash2 className="h-5 w-5 mr-1" /> Delete
-        </Button>
       </div>
-      <input
-        className="w-full border rounded px-3 py-2 mb-4 text-lg font-semibold"
-        placeholder="Title"
-        value={title}
-        onChange={e => setTitle(e.target.value)}
-      />
+      <div className="flex items-center mb-4">
+        <input
+          className="w-full border rounded px-3 py-2 text-lg font-semibold"
+          placeholder="Title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+        />
+        <button
+          type="button"
+          title="Delete Note"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="ml-2 p-2 text-red-600 hover:text-red-800 focus:outline-none"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </div>
       <div className="mb-4 border border-gray-300 rounded bg-white min-h-[200px] shadow-sm">
         <EditorContent 
           editor={editor} 
@@ -89,7 +97,7 @@ export default function NoteDetailPage() {
           style={{ boxShadow: 'none', background: 'white', border: 'none' }}
         />
       </div>
-      <div className="text-xs text-gray-400 text-right">{saving ? "Saving..." : "All changes saved"}</div>
+      <div className="text-xs text-gray-400 text-right">{saving ? "Saving...." : "All changes saved"}</div>
     </div>
   );
 } 
