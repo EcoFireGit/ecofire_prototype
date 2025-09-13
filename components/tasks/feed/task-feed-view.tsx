@@ -404,14 +404,13 @@ export default function TaskFeedView() {
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
 
+    let filtered;
     if (Object.keys(filters).length === 0) {
       // If no filters are active, show all tasks
-      setFilteredTasks(tasks);
-      return;
-    }
-
-    // Filter tasks based on the provided filters
-    const filtered = tasks.filter((task) => {
+      filtered = tasks;
+    } else {
+      // Filter tasks based on the provided filters
+      filtered = tasks.filter((task) => {
       let matches = true;
 
       // Get the associated job for this task
@@ -494,10 +493,13 @@ export default function TaskFeedView() {
         }
       });
 
-      return matches;
-    });
+        return matches;
+      });
+    }
 
     setFilteredTasks(filtered);
+    // Also update sorted tasks to reflect the new filtered set
+    setSortedTasks(filtered);
   };
 
   // Handler for sort changes
@@ -884,8 +886,8 @@ export default function TaskFeedView() {
   const myDayTasks = tasks
     .filter((t) => t.myDay)
     .sort((a, b) => Number(a.completed) - Number(b.completed));
-  // Filter tasks for main feed (not in My Day, not completed)
-  const mainFeedTasks = filteredTasks.filter((t) => !t.myDay && !t.completed);
+  // Filter tasks for main feed (not in My Day, not completed) - use sortedTasks instead of filteredTasks
+  const mainFeedTasks = sortedTasks.filter((t) => !t.myDay && !t.completed);
 
   const handleAddTask = () => {
     setDialogMode("create");
