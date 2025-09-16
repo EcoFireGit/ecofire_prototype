@@ -29,6 +29,7 @@ interface Task {
 }
 
 interface Job {
+  _id: any;
   id: string;
   title: string;
   impactValue?: number;
@@ -553,7 +554,7 @@ export default function Chat() {
         console.log("Task created successfully:", newTask);
         
         // Show success message
-        const jobTitle = jobs.find(j => (j.id === task.jobId || j.id === task.jobId))?.title || "Unknown Job";
+        const jobTitle = jobs.find(j => (j.id === task.jobId || j._id === task.jobId))?.title || "Unknown Job";
         setTaskCreatedSuccess({
           taskTitle: task.title,
           jobTitle: jobTitle
@@ -898,7 +899,7 @@ export default function Chat() {
         onSubmit={handleTaskSubmit}
         jobs={jobs.filter(job => !job.isDone).reduce((acc, job) => {
           // Convert array to keyed object using job ID
-          const jobKey = job.id || job.id;
+          const jobKey = job.id || job._id;
           if (jobKey) {
             acc[jobKey] = job;
           }
