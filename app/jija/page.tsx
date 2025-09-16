@@ -4,9 +4,11 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Clipboard, Archive, X } from "lucide-react";
+import { Clipboard, Archive, X, Plus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextareaAutosize from "react-textarea-autosize";
+import { TaskDialog } from "@/components/tasks/tasks-dialog-jobselector";
+import Link from "next/link";
 
 interface ChatSession {
   _id: string;
@@ -96,16 +98,24 @@ export default function Chat() {
   const [taskCandidatesByMsgId, setTaskCandidatesByMsgId] = useState<Record<string, any[]>>({});
   const [extractingForMsgId, setExtractingForMsgId] = useState<string | null>(null);
   const [extractionError, setExtractionError] = useState<string | null>(null);
-  const [creatingTaskFor, setCreatingTaskFor] = useState<{ msgId: string; idx: number } | null>(null);
-  const [jobPicker, setJobPicker] = useState<{
-    msgId: string;
-    idx: number;
-    options: { id: string; title: string }[];
-  } | null>(null);
   // Track which messages we've already extracted for (to enforce "run once at the end or when asked")
   const extractedOnceRef = useRef<Set<string>>(new Set());
 
   const suggestionsCallCountRef = useRef(0);
+
+  // Task dialog state
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [prefilledData, setPrefilledData] = useState<{
+    title?: string;
+    notes?: string;
+    suggestedJobTitle?: string;
+  } | undefined>(undefined);
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+  const [taskCreatedSuccess, setTaskCreatedSuccess] = useState<{
+    taskTitle: string;
+    jobTitle: string;
+  } | null>(null);
 
   // Debounce timer for suggestions
   const suggestionDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -462,7 +472,15 @@ export default function Chat() {
       const data = await res.json();
 //      console.log("Task extraction response:", data);
       
-      if (Array.isArray(data.candidates) && data.candidates.length) {
+      if (data.error) {
+        // Handle API quota or other service errors
+        setExtractionError(data.error);
+        setTaskCandidatesByMsgId((prev) => {
+          const newState = { ...prev };
+          delete newState[msgId];
+          return newState;
+        });
+      } else if (Array.isArray(data.candidates) && data.candidates.length) {
       //  console.log("Found candidates:", data.candidates);
         setTaskCandidatesByMsgId((prev) => ({ ...prev, [msgId]: data.candidates }));
         extractedOnceRef.current.add(msgId); // mark as successfully extracted
@@ -490,69 +508,121 @@ export default function Chat() {
     setExtractingForMsgId(null);
   }
 
-  // Helper: Create a task from a candidate
-  async function createTaskFromCandidate(msgKey: string, idx: number, jobIdOverride?: string) {
+  // Helper: Open task dialog with prefilled data from candidate
+  function createTaskFromCandidate(msgKey: string, idx: number) {
     const candidates = taskCandidatesByMsgId[msgKey] || [];
     const cand = candidates[idx];
     if (!cand) return;
 
-    setCreatingTaskFor({ msgId: msgKey, idx });
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          createTaskFromSuggestion: true,
-          task: {
-            title: cand.title,
-            description: cand.description,
-            suggestedJobTitle: jobIdOverride ? undefined : cand.suggestedJobTitle,
-            jobId: jobIdOverride, // when user picked a job
-          },
-          context: { source, taskId, jobTitle },
-        }),
-      });
-      const data = await res.json();
+    // Set prefilled data from the candidate
+    setPrefilledData({
+      title: cand.title,
+      notes: cand.description,
+      suggestedJobTitle: cand.suggestedJobTitle,
+    });
 
-      if (data?.needsSelection && Array.isArray(data.jobs)) {
-        setJobPicker({
-          msgId: msgKey,
-          idx,
-          options: data.jobs.map((j: any) => ({ id: j.id, title: j.title })),
-        });
-      } else if (data?.createdTask) {
-        // Optimistically update local jobs state
-        setJobs((prev) => {
-          const copy = [...prev];
-          const jIdx = copy.findIndex(
-            (j) => j.id === data.createdTask.jobId || (j as any)._id === data.createdTask.jobId
-          );
-          if (jIdx >= 0) {
-            const job = copy[jIdx];
-            const newTask = { id: data.createdTask.id, name: data.createdTask.title, isDone: false };
-            copy[jIdx] = {
-              ...job,
-              tasks: Array.isArray(job.tasks) ? [...job.tasks, newTask] : [newTask],
-            };
-          }
-          return copy;
-        });
-      }
-    } catch {
-      // ignore
-    }
-    setCreatingTaskFor(null);
+    // Open the dialog
+    setDialogMode("create");
+    setTaskDialogOpen(true);
   }
 
-  // Find latest assistant message for the “Suggest tasks” button
+  // Find latest assistant message for the "Suggest tasks" button
   const latestAssistantMessage = [...processedMessages].reverse().find((m) => m.role === "assistant");
   const latestAssistantMsgId = latestAssistantMessage?.id ?? null;
 
+  // Task dialog handlers
+  const handleAddTask = () => {
+    console.log("Add Task button clicked");
+    setPrefilledData(undefined); // Clear any prefilled data
+    setDialogMode("create");
+    setTaskDialogOpen(true);
+    console.log("Dialog should be open now, taskDialogOpen:", true);
+  };
+
+  const handleTaskSubmit = async (task: any) => {
+    try {
+      console.log("Submitting task:", task);
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(task),
+      });
+      
+      if (response.ok) {
+        const newTask = await response.json();
+        console.log("Task created successfully:", newTask);
+        
+        // Show success message
+        const jobTitle = jobs.find(j => (j.id === task.jobId || j.id === task.jobId))?.title || "Unknown Job";
+        setTaskCreatedSuccess({
+          taskTitle: task.title,
+          jobTitle: jobTitle
+        });
+        
+        // Clear prefilled data after successful submission
+        setPrefilledData(undefined);
+        // Refresh jobs to include the new task
+        console.log("Refreshing jobs...");
+        const jobsResponse = await fetch("/api/jobs");
+        if (jobsResponse.ok) {
+          const jobsData = await jobsResponse.json();
+          const jobsArr = Array.isArray(jobsData.data) ? jobsData.data : [];
+          console.log("Updated jobs:", jobsArr);
+          console.log("Sample job structure:", jobsArr[0]);
+          setJobs(jobsArr);
+        }
+        
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          setTaskCreatedSuccess(null);
+        }, 5000);
+      } else {
+        console.error("Failed to create task:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Error creating task:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full max-w-4xl pb-48 p-4 sm:p-6 lg:p-10 mx-auto min-h-screen">
+      {/* Success Message */}
+      {taskCreatedSuccess && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="text-green-800">
+                <div className="font-medium">✅ Task created successfully!</div>
+                <div className="text-sm">
+                  "{taskCreatedSuccess.taskTitle}" added to "{taskCreatedSuccess.jobTitle}"
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href="/jobs" className="text-green-700 hover:text-green-900 flex items-center gap-1 text-sm">
+                View in Jobs <ExternalLink size={14} />
+              </Link>
+              <button
+                onClick={() => setTaskCreatedSuccess(null)}
+                className="text-green-600 hover:text-green-800"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="mb-6 w-full">
         <h1 className="text-xl sm:text-2xl font-bold mb-4 text-left sm:text-left">Jija Assistant</h1>
         <div className="flex flex-col sm:flex-row sm:justify-end items-center gap-2 sm:gap-3">
+          <Button
+            onClick={handleAddTask}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Task</span>
+          </Button>
           {selectedChatId && (
             <Button
               onClick={() => {
@@ -738,13 +808,8 @@ export default function Chat() {
                                   <Button
                                     onClick={() => createTaskFromCandidate(msgKey, idx2)}
                                     className="text-xs"
-                                    disabled={
-                                      creatingTaskFor?.msgId === msgKey && creatingTaskFor?.idx === idx2
-                                    }
                                   >
-                                    {creatingTaskFor?.msgId === msgKey && creatingTaskFor?.idx === idx2
-                                      ? "Adding..."
-                                      : "Add task"}
+                                    Add task
                                   </Button>
                                 </div>
                               </div>
@@ -824,33 +889,24 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Job selection modal */}
-      {jobPicker && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md">
-            <div className="font-semibold mb-2">Select a job</div>
-            <div className="max-h-64 overflow-y-auto border rounded">
-              {jobPicker.options.map((opt) => (
-                <button
-                  key={opt.id}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50"
-                  onClick={async () => {
-                    await createTaskFromCandidate(jobPicker.msgId, jobPicker.idx, opt.id);
-                    setJobPicker(null);
-                  }}
-                >
-                  {opt.title}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex justify-end">
-              <Button variant="outline" onClick={() => setJobPicker(null)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
+      {/* Task Dialog */}
+      <TaskDialog
+        mode={dialogMode}
+        open={taskDialogOpen}
+        onOpenChange={setTaskDialogOpen}
+        onSubmit={handleTaskSubmit}
+        jobs={jobs.filter(job => !job.isDone).reduce((acc, job) => {
+          // Convert array to keyed object using job ID
+          const jobKey = job.id || job.id;
+          if (jobKey) {
+            acc[jobKey] = job;
+          }
+          return acc;
+        }, {} as Record<string, any>)}
+        jobId={jobId}
+        prefilledData={prefilledData}
+      />
     </div>
   );
 }

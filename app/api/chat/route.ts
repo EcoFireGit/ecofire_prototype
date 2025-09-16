@@ -170,38 +170,53 @@ Return ONLY a valid JSON array (no markdown, no explanation) with this exact for
 CRITICAL: The suggestedJobTitle MUST be exactly one of the existing job titles listed above. Do not create new job names.
 If no specific actionable tasks can be extracted that relate to existing jobs, return: []`;
 
-      const resp = await openaiDirect.chat.completions.create({
-        model: "gpt-4-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 300,
-        temperature: 0.3,
-      });
-
-      const text = resp.choices[0].message.content || "[]";
-      console.log("Raw OpenAI response for task extraction:", text);
-      
       let candidates = [];
+      
       try {
-        candidates = JSON.parse(text);
-        console.log("Parsed candidates:", candidates);
-      } catch (parseError) {
-        console.log("JSON parse failed, trying to extract from text:", parseError);
-        // Fallback: try to extract tasks from non-JSON response
-        const lines = text.split('\n').filter(line => line.trim());
-        candidates = lines
-          .filter(line => 
-            line.includes('-') || 
-            line.toLowerCase().includes('task') || 
-            line.toLowerCase().includes('step') ||
-            line.toLowerCase().includes('action')
-          )
-          .slice(0, 3) // limit to 3 tasks
-          .map((line, idx) => ({
-            title: line.replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim(),
-            description: "",
-            suggestedJobTitle: context?.jobTitle || ""
-          }))
-          .filter(task => task.title.length > 5); // filter out very short titles
+        const resp = await openaiDirect.chat.completions.create({
+          model: "gpt-4-turbo",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 300,
+          temperature: 0.3,
+        });
+
+        const text = resp.choices[0].message.content || "[]";
+        console.log("Raw OpenAI response for task extraction:", text);
+        
+        try {
+          candidates = JSON.parse(text);
+          console.log("Parsed candidates:", candidates);
+        } catch (parseError) {
+          console.log("JSON parse failed, trying to extract from text:", parseError);
+          // Fallback: try to extract tasks from non-JSON response
+          const lines = text.split('\n').filter(line => line.trim());
+          candidates = lines
+            .filter(line => 
+              line.includes('-') || 
+              line.toLowerCase().includes('task') || 
+              line.toLowerCase().includes('step') ||
+              line.toLowerCase().includes('action')
+            )
+            .slice(0, 3) // limit to 3 tasks
+            .map((line, idx) => ({
+              title: line.replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim(),
+              description: "",
+              suggestedJobTitle: context?.jobTitle || ""
+            }))
+            .filter(task => task.title.length > 5); // filter out very short titles
+        }
+        
+      } catch (apiError: any) {
+        console.error("OpenAI API Error:", apiError);
+        if (apiError?.status === 429 || apiError?.code === 'insufficient_quota') {
+          console.log("OpenAI quota exceeded, returning empty candidates");
+          return Response.json({ 
+            candidates: [], 
+            error: "AI service temporarily unavailable. Please try again later." 
+          });
+        }
+        // For other API errors, fall back to empty candidates
+        candidates = [];
       }
 
       const finalCandidates = Array.isArray(candidates) ? candidates : [];
