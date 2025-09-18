@@ -56,8 +56,8 @@ export async function POST(req: Request) {
           // Fetch the business function name if available
           if (jobDetails && jobDetails.businessFunctionId) {
             const allBFs = await businessFunctionService.getAllBusinessFunctions(userId!);
-const bfObj = allBFs.find(bf => bf.id === jobDetails.businessFunctionId || bf._id === jobDetails.businessFunctionId);
-businessFunction = bfObj && bfObj.name ? bfObj.name : "";
+            const bfObj = allBFs.find(bf => bf.id === jobDetails.businessFunctionId || bf._id === jobDetails.businessFunctionId);
+            businessFunction = bfObj && bfObj.name ? bfObj.name : "";
           }
 
           // If this is a task context, use the business function from the linked job (tasks don't have business functions)
@@ -68,8 +68,8 @@ businessFunction = bfObj && bfObj.name ? bfObj.name : "";
               const linkedJob = await jobService.getJobById(taskDetails.jobId, userId!);
               if (linkedJob && linkedJob.businessFunctionId) {
               const allBFs2 = await businessFunctionService.getAllBusinessFunctions(userId!);
-const bfObj2 = allBFs2.find(bf => bf.id === linkedJob.businessFunctionId || bf._id === linkedJob.businessFunctionId);
-businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
+                const bfObj2 = allBFs2.find(bf => bf.id === linkedJob.businessFunctionId || bf._id === linkedJob.businessFunctionId);
+                businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
               }
             }
           }
@@ -124,6 +124,188 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
       return Response.json({ suggestions });
     } catch (e) {
       return Response.json({ suggestions: [] }, { status: 200 });
+    }
+  }
+
+  // --- Task extraction branch ---
+  if (body.extractTaskCandidates) {
+    const authResult = await validateAuth();
+    if (!authResult.isAuthorized) {
+      return authResult.response;
+    }
+    const userId = authResult.userId;
+    const { assistantResponse, context } = body;
+
+    try {
+      // Get existing jobs to ensure we only suggest tasks for existing jobs
+      const jobService = new JobService();
+      const existingJobs = await jobService.getAllJobs(userId!);
+      const jobTitles = existingJobs.map(job => job.title).join(", ");
+      
+      // Use OpenAI to extract task candidates from the assistant response
+      const prompt = `You are a task extraction expert. Analyze the following AI assistant response and extract 2-3 specific, actionable tasks that a business user might want to add to their task list.
+
+Assistant response: "${assistantResponse}"
+
+Context: ${JSON.stringify(context)}
+
+EXISTING JOBS (you MUST only suggest tasks for these existing jobs): ${jobTitles}
+
+Look for:
+- Specific actions mentioned (research, create, contact, review, etc.)
+- Next steps suggested
+- Recommendations that require action
+- Follow-up items
+- Things that need to be done or completed
+
+Return ONLY a valid JSON array (no markdown, no explanation) with this exact format:
+[
+  {
+    "title": "Brief, actionable task title starting with a verb",
+    "description": "Brief explanation of what needs to be done",
+    "suggestedJobTitle": "MUST be exactly one of these existing job titles: ${jobTitles}"
+  }
+]
+
+CRITICAL: The suggestedJobTitle MUST be exactly one of the existing job titles listed above. Do not create new job names.
+If no specific actionable tasks can be extracted that relate to existing jobs, return: []`;
+
+      let candidates = [];
+      
+      try {
+        const resp = await openaiDirect.chat.completions.create({
+          model: "gpt-4-turbo",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 300,
+          temperature: 0.3,
+        });
+
+        const text = resp.choices[0].message.content || "[]";
+        console.log("Raw OpenAI response for task extraction:", text);
+        
+        try {
+          candidates = JSON.parse(text);
+          console.log("Parsed candidates:", candidates);
+        } catch (parseError) {
+          console.log("JSON parse failed, trying to extract from text:", parseError);
+          // Fallback: try to extract tasks from non-JSON response
+          const lines = text.split('\n').filter(line => line.trim());
+          candidates = lines
+            .filter(line => 
+              line.includes('-') || 
+              line.toLowerCase().includes('task') || 
+              line.toLowerCase().includes('step') ||
+              line.toLowerCase().includes('action')
+            )
+            .slice(0, 3) // limit to 3 tasks
+            .map((line, idx) => ({
+              title: line.replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim(),
+              description: "",
+              suggestedJobTitle: context?.jobTitle || ""
+            }))
+            .filter(task => task.title.length > 5); // filter out very short titles
+        }
+        
+      } catch (apiError: any) {
+        console.error("OpenAI API Error:", apiError);
+        if (apiError?.status === 429 || apiError?.code === 'insufficient_quota') {
+          console.log("OpenAI quota exceeded, returning empty candidates");
+          return Response.json({ 
+            candidates: [], 
+            error: "AI service temporarily unavailable. Please try again later." 
+          });
+        }
+        // For other API errors, fall back to empty candidates
+        candidates = [];
+      }
+
+      const finalCandidates = Array.isArray(candidates) ? candidates : [];
+      console.log("Final candidates being returned:", finalCandidates);
+      
+      return Response.json({ candidates: finalCandidates });
+    } catch (e) {
+      console.error("Error extracting task candidates:", e);
+      return Response.json({ candidates: [] });
+    }
+  }
+
+  // --- Task creation branch ---
+  if (body.createTaskFromSuggestion) {
+    const authResult = await validateAuth();
+    if (!authResult.isAuthorized) {
+      return authResult.response;
+    }
+    const userId = authResult.userId;
+    const { task, context } = body;
+
+    try {
+      const taskService = new TaskService();
+      const jobService = new JobService();
+      
+      let targetJobId = task.jobId;
+      
+      // If no specific jobId provided, try to find/create job based on suggestion
+      if (!targetJobId && task.suggestedJobTitle) {
+        const allJobs = await jobService.getAllJobs(userId!);
+        let matchingJob = allJobs.find(j => 
+          j.title.toLowerCase().includes(task.suggestedJobTitle.toLowerCase()) ||
+          task.suggestedJobTitle.toLowerCase().includes(j.title.toLowerCase())
+        );
+        
+        if (!matchingJob) {
+          // If multiple jobs found or no exact match, return job options for user to choose
+          const similarJobs = allJobs.filter(j => 
+            j.title.toLowerCase().includes(task.suggestedJobTitle.toLowerCase()) ||
+            task.suggestedJobTitle.toLowerCase().includes(j.title.toLowerCase())
+          );
+          
+          if (similarJobs.length === 0 && allJobs.length > 0) {
+            // No similar jobs, let user pick from all jobs
+            return Response.json({ 
+              needsSelection: true, 
+              jobs: allJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+            });
+          } else if (similarJobs.length > 1) {
+            // Multiple similar jobs, let user choose
+            return Response.json({ 
+              needsSelection: true, 
+              jobs: similarJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+            });
+          }
+        }
+        
+        if (matchingJob) {
+          targetJobId = matchingJob.id || matchingJob._id;
+        }
+      }
+      
+      // If still no job found, return job selection options
+      if (!targetJobId) {
+        const allJobs = await jobService.getAllJobs(userId!);
+        return Response.json({ 
+          needsSelection: true, 
+          jobs: allJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+        });
+      }
+      
+      // Create the task
+      const newTask = await taskService.createTask({
+        title: task.title,
+        notes: task.description || "",
+        jobId: targetJobId
+      }, userId!);
+      
+      return Response.json({ 
+        createdTask: {
+          id: newTask.id || newTask._id,
+          title: newTask.title,
+          jobId: targetJobId
+        }
+      });
+      
+    } catch (e) {
+      console.error("Error creating task:", e);
+      return Response.json({ error: "Failed to create task" }, { status: 500 });
     }
   }
 
@@ -287,7 +469,11 @@ businessFunction = bfObj2 && bfObj2.name ? bfObj2.name : "";
   }
   try {
     const chatService = new ChatService();
-
+if (!messages || !Array.isArray(messages) || messages.length ===
+   0) {
+    console.log("Fail");
+    return new Response("Bad Request: messages must be defined and non-empty", { status: 400 });
+  }
     // Call the language model for streaming chat
     const result = streamText({
       model: openai("gpt-4-turbo"),
