@@ -50,14 +50,10 @@ export function TaskCard({
     const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
     const justClosedDuplicateRef = useRef(false);
 
-    // Format the date
     const formatDate = (dateString?: string) => {
         if (!dateString) return null;
         
-        // Parse the date and preserve the UTC date
         const date = new Date(dateString);
-        
-        // Use toISOString to get YYYY-MM-DD in UTC, then create a new date with just that part
         const utcDateString = date.toISOString().split('T')[0];
         const displayDate = new Date(utcDateString + 'T00:00:00');
       
@@ -68,13 +64,11 @@ export function TaskCard({
         });
       };
 
-    // Get owner name from owner ID
     const getOwnerName = () => {
         if (!task.owner) return "Not assigned";
         return ownerMap[task.owner] || "Not assigned";
     };
 
-    // Get border color based on next task and completion status
     const getBorderClasses = () => {
         if (task.isNextTask) return "border-l-4 border border-orange-500 bg-white";
         if (task.completed) return "border border-gray-200 bg-gray-50";
@@ -93,12 +87,8 @@ export function TaskCard({
 
     const handleTaskComplete = async (value: boolean) => {
         try {
-            // Call the original onComplete handler
             await onComplete(task.id, task.jobId, value);
-            
-            // Then trigger a refresh of the job progress
             refreshJobProgress(task.jobId);
-            
             console.log(`Task ${task.id} marked as ${value ? 'completed' : 'incomplete'}`);
         } catch (error) {
             console.error("Error updating task completion status:", error);
@@ -139,15 +129,13 @@ export function TaskCard({
                         />
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                        {/* Task title */}
                         <div className="mb-2 sm:mb-4">
                             <h3 className="text-sm sm:text-base font-semibold flex flex-wrap items-center gap-1 sm:gap-2">
                                 <span className="break-words">{task.title}</span>
                                 {task.isNextTask && (
                                     <span
-                                        className="ml-2 px-2 py-0.5 rounded bg-orange-100 text-orange-700 text-xs font-semibold cursor-pointer hover:bg-orange-200 transition-colors"
+                                        className="ml-2 px-2 py-0.5 rounded text-orange-700 bg-orange-50 text-xs font-medium cursor-pointer select-none"
                                         title="Go to Next Task"
                                         onClick={e => {
                                             e.stopPropagation();
@@ -167,9 +155,7 @@ export function TaskCard({
                             </h3>
                         </div>
 
-                        {/* Task details */}
                         <div className="flex flex-col sm:flex-row gap-2 sm:gap-10 mb-2">
-                            {/* Owner info */}
                             <div className="flex items-center">
                                 <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs sm:text-sm font-medium text-gray-600 mr-1 sm:mr-2">
                                     {getOwnerName().charAt(0).toUpperCase()}
@@ -177,7 +163,6 @@ export function TaskCard({
                                 <span className="text-xs sm:text-sm text-gray-600 truncate">{getOwnerName()}</span>
                             </div>
 
-                            {/* Focus and Joy level row */}
                             <div className="flex flex-wrap items-center gap-2 sm:gap-10">
                                 {task.focusLevel && (
                                     <div className="flex items-center">
@@ -190,14 +175,12 @@ export function TaskCard({
                                     </div>
                                 )}
 
-                                {/* Date */}
                                 {task.date && (
                                     <div className="flex items-center">
                                         <span className="text-xs sm:text-sm text-gray-600">Do Date: <span className="text-xs sm:text-sm font-bold">{formatDate(task.date)}</span></span>
                                     </div>
                                 )}
 
-                                {/* Required hours */}
                                 {task.requiredHours !== undefined && (
                                     <div className="flex items-center">
                                         <span className="text-xs sm:text-sm text-gray-600">Hrs Reqd: <span className="text-xs sm:text-sm font-bold">{task.requiredHours} hrs</span></span>
@@ -206,7 +189,6 @@ export function TaskCard({
                             </div>
                         </div>
 
-                        {/* Tags */}
                         {task.tags && task.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                                 {task.tags.map((tag, index) => (
@@ -222,7 +204,6 @@ export function TaskCard({
                         )}
                     </div>
 
-                    {/* Action buttons */}
                     <div className="flex flex-row gap-1 shrink-0">
                         {onToggleMyDay && (
                             <Button
@@ -321,17 +302,14 @@ export function TaskCard({
     );
 }
 
-// Helper function to generate a consistent color for a tag
 function getTagColor(tag: string) {
-    // Generate a hash code from the tag string
     const hashCode = tag.split('').reduce((acc, char) => {
         return char.charCodeAt(0) + ((acc << 5) - acc);
     }, 0);
 
-    // Map to HSL color space for better distribution of colors
     const h = Math.abs(hashCode % 360);
-    const s = 65 + (hashCode % 20); // 65-85% saturation
-    const l = 55 + (hashCode % 15); // 55-70% lightness
+    const s = 65 + (hashCode % 20);
+    const l = 55 + (hashCode % 15);
 
     return `hsl(${h}, ${s}%, ${l}%)`;
 }
