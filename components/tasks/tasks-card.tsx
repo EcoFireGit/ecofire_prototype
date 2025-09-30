@@ -158,19 +158,19 @@ export function TaskCard({
                         <div className="mb-2 sm:mb-4">
                             <h3 className="text-sm sm:text-base font-semibold flex flex-wrap items-center gap-1 sm:gap-2">
                                 <span className="break-words">{task.title}</span>
-                                {task.isNextTask && (
-                                    <span
-                                        className="ml-2 flex items-center justify-center h-5 w-5 rounded-full bg-orange-100 cursor-pointer select-none hover:bg-orange-200 transition-colors"
-                                        title="Next Task"
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            if (onOpenTaskDetails) onOpenTaskDetails(task);
-                                        }}
-                                    >
-                                        <Target className="h-3 w-3 text-orange-600" />
-                                    </span>
-                                )}
-                                {task.isRecurring && task.recurrenceInterval && (
+                               {task.isNextTask && (
+    <span
+        className="ml-2 flex items-center justify-center h-5 w-5 rounded-full bg-orange-100 cursor-pointer select-none hover:bg-orange-200 transition-colors"
+        title="Next Task"
+        onClick={e => {
+            e.stopPropagation();
+            if (onOpenTaskDetails) onOpenTaskDetails(task);
+        }}
+    >
+        <Target className="h-3 w-3 text-orange-600" />
+    </span>
+)}
+                              {task.isRecurring && task.recurrenceInterval && (
                                     <span className="flex items-center gap-1 text-blue-500 text-xs font-normal shrink-0">
                                         <RefreshCcw className="h-3 w-3 sm:h-4 sm:w-4 inline" />
                                         <span className="hidden sm:inline">{task.recurrenceInterval}</span>
