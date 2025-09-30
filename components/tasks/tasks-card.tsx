@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile, Sun, Moon, Copy } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,9 +15,25 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Task, FocusLevel, JoyLevel, RecurrenceInterval } from "./types";
 import { Badge } from "@/components/ui/badge";
-import { useTaskContext } from "@/hooks/task-context";
+
+// Mock types - replace with your actual types
+interface Task {
+    id: string;
+    jobId: string;
+    title: string;
+    completed: boolean;
+    owner?: string;
+    focusLevel?: string;
+    joyLevel?: string;
+    date?: string;
+    requiredHours?: number;
+    tags?: string[];
+    isNextTask?: boolean;
+    isRecurring?: boolean;
+    recurrenceInterval?: string;
+    myDay?: boolean;
+}
 
 interface TaskCardProps {
     task: Task;
@@ -30,6 +45,7 @@ interface TaskCardProps {
     onOpenTaskDetails?: (task: Task) => void;
     onCloseSidebar?: () => void;
     onToggleMyDay?: (task: Task, value: boolean) => void;
+    onDuplicate?: (task: Task) => void;
 }
 
 export function TaskCard({
@@ -43,10 +59,8 @@ export function TaskCard({
     onCloseSidebar,
     onToggleMyDay,
     onDuplicate,
-}: TaskCardProps & { onDuplicate?: (task: Task) => void }) {
-    const router = useRouter();
+}: TaskCardProps) {
     const [isHovered, setIsHovered] = useState(false);
-    const { refreshJobProgress } = useTaskContext();
     const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
     const justClosedDuplicateRef = useRef(false);
 
@@ -62,7 +76,7 @@ export function TaskCard({
           month: "short",
           day: "numeric",
         });
-      };
+    };
 
     const getOwnerName = () => {
         if (!task.owner) return "Not assigned";
@@ -76,19 +90,18 @@ export function TaskCard({
     };
 
     const formatTimestamp = (dateString?: Date | string) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric"
-    });
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+        });
     };
 
     const handleTaskComplete = async (value: boolean) => {
         try {
             await onComplete(task.id, task.jobId, value);
-            refreshJobProgress(task.jobId);
             console.log(`Task ${task.id} marked as ${value ? 'completed' : 'incomplete'}`);
         } catch (error) {
             console.error("Error updating task completion status:", error);
@@ -110,6 +123,18 @@ export function TaskCard({
         if (typeof onCloseSidebar === 'function') {
             onCloseSidebar();
         }
+    };
+
+    const handleJijaClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        // Mock navigation - replace with your actual navigation logic
+        const params = new URLSearchParams();
+        params.set("source", "task");
+        if (task.jobId) params.set("jobId", task.jobId);
+        if (task.title) params.set("jobTitle", task.title);
+        if (task.id) params.set("taskId", task.id);
+        console.log(`Navigate to: /jija?${params.toString()}`);
+        // In your actual code: router.push(`/jija?${params.toString()}`);
     };
 
     return (
@@ -135,14 +160,14 @@ export function TaskCard({
                                 <span className="break-words">{task.title}</span>
                                 {task.isNextTask && (
                                     <span
-                                        className="ml-2 px-2 py-0.5 rounded text-orange-700 bg-orange-50 text-xs font-medium cursor-pointer select-none"
-                                        title="Go to Next Task"
+                                        className="ml-2 flex items-center justify-center h-5 w-5 rounded-full bg-orange-100 cursor-pointer select-none hover:bg-orange-200 transition-colors"
+                                        title="Next Task"
                                         onClick={e => {
                                             e.stopPropagation();
                                             if (onOpenTaskDetails) onOpenTaskDetails(task);
                                         }}
                                     >
-                                        Next Task
+                                        <Target className="h-3 w-3 text-orange-600" />
                                     </span>
                                 )}
                                 {task.isRecurring && task.recurrenceInterval && (
@@ -240,29 +265,9 @@ export function TaskCard({
                             size="icon"
                             className="h-7 w-7 sm:h-8 sm:w-8"
                             title="Ask Jija about this task"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const params = new URLSearchParams();
-                                params.set("source", "task");
-                                if (task.jobId) params.set("jobId", task.jobId);
-                                if (task.title) params.set("jobTitle", task.title);
-                                if (task.id) params.set("taskId", task.id);
-                                router.push(`/jija?${params.toString()}`);
-                            }}
+                            onClick={handleJijaClick}
                         >
                             <PawPrint className="h-3 w-3 sm:h-4 sm:w-4 text-[#F05523] fill-[#F05523]" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Duplicate Task"
-                            onClick={e => {
-                                e.stopPropagation();
-                                if (onDuplicate) onDuplicate(task);
-                            }}
-                        >
-                            <Copy className="h-4 w-4" />
                         </Button>
                         <Button
                             variant="ghost"
