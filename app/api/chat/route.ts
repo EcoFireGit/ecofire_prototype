@@ -45,12 +45,17 @@ export async function POST(req: Request) {
           let businessFunction = "none";
           let jobDetails = null;
 
-          // Find job info either by id or title
+          // Find job info either by id or title (only active jobs)
           if (job.id) {
             jobDetails = await jobService.getJobById(job.id, userId!);
+            // Check if the job is completed
+            if (jobDetails && jobDetails.isDone) {
+              jobDetails = null; // Exclude completed jobs
+            }
           } else if (job.title) {
             const allJobs = await jobService.getAllJobs(userId!);
-            jobDetails = allJobs.find((j: any) => j.title === job.title);
+            const activeJobs = allJobs.filter((j: any) => !j.isDone);
+            jobDetails = activeJobs.find((j: any) => j.title === job.title);
           }
 
           // Fetch the business function name if available
@@ -137,9 +142,10 @@ export async function POST(req: Request) {
     const { assistantResponse, context } = body;
 
     try {
-      // Get existing jobs to ensure we only suggest tasks for existing jobs
+      // Get existing jobs to ensure we only suggest tasks for existing jobs (excluding completed ones)
       const jobService = new JobService();
-      const existingJobs = await jobService.getAllJobs(userId!);
+      const allJobs = await jobService.getAllJobs(userId!);
+      const existingJobs = allJobs.filter(job => !job.isDone);
       const jobTitles = existingJobs.map(job => job.title).join(", ");
       
       // Use OpenAI to extract task candidates from the assistant response
@@ -244,26 +250,27 @@ If no specific actionable tasks can be extracted that relate to existing jobs, r
       
       let targetJobId = task.jobId;
       
-      // If no specific jobId provided, try to find/create job based on suggestion
+      // If no specific jobId provided, try to find/create job based on suggestion (only active jobs)
       if (!targetJobId && task.suggestedJobTitle) {
         const allJobs = await jobService.getAllJobs(userId!);
-        let matchingJob = allJobs.find(j => 
+        const activeJobs = allJobs.filter(j => !j.isDone);
+        let matchingJob = activeJobs.find(j => 
           j.title.toLowerCase().includes(task.suggestedJobTitle.toLowerCase()) ||
           task.suggestedJobTitle.toLowerCase().includes(j.title.toLowerCase())
         );
         
         if (!matchingJob) {
-          // If multiple jobs found or no exact match, return job options for user to choose
-          const similarJobs = allJobs.filter(j => 
+          // If multiple jobs found or no exact match, return job options for user to choose (only active jobs)
+          const similarJobs = activeJobs.filter(j => 
             j.title.toLowerCase().includes(task.suggestedJobTitle.toLowerCase()) ||
             task.suggestedJobTitle.toLowerCase().includes(j.title.toLowerCase())
           );
           
-          if (similarJobs.length === 0 && allJobs.length > 0) {
-            // No similar jobs, let user pick from all jobs
+          if (similarJobs.length === 0 && activeJobs.length > 0) {
+            // No similar jobs, let user pick from active jobs
             return Response.json({ 
               needsSelection: true, 
-              jobs: allJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+              jobs: activeJobs.map(j => ({ id: j.id || j._id, title: j.title }))
             });
           } else if (similarJobs.length > 1) {
             // Multiple similar jobs, let user choose
@@ -279,12 +286,13 @@ If no specific actionable tasks can be extracted that relate to existing jobs, r
         }
       }
       
-      // If still no job found, return job selection options
+      // If still no job found, return job selection options (only active jobs)
       if (!targetJobId) {
         const allJobs = await jobService.getAllJobs(userId!);
+        const activeJobs = allJobs.filter(j => !j.isDone);
         return Response.json({ 
           needsSelection: true, 
-          jobs: allJobs.map(j => ({ id: j.id || j._id, title: j.title }))
+          jobs: activeJobs.map(j => ({ id: j.id || j._id, title: j.title }))
         });
       }
       
@@ -457,9 +465,10 @@ If no specific actionable tasks can be extracted that relate to existing jobs, r
       const jobService = new (require("@/lib/services/job.service").JobService)();
       const allQBOs = await qboService.getAllQBOs(userId);
       const allJobs = await jobService.getAllJobs(userId);
+      const activeJobs = allJobs.filter((job: any) => !job.isDone);
       let connectionSection = '';
       const outcomeNames = allQBOs && allQBOs.length > 0 ? allQBOs.map((qbo: any) => qbo.name).join(", ") : "(none found)";
-      const jobNames = allJobs && allJobs.length > 0 ? allJobs.map((job: any) => job.title).join(", ") : "(none found)";
+      const jobNames = activeJobs && activeJobs.length > 0 ? activeJobs.map((job: any) => job.title).join(", ") : "(none found)";
       connectionSection = `Job(s): ${jobNames}\n- Outcome(s): ${outcomeNames}\n\nIn your answer, after addressing the user's question, you must write a short paragraph (not bullet points) that explicitly mentions the names of any jobs and outcome(s) from the lists above that are relevant to your answer, using their names in bold. Clearly explain the connection and impact on those jobs and outcomes.`;
       systemPrompt += connectionSection;
     } catch (error) {

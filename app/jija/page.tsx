@@ -140,7 +140,7 @@ export default function Chat() {
     },
   });
 
-  // Fetch Jobs
+  // Fetch Jobs (excluding completed ones to prevent them from being recommended)
   useEffect(() => {
     const fetchJobs = async () => {
       try {
@@ -148,7 +148,9 @@ export default function Chat() {
         if (response.ok) {
           const jobsData = await response.json();
           const jobsArr = Array.isArray(jobsData.data) ? jobsData.data : [];
-          setJobs(jobsArr);
+          // Filter out completed jobs at the source to ensure they're never recommended
+          const activeJobs = jobsArr.filter((job: Job) => !job.isDone);
+          setJobs(activeJobs);
         }
       } catch (e) {
         setJobs([]);
@@ -562,15 +564,16 @@ export default function Chat() {
         
         // Clear prefilled data after successful submission
         setPrefilledData(undefined);
-        // Refresh jobs to include the new task
+        // Refresh jobs to include the new task (excluding completed ones)
         console.log("Refreshing jobs...");
         const jobsResponse = await fetch("/api/jobs");
         if (jobsResponse.ok) {
           const jobsData = await jobsResponse.json();
           const jobsArr = Array.isArray(jobsData.data) ? jobsData.data : [];
-          console.log("Updated jobs:", jobsArr);
-          console.log("Sample job structure:", jobsArr[0]);
-          setJobs(jobsArr);
+          // Filter out completed jobs to ensure they're never recommended
+          const activeJobs = jobsArr.filter((job: Job) => !job.isDone);
+          console.log("Updated active jobs:", activeJobs);
+          setJobs(activeJobs);
         }
         
         // Auto-hide success message after 5 seconds
