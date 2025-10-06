@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 
-// Add type for jobs
 type Job = {
   category: string;
   isDone: boolean;
@@ -27,7 +26,6 @@ export type BusinessFunction = {
   jobs?: Job[];
 }
 
-// Generate a consistent color for a business function
 const getBusinessFunctionColor = (name: string) => {
   const hashCode = name.split('').reduce((acc, char) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
@@ -38,8 +36,7 @@ const getBusinessFunctionColor = (name: string) => {
   return `hsl(${h}, ${s}%, ${l}%)`;
 };
 
-// All the categories you want to show
-const CATEGORIES = ["engineering", "marketing", "design"];
+const CATEGORIES = ["Engineering", "Design", "Marketing", "Finance", "Sales"];
 
 export const columns = (
   onDelete: (id: string) => void,
@@ -67,14 +64,16 @@ export const columns = (
       );
     }
   },
-  // Dynamically add a column per category
   ...CATEGORIES.map(category => ({
     id: `active-jobs-${category}`,
-    header: `${category.charAt(0).toUpperCase() + category.slice(1)} Jobs`,
+    header: `${category} Jobs`,
     cell: ({ row }: any) => {
-      const jobs = row.original.jobs || [];
-      // Count active jobs in this category
-      const count = jobs.filter((job: Job) => job.category === category && !job.isDone).length;
+      const businessFunction = row.original;
+      if (businessFunction.name !== category) {
+        return <div><Badge variant="outline">-</Badge></div>;
+      }
+      const jobs = businessFunction.jobs || [];
+      const count = jobs.filter((job: Job) => !job.isDone).length;
       return (
         <div>
           <Badge variant={count > 0 ? "default" : "outline"}>
