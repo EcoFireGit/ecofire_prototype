@@ -4,9 +4,10 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, UserPlusIcon } from 'lucide-react';
 import { MembersTable } from '@/components/organizations/members/members-table';
 import { AddMemberDialog } from '@/components/organizations/members/add-member-dialog';
+import { InviteUserDialog } from '@/components/organizations/members/invite-user-dialog'; // <-- import this component
 
 interface Member {
   _id: string;
@@ -23,6 +24,7 @@ export default function OrganizationMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [orgName, setOrgName] = useState('');
   
   useEffect(() => {
@@ -61,10 +63,17 @@ export default function OrganizationMembersPage() {
           <h1 className="text-2xl font-bold">{orgName || 'Organization'} Members</h1>
           <p className="text-gray-500">Manage members of this organization</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Add Member
-        </Button>
+        <div className="flex gap-2">
+
+          <Button onClick={() => setIsInviteDialogOpen(true)}>
+              <UserPlusIcon className="mr-2 h-4 w-4" />
+              Invite User
+            </Button>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add Member
+          </Button>
+        </div>
       </div>
       
       {isLoading ? (
@@ -89,6 +98,13 @@ export default function OrganizationMembersPage() {
           window.location.reload();
         }}
       />
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
+        organizationId={orgId}
+        onSubmit={() => window.location.reload()}
+      />      
     </div>
   );
 }
