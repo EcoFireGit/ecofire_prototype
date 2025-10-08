@@ -16,24 +16,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-
-// Mock types - replace with your actual types
-interface Task {
-    id: string;
-    jobId: string;
-    title: string;
-    completed: boolean;
-    owner?: string;
-    focusLevel?: string;
-    joyLevel?: string;
-    date?: string;
-    requiredHours?: number;
-    tags?: string[];
-    isNextTask?: boolean;
-    isRecurring?: boolean;
-    recurrenceInterval?: string;
-    myDay?: boolean;
-}
+import { Task, FocusLevel, JoyLevel, RecurrenceInterval } from "./types";
 
 interface TaskCardProps {
     task: Task;
@@ -160,14 +143,14 @@ export function TaskCard({
                                 <span className="break-words">{task.title}</span>
                                {task.isNextTask && (
     <span
-        className="ml-2 flex items-center justify-center h-5 w-5 rounded-full bg-orange-100 cursor-pointer select-none hover:bg-orange-200 transition-colors"
+        className="ml-2 inline-flex items-center justify-center cursor-pointer"
         title="Next Task"
         onClick={e => {
             e.stopPropagation();
             if (onOpenTaskDetails) onOpenTaskDetails(task);
         }}
     >
-        <Target className="h-3 w-3 text-orange-600" />
+        <Target className="h-4 w-4 text-orange-500 hover:text-orange-600 transition-colors" />
     </span>
 )}
                               {task.isRecurring && task.recurrenceInterval && (
