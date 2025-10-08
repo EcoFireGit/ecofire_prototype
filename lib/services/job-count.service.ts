@@ -10,20 +10,8 @@ export class JobCountService {
         { 
           $match: { 
             userId,
-            $and: [
-              {
-                $or: [
-                  { isDone: { $ne: true } },
-                  { isDone: { $exists: false } }
-                ]
-              },
-              {
-                $or: [
-                  { isDeleted: { $ne: true } },
-                  { isDeleted: { $exists: false } }
-                ]
-              }
-            ]
+            isDone: { $ne: true },
+            isDeleted: { $ne: true }
           } 
         },
         { $group: { _id: "$businessFunctionId", count: { $sum: 1 } } }
