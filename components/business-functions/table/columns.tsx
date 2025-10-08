@@ -14,16 +14,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 
-type Job = {
-  category: string;
-  isDone: boolean;
-};
-
 export type BusinessFunction = {
   id: string;
   name: string;
   isDefault?: boolean;
-  jobs?: Job[];
+  jobCount?: number;
 }
 
 const getBusinessFunctionColor = (name: string) => {
@@ -35,8 +30,6 @@ const getBusinessFunctionColor = (name: string) => {
   const l = 88;
   return `hsl(${h}, ${s}%, ${l}%)`;
 };
-
-const CATEGORIES = ["Engineering", "Design", "Marketing", "Finance", "Sales"];
 
 export const columns = (
   onDelete: (id: string) => void,
@@ -64,16 +57,11 @@ export const columns = (
       );
     }
   },
-  ...CATEGORIES.map(category => ({
-    id: `active-jobs-${category}`,
-    header: `${category} Jobs`,
-    cell: ({ row }: any) => {
-      const businessFunction = row.original;
-      if (businessFunction.name !== category) {
-        return <div><Badge variant="outline">-</Badge></div>;
-      }
-      const jobs = businessFunction.jobs || [];
-      const count = jobs.filter((job: Job) => !job.isDone).length;
+  {
+    accessorKey: "jobCount",
+    header: "Associated Jobs",
+    cell: ({ row }) => {
+      const count = row.original.jobCount || 0;
       return (
         <div>
           <Badge variant={count > 0 ? "default" : "outline"}>
@@ -82,7 +70,7 @@ export const columns = (
         </div>
       );
     }
-  })),
+  },
   {
     id: "actions",
     cell: ({ row }) => {
