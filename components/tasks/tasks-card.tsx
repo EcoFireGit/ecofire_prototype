@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile, Sun, Moon, Copy } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile, Sun, Moon, Copy, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -144,13 +144,13 @@ export function TaskCard({
                                {task.isNextTask && (
     <span
         className="ml-2 inline-flex items-center justify-center cursor-pointer"
-        title="Next Task"
+        title="Go to Next Task"
         onClick={e => {
             e.stopPropagation();
             if (onOpenTaskDetails) onOpenTaskDetails(task);
         }}
     >
-        <Target className="h-4 w-4 text-orange-500 hover:text-orange-600 transition-colors" />
+        <ArrowRight className="h-4 w-4 text-orange-500 hover:text-orange-600 transition-colors" />
     </span>
 )}
                               {task.isRecurring && task.recurrenceInterval && (
