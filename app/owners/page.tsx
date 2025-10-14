@@ -15,25 +15,35 @@ export default function OwnersPage() {
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [currentOwner, setCurrentOwner] = useState<{id: string, name: string}>({id: '', name: ''});
+  const [currentOwner, setCurrentOwner] = useState<{id: string, name: string, userId: string}>({id: '', name: '', userId: ''});
   const { toast } = useToast();
 
-  const convertOwnersToTableData = (ownersData: any[]): Owner[] => {
-    return ownersData.map(owner => ({
-      id: owner._id, // Ensure we have an id field
-      name: owner.name
-    }));
+  const convertOwnersToTableData = (ownersData: any[], users: any[] = []): Owner[] => {
+    return ownersData.map(owner => {
+      const user = users.find(u => u.id === owner.userId);
+      return {
+        id: owner._id,
+        name: owner.name,
+        userId: owner.userId || '', // Handle undefined userId for existing owners
+        userEmail: user?.email || (owner.userId ? 'Unknown user' : 'No user assigned')
+      };
+    });
   };
 
   const fetchOwners = async () => {
     try {
-      const response = await fetch('/api/owners');
-      const result = await response.json();
+      const [ownersResponse, usersResponse] = await Promise.all([
+        fetch('/api/owners'),
+        fetch('/api/users')
+      ]);
       
-      if (response.ok) {
-        setOwners(convertOwnersToTableData(result));
+      const ownersResult = await ownersResponse.json();
+      const usersResult = usersResponse.ok ? await usersResponse.json() : [];
+      
+      if (ownersResponse.ok) {
+        setOwners(convertOwnersToTableData(ownersResult, usersResult));
       } else {
-        setError(result.error || 'Failed to fetch owners');
+        setError(ownersResult.error || 'Failed to fetch owners');
       }
     } catch (err) {
       setError('Failed to fetch owners');
@@ -47,14 +57,16 @@ export default function OwnersPage() {
     fetchOwners();
   }, []);
 
-  const handleCreate = async (name: string) => {
+  const handleCreate = async (name: string, userId: string) => {
+    console.log('handleCreate called with:', { name, userId });
+    console.log('About to send request with body:', JSON.stringify({ name, userId }));
     try {
       const response = await fetch('/api/owners', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, userId }),
       });
 
       const result = await response.json();
@@ -82,14 +94,18 @@ export default function OwnersPage() {
     }
   };
 
-  const handleEdit = async (id: string, name: string) => {
+  const handleEdit = async (id: string, name: string, userId: string) => {
+    console.log('handleEdit called with:', { id, name, userId });
     try {
+      const requestBody = { name, userId };
+      console.log('Sending PUT request with body:', requestBody);
+      
       const response = await fetch(`/api/owners/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
@@ -148,8 +164,8 @@ export default function OwnersPage() {
     }
   };
 
-  const openEditDialog = (id: string, name: string) => {
-    setCurrentOwner({ id, name });
+  const openEditDialog = (id: string, name: string, userId: string) => {
+    setCurrentOwner({ id, name, userId });
     setEditDialogOpen(true);
   };
 
@@ -188,6 +204,7 @@ export default function OwnersPage() {
           onSubmit={handleEdit}
           initialId={currentOwner.id}
           initialName={currentOwner.name}
+          initialUserId={currentOwner.userId}
         />
       </div>
     </div>

@@ -41,22 +41,30 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('POST /api/owners - Request received');
   try {
     const authResult = await validateAuth();
+    console.log('POST /api/owners - Auth result:', authResult.isAuthorized);
    
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
    
 
-    const userId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
+    const currentUserId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const body = await request.json();
-    const { name } = body;
+    const { name, userId } = body;
+    
+    console.log('POST /api/owners - Received:', { name, userId, currentUserId });
+    
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-    await validateData(name, userId!);
-    const owner = await ownerService.createOwner(name, userId!);
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+    await validateData(name, currentUserId!);
+    const owner = await ownerService.createOwner(name, userId, authResult.actualUserId);
     return NextResponse.json(owner);
   } catch (error) {
     console.error("Failed to create owner:", error);

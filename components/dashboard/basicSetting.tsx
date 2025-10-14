@@ -80,9 +80,10 @@ export default function SettingPage() {
   const [owners, setOwners] = useState<Owner[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [currentOwner, setCurrentOwner] = useState<{ id: string; name: string }>({
+  const [currentOwner, setCurrentOwner] = useState<{ id: string; name: string; userId: string }>({
     id: "",
     name: "",
+    userId: "",
   });
 
   // Business Info States
@@ -214,10 +215,25 @@ export default function SettingPage() {
   // Owners handlers
   const fetchOwners = async () => {
     try {
-      const response = await fetch("/api/owners");
-      const result = await response.json();
-      if (response.ok) {
-        setOwners(result.map((owner: any) => ({ id: owner._id, name: owner.name })));
+      const [ownersResponse, usersResponse] = await Promise.all([
+        fetch("/api/owners"),
+        fetch("/api/users")
+      ]);
+      
+      const ownersResult = await ownersResponse.json();
+      const usersResult = usersResponse.ok ? await usersResponse.json() : [];
+      
+      if (ownersResponse.ok) {
+        const ownersWithUserInfo = ownersResult.map((owner: any) => {
+          const user = usersResult.find((u: any) => u.id === owner.userId);
+          return {
+            id: owner._id,
+            name: owner.name,
+            userId: owner.userId || '',
+            userEmail: user?.email || (owner.userId ? 'Unknown user' : 'No user assigned')
+          };
+        });
+        setOwners(ownersWithUserInfo);
       }
     } catch (error) {
       console.error("Error fetching owners:", error);
@@ -225,12 +241,24 @@ export default function SettingPage() {
   };
   const handleCreate = async (name: string) => {
     try {
+      // Get current user to use as the owner's userId
+      const usersResponse = await fetch('/api/users');
+      if (!usersResponse.ok) {
+        throw new Error('Failed to get current user');
+      }
+      const users = await usersResponse.json();
+      const currentUser = users[0]; // In personal view, this returns only current user
+      
+      if (!currentUser?.id) {
+        throw new Error('No current user found');
+      }
+
       const response = await fetch("/api/owners", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, userId: currentUser.id }),
       });
 
       if (response.ok) {
@@ -256,14 +284,24 @@ export default function SettingPage() {
     }
   };
 
-  const handleEdit = async (id: string, name: string) => {
+  const handleEdit = async (id: string, name: string, userId?: string) => {
     try {
+      // If no userId provided, get current user
+      let finalUserId = userId;
+      if (!finalUserId) {
+        const usersResponse = await fetch('/api/users');
+        if (usersResponse.ok) {
+          const users = await usersResponse.json();
+          finalUserId = users[0]?.id;
+        }
+      }
+
       const response = await fetch(`/api/owners/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, userId: finalUserId }),
       });
 
       const result = await response.json();
@@ -322,8 +360,8 @@ export default function SettingPage() {
     }
   };
 
-  const openEditDialog = (id: string, name: string) => {
-    setCurrentOwner({ id, name });
+  const openEditDialog = (id: string, name: string, userId: string) => {
+    setCurrentOwner({ id, name, userId });
     setEditDialogOpen(true);
   };
 
@@ -677,6 +715,7 @@ export default function SettingPage() {
                   onSubmit={handleEdit}
                   initialId={currentOwner.id}
                   initialName={currentOwner.name}
+                  initialUserId={currentOwner.userId}
                 />
               </CollapsibleContent>
             </Collapsible>

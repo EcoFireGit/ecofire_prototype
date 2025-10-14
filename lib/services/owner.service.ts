@@ -13,12 +13,13 @@ class OwnerService {
     }
   }
 
-  async createOwner(name: string, userId: string): Promise<OwnerType> {
+  async createOwner(name: string, userId: string, actualUserId?: string): Promise<OwnerType> {
     try {
       await dbConnect();
       const owner = new Owner({
         name,
         userId,
+        actualUserId,
       });
       const savedOwner = await owner.save();
       return JSON.parse(JSON.stringify(savedOwner));
@@ -30,13 +31,42 @@ class OwnerService {
   async updateOwner(
     id: string,
     name: string,
-    userId: string,
+    assignedUserId: string,
+    currentUserId: string,
+    actualUserId?: string,
   ): Promise<OwnerType | null> {
     try {
       await dbConnect();
+      
+      // First check if owner exists and get current state
+      let existingOwner = await Owner.findOne({ _id: id, userId: currentUserId }).lean();
+      
+      // If not found with current userId, try finding by ID only for legacy owners
+      if (!existingOwner) {
+        existingOwner = await Owner.findOne({ _id: id }).lean();
+      }
+      
+      if (!existingOwner) {
+        return null;
+      }
+      
+      // Determine what to update based on whether owner is already linked
+      const isLinked = !!existingOwner.actualUserId;
+      let updateData: any = { name };
+      
+      if (isLinked) {
+        // If already linked, only update actualUserId
+        updateData.actualUserId = actualUserId;
+      } else {
+        // If not linked, update both userId and actualUserId
+        updateData.userId = assignedUserId;
+        updateData.actualUserId = actualUserId;
+      }
+      
+      // Update with the determined fields
       const owner = await Owner.findOneAndUpdate(
-        { _id: id, userId },
-        { name },
+        { _id: id },
+        updateData,
         { new: true },
       ).lean();
      
@@ -104,7 +134,7 @@ class OwnerService {
       
       // If no owners exist for this user, create the default one
       if (existingOwners.length === 0) {
-        const defaultOwner = await this.createOwner(defaultName, userId);
+        const defaultOwner = await this.createOwner(defaultName, userId, userId);
         return defaultOwner;
       }
       

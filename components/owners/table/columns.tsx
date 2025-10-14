@@ -26,11 +26,13 @@ import {
 export interface Owner {
   id: string;
   name: string;
+  userId: string;
+  userEmail?: string;
 }
 
 export const columns = (
   onDelete: (id: string) => void,
-  onEdit: (id: string, name: string) => void
+  onEdit: (id: string, name: string, userId: string) => void
 ): ColumnDef<Owner>[] => [
   {
     accessorKey: "name",
@@ -47,6 +49,28 @@ export const columns = (
     },
   },
   {
+    accessorKey: "userEmail",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Assigned User
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      const userEmail = row.getValue("userEmail") as string;
+      return (
+        <div className="text-muted-foreground">
+          {userEmail || "No user assigned"}
+        </div>
+      );
+    },
+  },
+  {
     id: "actions",
     cell: ({ row }) => {
       const owner = row.original;
@@ -57,7 +81,7 @@ export const columns = (
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => onEdit(owner.id, owner.name)}
+            onClick={() => onEdit(owner.id, owner.name, owner.userId)}
           >
             <Pencil className="h-4 w-4" />
           </Button>

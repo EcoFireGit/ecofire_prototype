@@ -13,19 +13,27 @@ export async function PUT(
       return authResult.response;
     }
    
-    const userId = authResult.userId;
+    const currentUserId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const { id } = await params;
     const body = await request.json();
-    const { name } = body;
-   
+    const { name, userId } = body;
+    
+    console.log('PUT /api/owners/[id] - Received:', { id, name, userId, currentUserId });
+    
     if (!name) {
       return NextResponse.json(
         { error: "Name is required" },
         { status: 400 }
       );
     }
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
    
-    const owner = await ownerService.updateOwner(id, name, userId!);
+    const owner = await ownerService.updateOwner(id, name, userId, currentUserId!, authResult.actualUserId);
    
     if (!owner) {
       return NextResponse.json(
@@ -55,9 +63,9 @@ export async function DELETE(
       return authResult.response;
     }
    
-    const userId = authResult.userId;
+    const currentUserId = authResult.isOrganization ? authResult.userId : authResult.actualUserId;
     const { id } = await params;
-    const success = await ownerService.deleteOwner(id, userId!);
+    const success = await ownerService.deleteOwner(id, currentUserId!);
    
     if (!success) {
       return NextResponse.json(
