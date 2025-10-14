@@ -51,7 +51,7 @@ class OwnerService {
       }
       
       // Determine what to update based on whether owner is already linked
-      const isLinked = !!existingOwner.actualUserId;
+      const isLinked = !!(existingOwner as unknown as OwnerType).actualUserId;
       let updateData: any = { name };
       
       if (isLinked) {
