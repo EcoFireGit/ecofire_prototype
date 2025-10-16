@@ -110,14 +110,12 @@ export function TaskCard({
 
     const handleJijaClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        // Mock navigation - replace with your actual navigation logic
         const params = new URLSearchParams();
         params.set("source", "task");
         if (task.jobId) params.set("jobId", task.jobId);
         if (task.title) params.set("jobTitle", task.title);
         if (task.id) params.set("taskId", task.id);
         console.log(`Navigate to: /jija?${params.toString()}`);
-        // In your actual code: router.push(`/jija?${params.toString()}`);
     };
 
     return (
@@ -141,19 +139,20 @@ export function TaskCard({
                         <div className="mb-2 sm:mb-4">
                             <h3 className="text-sm sm:text-base font-semibold flex flex-wrap items-center gap-1 sm:gap-2">
                                 <span className="break-words">{task.title}</span>
-                               {task.isNextTask && (
-    <span
-        className="ml-2 inline-flex items-center justify-center cursor-pointer"
-        title="Go to Next Task"
-        onClick={e => {
-            e.stopPropagation();
-            if (onOpenTaskDetails) onOpenTaskDetails(task);
-        }}
-    >
-        <ArrowRight className="h-4 w-4 text-orange-500 hover:text-orange-600 transition-colors" />
-    </span>
-)}
-                              {task.isRecurring && task.recurrenceInterval && (
+                                {task.isNextTask && (
+                                    <span
+                                        className="inline-flex items-center gap-1 cursor-pointer"
+                                        title="Next Task"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            if (onOpenTaskDetails) onOpenTaskDetails(task);
+                                        }}
+                                    >
+                                        <Target className="h-3 w-3 text-orange-600" />
+                                        <span className="text-[10px] text-orange-700">Next</span>
+                                    </span>
+                                )}
+                                {task.isRecurring && task.recurrenceInterval && (
                                     <span className="flex items-center gap-1 text-blue-500 text-xs font-normal shrink-0">
                                         <RefreshCcw className="h-3 w-3 sm:h-4 sm:w-4 inline" />
                                         <span className="hidden sm:inline">{task.recurrenceInterval}</span>
