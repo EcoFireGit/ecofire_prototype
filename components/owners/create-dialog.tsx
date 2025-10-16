@@ -36,12 +36,13 @@ export function CreateDialog({
   onSubmit,
 }: CreateDialogProps) {
   const [name, setName] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState("");
+  const [userId, setUserId] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
+      setUserId(""); // Reset selection when dialog opens
       fetchUsers();
     }
   }, [open]);
@@ -50,10 +51,8 @@ export function CreateDialog({
     setLoading(true);
     try {
       const response = await fetch('/api/users');
-      console.log('Users API response status:', response.status);
       if (response.ok) {
         const userData = await response.json();
-        console.log('Users data received:', userData);
         setUsers(userData);
       } else {
         console.error('Failed to fetch users, status:', response.status);
@@ -67,16 +66,15 @@ export function CreateDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Create form submitting with:', { name, selectedUserId, usersCount: users.length });
-    if (!selectedUserId) {
-      console.log('No user selected, selectedUserId:', selectedUserId);
+    
+    if (!userId || userId.trim() === "") {
       alert('Please select a user');
       return;
     }
-    console.log('Calling onSubmit with:', { name, selectedUserId });
-    onSubmit(name, selectedUserId);
+    
+    onSubmit(name, userId);
     setName("");
-    setSelectedUserId("");
+    setUserId("");
     onOpenChange(false);
   };
 
@@ -106,12 +104,8 @@ export function CreateDialog({
                 Assign User
               </Label>
               <Select 
-                value={selectedUserId} 
-                onValueChange={(value) => {
-                  console.log('User selection changed to:', value);
-                  setSelectedUserId(value);
-                }} 
-                required
+                value={userId} 
+                onValueChange={setUserId}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder={loading ? "Loading users..." : "Select a user"} />

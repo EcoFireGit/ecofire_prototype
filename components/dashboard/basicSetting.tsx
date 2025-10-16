@@ -225,12 +225,12 @@ export default function SettingPage() {
       
       if (ownersResponse.ok) {
         const ownersWithUserInfo = ownersResult.map((owner: any) => {
-          const user = usersResult.find((u: any) => u.id === owner.userId);
+          const user = usersResult.find((u: any) => u.id === owner.actualUserId);
           return {
             id: owner._id,
             name: owner.name,
-            userId: owner.userId || '',
-            userEmail: user?.email || (owner.userId ? 'Unknown user' : 'No user assigned')
+            userId: owner.actualUserId || '',
+            userEmail: user?.fullName || user?.email || (owner.actualUserId ? owner.actualUserId : 'No user assigned')
           };
         });
         setOwners(ownersWithUserInfo);
@@ -239,26 +239,14 @@ export default function SettingPage() {
       console.error("Error fetching owners:", error);
     }
   };
-  const handleCreate = async (name: string) => {
+  const handleCreate = async (name: string, userId: string) => {
     try {
-      // Get current user to use as the owner's userId
-      const usersResponse = await fetch('/api/users');
-      if (!usersResponse.ok) {
-        throw new Error('Failed to get current user');
-      }
-      const users = await usersResponse.json();
-      const currentUser = users[0]; // In personal view, this returns only current user
-      
-      if (!currentUser?.id) {
-        throw new Error('No current user found');
-      }
-
       const response = await fetch("/api/owners", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, userId: currentUser.id }),
+        body: JSON.stringify({ name, userId }),
       });
 
       if (response.ok) {

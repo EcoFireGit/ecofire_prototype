@@ -20,12 +20,23 @@ export default function OwnersPage() {
 
   const convertOwnersToTableData = (ownersData: any[], users: any[] = []): Owner[] => {
     return ownersData.map(owner => {
-      const user = users.find(u => u.id === owner.userId);
+      // The owner.actualUserId contains the assigned user ID - look up user by this ID
+      const user = users.find(u => u.id === owner.actualUserId);
+      
+      let userDisplay = 'No user assigned';
+      if (owner.actualUserId) {
+        if (user) {
+          userDisplay = user.fullName || user.email || owner.actualUserId;
+        } else {
+          userDisplay = owner.actualUserId; // Just show the actualUserId if user not found
+        }
+      }
+      
       return {
         id: owner._id,
         name: owner.name,
-        userId: owner.userId || '', // Handle undefined userId for existing owners
-        userEmail: user?.email || (owner.userId ? 'Unknown user' : 'No user assigned')
+        userId: owner.actualUserId || '', // Pass actualUserId as userId for the edit dialog
+        userEmail: userDisplay
       };
     });
   };
@@ -58,8 +69,6 @@ export default function OwnersPage() {
   }, []);
 
   const handleCreate = async (name: string, userId: string) => {
-    console.log('handleCreate called with:', { name, userId });
-    console.log('About to send request with body:', JSON.stringify({ name, userId }));
     try {
       const response = await fetch('/api/owners', {
         method: 'POST',

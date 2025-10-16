@@ -33,7 +33,7 @@ export async function PUT(
       );
     }
    
-    const owner = await ownerService.updateOwner(id, name, userId, currentUserId!, authResult.actualUserId);
+    const owner = await ownerService.updateOwner(id, name, userId, currentUserId!);
    
     if (!owner) {
       return NextResponse.json(

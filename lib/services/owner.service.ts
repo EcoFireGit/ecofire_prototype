@@ -3,23 +3,23 @@ import Owner from "../models/owner.model";
 import { Owner as OwnerType } from "../models/owner.model";
 
 class OwnerService {
-  async getAllOwners(userId: string): Promise<OwnerType[]> {
+  async getAllOwners(organizationId: string): Promise<OwnerType[]> {
     try {
       await dbConnect();
-      const owners = await Owner.find({ userId }).lean();
+      const owners = await Owner.find({ userId: organizationId }).lean();
       return JSON.parse(JSON.stringify(owners));
     } catch (error) {
       throw new Error("Error fetching owners from database");
     }
   }
 
-  async createOwner(name: string, userId: string, actualUserId?: string): Promise<OwnerType> {
+  async createOwner(name: string, organizationId: string, selectedUserId: string): Promise<OwnerType> {
     try {
       await dbConnect();
       const owner = new Owner({
         name,
-        userId,
-        actualUserId,
+        userId: organizationId, // Organization ID for context/querying
+        actualUserId: selectedUserId, // User selected from dropdown
       });
       const savedOwner = await owner.save();
       return JSON.parse(JSON.stringify(savedOwner));
@@ -33,7 +33,6 @@ class OwnerService {
     name: string,
     assignedUserId: string,
     currentUserId: string,
-    actualUserId?: string,
   ): Promise<OwnerType | null> {
     try {
       await dbConnect();
@@ -50,18 +49,11 @@ class OwnerService {
         return null;
       }
       
-      // Determine what to update based on whether owner is already linked
-      const isLinked = !!(existingOwner as unknown as OwnerType).actualUserId;
-      let updateData: any = { name };
-      
-      if (isLinked) {
-        // If already linked, only update actualUserId
-        updateData.actualUserId = actualUserId;
-      } else {
-        // If not linked, update both userId and actualUserId
-        updateData.userId = assignedUserId;
-        updateData.actualUserId = actualUserId;
-      }
+      // Update name and assigned user (actualUserId) - never change userId (organization ID)
+      const updateData: any = { 
+        name,
+        actualUserId: assignedUserId // Update the assigned user in actualUserId field
+      };
       
       // Update with the determined fields
       const owner = await Owner.findOneAndUpdate(
