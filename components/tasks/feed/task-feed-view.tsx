@@ -51,6 +51,7 @@ export default function TaskFeedView() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
   const [sortedTasks, setSortedTasks] = useState<any[]>([]);
+  const [myDayTasks, setMyDayTasks] = useState<any[]>([]);
   const [jobs, setJobs] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
@@ -158,6 +159,24 @@ export default function TaskFeedView() {
     }
   };
 
+
+  // Function to fetch My Day tasks for current user
+  const fetchMyDayTasks = async () => {
+    try {
+      const response = await fetch("/api/tasks/myday");
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.data)) {
+        setMyDayTasks(result.data);
+      } else {
+        console.error("Failed to fetch My Day tasks:", result.error);
+        setMyDayTasks([]);
+      }
+    } catch (error) {
+      console.error("Error fetching My Day tasks:", error);
+      setMyDayTasks([]);
+    }
+  };
 
   // Function to fetch all tasks and jobs
   const fetchData = async () => {
@@ -297,6 +316,9 @@ export default function TaskFeedView() {
       setTasks(sortedTasks);
       setFilteredTasks(sortedTasks);
       setSortedTasks(sortedTasks);
+      
+      // Fetch My Day tasks separately
+      await fetchMyDayTasks();
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -853,6 +875,8 @@ export default function TaskFeedView() {
       const result = await res.json();
       if (result.success && result.data) {
         setTasks((prev) => prev.map((t) => ((t.id || (t as any)._id) === taskId ? { ...t, myDay: value, myDayDate: value ? today : undefined } : t)));
+        // Refresh My Day tasks to ensure proper user scoping
+        await fetchMyDayTasks();
       } else {
         toast({ title: "Failed to update My Day", description: result.error || "Unknown error", variant: "destructive" });
       }
@@ -864,7 +888,7 @@ export default function TaskFeedView() {
   // On My Day page load, auto-reset tasks whose myDayDate !== today
   useEffect(() => {
     const today = new Date().toLocaleDateString('en-CA');
-    const expiredMyDayTasks = tasks.filter(t => t.myDay && t.myDayDate !== today);
+    const expiredMyDayTasks = myDayTasks.filter(t => t.myDayDate !== today);
     if (expiredMyDayTasks.length > 0) {
       // For each expired task, set myDay: false
       Promise.all(expiredMyDayTasks.map(t =>
@@ -874,16 +898,14 @@ export default function TaskFeedView() {
           body: JSON.stringify({ myDay: false, myDayDate: null }),
         })
       )).then(() => {
-        // Refresh tasks after clearing
-        fetchData();
+        // Refresh My Day tasks after clearing
+        fetchMyDayTasks();
       });
     }
-  }, [tasks]);
+  }, [myDayTasks]);
 
-  // Filter tasks for My Day (include completed, sort incomplete first)
-  const myDayTasks = tasks
-    .filter((t) => t.myDay)
-    .sort((a, b) => Number(a.completed) - Number(b.completed));
+  // Sort My Day tasks (incomplete first)
+  const sortedMyDayTasks = myDayTasks.sort((a, b) => Number(a.completed) - Number(b.completed));
   // Filter tasks for main feed (not in My Day, not completed)
   const mainFeedTasks = filteredTasks.filter((t) => !t.myDay && !t.completed);
 
@@ -1248,7 +1270,7 @@ export default function TaskFeedView() {
                   My Day
                 </h2>
                 <MyDayView
-                  tasks={myDayTasks}
+                  tasks={sortedMyDayTasks}
                   onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
                   onComplete={async (id, completed) => {
                     setTasks((prevTasks) =>
@@ -1287,6 +1309,7 @@ export default function TaskFeedView() {
                         description: completed ? "Great job!" : "Task has been reopened",
                       });
                       fetchData();
+                      fetchMyDayTasks();
                     } catch (error) {
                       setTasks((prevTasks) =>
                         prevTasks.map((task) =>
@@ -1435,7 +1458,7 @@ export default function TaskFeedView() {
                       My Day
                     </h2>
                     <MyDayView
-                      tasks={myDayTasks}
+                      tasks={sortedMyDayTasks}
                       onRemoveFromMyDay={(task) => handleToggleMyDay(task, false)}
                       onComplete={async (id, completed) => {
                         setTasks((prevTasks) =>
@@ -1474,6 +1497,7 @@ export default function TaskFeedView() {
                             description: completed ? "Great job!" : "Task has been reopened",
                           });
                           fetchData();
+                          fetchMyDayTasks();
                         } catch (error) {
                           setTasks((prevTasks) =>
                             prevTasks.map((task) =>

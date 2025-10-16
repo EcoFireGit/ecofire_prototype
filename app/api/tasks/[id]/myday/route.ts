@@ -16,6 +16,15 @@ export async function PATCH(
     const userId = authResult.userId;
     const { id } = await params;
     const { myDay, myDayDate, completed } = await request.json();
+    
+    // First, get the task to verify ownership
+    const existingTask = await taskService.getTaskById(id, userId!);
+    if (!existingTask) {
+      return NextResponse.json(
+        { success: false, error: 'Task not found or access denied' },
+        { status: 404 }
+      );
+    }
     if (typeof myDay !== 'boolean') {
       return NextResponse.json(
         { success: false, error: 'myDay must be a boolean' },

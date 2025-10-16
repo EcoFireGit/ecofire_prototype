@@ -475,11 +475,25 @@ export class TaskService {
     }
   }
 
+  async getMyDayTasks(userId: string): Promise<TaskInterface[]> {
+    try {
+      await dbConnect();
+      const tasks = await Task.find({
+        userId,
+        myDay: true,
+        $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
+      }).lean();
+      return JSON.parse(JSON.stringify(tasks));
+    } catch (error) {
+      throw new Error("Error fetching My Day tasks from database");
+    }
+  }
+
   async resetMyDayForUser(userId: string): Promise<number> {
     await dbConnect();
     const result = await Task.updateMany(
       { userId, myDay: true },
-      { $set: { myDay: false } }
+      { $set: { myDay: false, myDayDate: null } }
     );
     return result.modifiedCount || 0;
   }
