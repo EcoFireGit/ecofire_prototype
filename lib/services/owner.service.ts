@@ -3,22 +3,23 @@ import Owner from "../models/owner.model";
 import { Owner as OwnerType } from "../models/owner.model";
 
 class OwnerService {
-  async getAllOwners(userId: string): Promise<OwnerType[]> {
+  async getAllOwners(organizationId: string): Promise<OwnerType[]> {
     try {
       await dbConnect();
-      const owners = await Owner.find({ userId }).lean();
+      const owners = await Owner.find({ userId: organizationId }).lean();
       return JSON.parse(JSON.stringify(owners));
     } catch (error) {
       throw new Error("Error fetching owners from database");
     }
   }
 
-  async createOwner(name: string, userId: string): Promise<OwnerType> {
+  async createOwner(name: string, organizationId: string, selectedUserId: string): Promise<OwnerType> {
     try {
       await dbConnect();
       const owner = new Owner({
         name,
-        userId,
+        userId: organizationId, // Organization ID for context/querying
+        actualUserId: selectedUserId, // User selected from dropdown
       });
       const savedOwner = await owner.save();
       return JSON.parse(JSON.stringify(savedOwner));
@@ -30,13 +31,34 @@ class OwnerService {
   async updateOwner(
     id: string,
     name: string,
-    userId: string,
+    assignedUserId: string,
+    currentUserId: string,
   ): Promise<OwnerType | null> {
     try {
       await dbConnect();
+      
+      // First check if owner exists and get current state
+      let existingOwner = await Owner.findOne({ _id: id, userId: currentUserId }).lean();
+      
+      // If not found with current userId, try finding by ID only for legacy owners
+      if (!existingOwner) {
+        existingOwner = await Owner.findOne({ _id: id }).lean();
+      }
+      
+      if (!existingOwner) {
+        return null;
+      }
+      
+      // Update name and assigned user (actualUserId) - never change userId (organization ID)
+      const updateData: any = { 
+        name,
+        actualUserId: assignedUserId // Update the assigned user in actualUserId field
+      };
+      
+      // Update with the determined fields
       const owner = await Owner.findOneAndUpdate(
-        { _id: id, userId },
-        { name },
+        { _id: id },
+        updateData,
         { new: true },
       ).lean();
      
@@ -104,7 +126,7 @@ class OwnerService {
       
       // If no owners exist for this user, create the default one
       if (existingOwners.length === 0) {
-        const defaultOwner = await this.createOwner(defaultName, userId);
+        const defaultOwner = await this.createOwner(defaultName, userId, userId);
         return defaultOwner;
       }
       
