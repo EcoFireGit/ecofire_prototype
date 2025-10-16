@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile, Sun, Moon, Copy, ArrowRight } from "lucide-react";
+import { Edit, Trash2, Clock, Calendar, PawPrint, ChevronDown, ChevronUp, RefreshCcw, Target, Smile, Sun, Moon, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -67,7 +67,6 @@ export function TaskCard({
     };
 
     const getBorderClasses = () => {
-        if (task.isNextTask) return "border-l-4 border border-orange-500 bg-white";
         if (task.completed) return "border border-gray-200 bg-gray-50";
         return "border border-gray-200 bg-white";
     };
