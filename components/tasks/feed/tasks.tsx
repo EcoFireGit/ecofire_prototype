@@ -172,9 +172,9 @@ export function NextTasks({
         return (
           <Card
             key={taskId}
-            className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
-              taskIsNext ? "border-orange-500 border-2" : ""
-            } ${task.completed ? "bg-gray-100 text-gray-400 opacity-60" : "bg-white"}`}
+       className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
+              task.completed ? "bg-gray-100 text-gray-400 opacity-60" : "bg-white"
+            }`}
             onClick={() => {
               onViewTask({
                 id: task.id || task._id,
@@ -221,10 +221,11 @@ export function NextTasks({
                       <div className="flex items-center min-w-0">
                         <h3 className="text-sm sm:text-base font-semibold hover:text-primary transition-colors flex flex-wrap items-start gap-1 sm:gap-2 min-w-0">
                           <span className="break-words">{task.title}</span>
-                          {taskIsNext && (
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-300 text-xs shrink-0">
-                              Next
-                            </Badge>
+                         {taskIsNext && (
+                            <span className="inline-flex items-center gap-1 text-orange-700 text-xs shrink-0">
+                              <Target className="h-3 w-3" />
+                              <span>Next</span>
+                            </span>
                           )}
                           {task.isRecurring && task.recurrenceInterval && (
                             <span className="flex items-center gap-1 text-blue-500 text-xs font-normal shrink-0">
