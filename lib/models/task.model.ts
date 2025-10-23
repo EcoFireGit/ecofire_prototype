@@ -31,6 +31,7 @@ export interface Task extends mongoose.Document {
   tags?: string[];
   jobId: string;
   userId: string;
+  organizationId: string;
   completed: boolean;
   isDeleted: boolean; // Soft delete flag
   createdDate: Date;
@@ -90,6 +91,11 @@ const TaskSchema = new mongoose.Schema<Task>({
   userId: {
     type: String,
     required: [true, "User ID is required"],
+    index: true
+  },
+  organizationId: {
+    type: String,
+    required: [true, "Organization ID is required"],
     index: true
   },
   completed: {

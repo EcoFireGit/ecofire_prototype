@@ -13,16 +13,25 @@ export async function PATCH(
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    const userId = authResult.userId;
+    const userId = authResult.userId; // Organization ID for finding task
+    const actualUserId = authResult.actualUserId; // User ID for permission check
     const { id } = await params;
     const { myDay, myDayDate, completed } = await request.json();
     
-    // First, get the task to verify ownership
+    // First, get the task to verify it exists in the organization
     const existingTask = await taskService.getTaskById(id, userId!);
     if (!existingTask) {
       return NextResponse.json(
         { success: false, error: 'Task not found or access denied' },
         { status: 404 }
+      );
+    }
+    
+    // Check if current user is assigned to this task
+    if (existingTask.userId !== actualUserId) {
+      return NextResponse.json(
+        { success: false, error: 'Only the task assignee can add this task to My Day' },
+        { status: 403 }
       );
     }
     if (typeof myDay !== 'boolean') {

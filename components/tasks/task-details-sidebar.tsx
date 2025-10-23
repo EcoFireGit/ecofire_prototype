@@ -106,7 +106,7 @@ export function TaskDetailsSidebar({
   const [isLoading, setIsLoading] = useState(false);
   const [ownerMap, setOwnerMap] = useState<Record<string, string>>({});
   const [businessFunctionMap, setBusinessFunctionMap] = useState<Record<string, string>>({});
-  const [owners, setOwners] = useState<{ _id: string; name: string }[]>([]);
+  const [owners, setOwners] = useState<{ _id: string; name: string; actualUserId?: string }[]>([]);
   const [jobs, setJobs] = useState<Record<string, any>>({});
   const [availableTags, setAvailableTags] = useState<{ _id: string; name: string }[]>([]);
   const [editingTags, setEditingTags] = useState<string[]>([]);
@@ -143,7 +143,7 @@ export function TaskDetailsSidebar({
         const mapping: Record<string, string> = {};
         const ownersData = Array.isArray(result) ? result : (result.data || []);
         
-        ownersData.forEach((owner: { _id: string; name: string }) => {
+        ownersData.forEach((owner: { _id: string; name: string; actualUserId?: string }) => {
           if (owner._id && owner.name) {
             mapping[owner._id] = owner.name;
           }
@@ -374,7 +374,18 @@ const cancelEditing = () => {
           updateData.title = editingValue;
           break;
         case 'owner':
-          updateData.owner = editingValue === 'none' ? "none" : editingValue;
+          if (editingValue === 'none') {
+            updateData.owner = "none";
+          } else {
+            // Find the selected owner to get their actualUserId
+            const selectedOwner = owners.find(owner => owner._id === editingValue);
+            updateData.owner = editingValue; // Keep as owner ID
+            // Send the actualUserId so backend can set task.userId = owner.actualUserId
+            if (selectedOwner?.actualUserId) {
+              updateData.assignedUserId = selectedOwner.actualUserId;
+            }
+            console.log('Owner assignment:', { selectedOwner, updateData });
+          }
           break;
         case 'date':
           updateData.date = editingValue ? `${editingValue}T00:00:00.000Z` : null;

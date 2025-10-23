@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    const userId = authResult.userId;
+    const actualUserId = authResult.actualUserId;
     
-    const myDayTasks = await taskService.getMyDayTasks(userId!);
+    const myDayTasks = await taskService.getMyDayTasks(actualUserId!);
     
     return NextResponse.json({ success: true, data: myDayTasks });
   } catch (error) {

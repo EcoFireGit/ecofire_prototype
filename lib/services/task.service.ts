@@ -8,6 +8,31 @@ import { RecurrenceInterval } from "../models/task.model";
 
 export class TaskService {
   /**
+   * Migrates tasks to add organizationId field for existing tasks
+   */
+  async migrateTasksWithOrganizationId(userId: string): Promise<void> {
+    try {
+      await dbConnect();
+      
+      const result = await Task.updateMany(
+        { 
+          userId,
+          organizationId: { $exists: false }
+        },
+        { 
+          $set: { 
+            organizationId: userId
+          }
+        }
+      );
+      
+      console.log(`Migrated ${result.modifiedCount} tasks with organizationId for user ${userId}`);
+    } catch (error) {
+      console.error('Error migrating task organizationId:', error);
+      throw error;
+    }
+  }
+  /**
    * Migrates tasks that don't have time tracking fields by setting them to fallback values.
    * This function ensures backward compatibility for tasks created before the time tracking
    * fields were implemented, preventing them from showing current timestamps inappropriately.
@@ -132,11 +157,12 @@ export class TaskService {
       
       await dbConnect();
      
+      await this.migrateTasksWithOrganizationId(userId);
       await this.migrateTasksForTimeTracking(userId);
     
       const tasks = await Task.find({
         jobId,
-        userId,
+        organizationId: userId, // Use organizationId for organization-level queries
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       // Ensure active tasks never have an endDate or timeElapsed
@@ -160,7 +186,7 @@ export class TaskService {
 
       const task = await Task.findOne({
         _id: id,
-        userId,
+        organizationId: userId, // Use organizationId for organization-level queries
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       return task ? JSON.parse(JSON.stringify(task)) : null;
@@ -196,7 +222,8 @@ export class TaskService {
       
       const task = new Task({
         ...taskData,
-        userId,
+        userId, // This will be the assigned user ID
+        organizationId: userId, // Set organization for new tasks
         createdDate: new Date(),
       });
       const savedTask = await task.save();
@@ -213,8 +240,18 @@ export class TaskService {
   ): Promise<TaskInterface | null> {
     try {
       await dbConnect();
+      
+      // If assignedUserId is provided, set task.userId = assignedUserId
+      if (updateData.assignedUserId) {
+        console.log('Setting task.userId to assignedUserId:', updateData.assignedUserId);
+        updateData.userId = updateData.assignedUserId;
+        // Remove assignedUserId from updateData as it's not a task field
+        delete updateData.assignedUserId;
+      }
+      
+      // Find and update the task using organizationId for permission check
       const updatedTask = await Task.findOneAndUpdate(
-        { _id: id, userId },
+        { _id: id, organizationId: userId }, // Use organizationId for organization-level access
         { $set: updateData },
         { new: true, runValidators: true }
       ).lean();
@@ -229,7 +266,7 @@ export class TaskService {
     try {
       await dbConnect();
       const result = await Task.findOneAndUpdate(
-        { _id: id, userId },
+        { _id: id, organizationId: userId },
         { $set: { isDeleted: true } },
         { new: true, runValidators: true }
       );
@@ -243,7 +280,7 @@ export class TaskService {
     try {
       await dbConnect();
       const result = await Task.updateMany(
-        { jobId: jobId, userId: userId }, // Criteria for finding tasks
+        { jobId: jobId, organizationId: userId }, // Criteria for finding tasks
         {
           $set: { isDeleted: true }, // Fields to update
         },
@@ -425,7 +462,7 @@ export class TaskService {
       await this.migrateTaskForFilteringByUnassgined(userId);
 
       const tasks = await Task.find({
-        userId,
+        organizationId: userId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       return JSON.parse(JSON.stringify(tasks));

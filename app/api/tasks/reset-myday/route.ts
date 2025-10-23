@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
     if (!authResult.isAuthorized) {
       return authResult.response;
     }
-    const userId = authResult.userId;
-    const result = await taskService.resetMyDayForUser(userId!);
+    const actualUserId = authResult.actualUserId;
+    const result = await taskService.resetMyDayForUser(actualUserId!);
     return NextResponse.json({ success: true, updatedCount: result });
   } catch (error) {
     console.error('Error in POST /api/tasks/reset-myday:', error);
