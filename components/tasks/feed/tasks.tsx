@@ -223,7 +223,6 @@ export function NextTasks({
                           <span className="break-words">{task.title}</span>
                          {taskIsNext && (
                             <span className="inline-flex items-center gap-1 text-orange-700 text-xs shrink-0">
-                              <Target className="h-3 w-3" />
                               <span>Next</span>
                             </span>
                           )}
