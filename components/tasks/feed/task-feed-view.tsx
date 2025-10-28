@@ -286,7 +286,7 @@ export default function TaskFeedView() {
       await fetchTags();
       console.log('Fetched tasks:', allTasks);
 
-      // Remove any duplicate tasks and filter out completed tasks
+      // Remove any duplicate tasks
       const uniqueTasks = Array.from(
         new Map(allTasks.map((task: any) => [task._id, task])).values(),
       );
@@ -853,4 +853,4 @@ export default function TaskFeedView() {
       });
       const result = await res.json();
       if (result.success && result.data) {
-        setTasks((prev) => prev.map((t) => ((t.id || (t as any)._id) === taskId ? { ...t, myDay: value, myDayDate: value ? today
+        setTasks((prev) => prev.map((t) => ((t.id || (t as any)._id) === taskId ? { ...t, myDay: value, myDayDate: value ? today : undefined } : t)));
