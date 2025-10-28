@@ -1,5 +1,4 @@
   "use client";
-
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
@@ -1509,6 +1508,52 @@ toast({
                         setDuplicateDialogOpen(true);
                       }}
                     />
+                    {/* Completed Tasks Section */}
+<div className="mt-8 border-t pt-6">
+  <div className="flex items-center justify-between mb-4">
+    <h3 className="text-lg font-semibold text-gray-700">Completed Tasks</h3>
+    <button
+      onClick={() => {
+        setShowCompletedTasks(!showCompletedTasks);
+        if (!showCompletedTasks && completedTasks.length === 0) {
+          fetchCompletedTasks();
+        }
+      }}
+      className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+    >
+      {showCompletedTasks ? "Hide" : "Show"}
+    </button>
+  </div>
+  
+  {showCompletedTasks && (
+    <div className="space-y-3">
+      {loadingCompleted ? (
+        <div className="text-center py-8 text-gray-500">Loading completed tasks...</div>
+      ) : completedTasks.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">No completed tasks found</div>
+      ) : (
+        <NextTasks
+          tasks={completedTasks}
+          jobs={jobs}
+          onComplete={handleCompleteTask}
+          onViewTask={handleViewTask}
+          onAddToCalendar={handleAddToCalendar}
+          ownerMap={ownerMap}
+          businessFunctionMap={businessFunctionMap}
+          loading={false}
+          onEditTask={handleEditTask}
+          onDeleteTask={handleDeleteTask}
+          isNextTask={isNextTask}
+          onToggleMyDay={handleToggleMyDay}
+          onDuplicate={(task) => {
+            setTaskToDuplicate({ ...task, id: task.id || task._id });
+            setDuplicateDialogOpen(true);
+          }}
+        />
+      )}
+    </div>
+  )}
+</div>
                   </div>
                 )}
               </div>
