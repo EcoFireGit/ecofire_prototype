@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
@@ -402,6 +402,32 @@ const [loadingCompleted, setLoadingCompleted] = useState(false);
       console.error("Error fetching tags:", error);
     }
   };
+  // Function to fetch completed tasks
+const fetchCompletedTasks = async () => {
+  setLoadingCompleted(true);
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const response = await fetch(
+      `/api/tasks/completed?startDate=${thirtyDaysAgo.toISOString().split('T')[0]}&sort=desc&limit=100`
+    );
+    const result = await response.json();
+
+    if (result.success && Array.isArray(result.data)) {
+      setCompletedTasks(result.data);
+    }
+  } catch (error) {
+    console.error("Error fetching completed tasks:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load completed tasks",
+      variant: "destructive",
+    });
+  } finally {
+    setLoadingCompleted(false);
+  }
+};
 
   // Handler for filter changes
   const handleFilterChange = (filters: Record<string, any>) => {
@@ -632,10 +658,13 @@ useEffect(() => {
       if (!result.success) {
         throw new Error(result.error || "Failed to update task");
       }
-      toast({
-        title: completed ? "Task completed" : "Task reopened",
-        description: completed ? "Great job!" : "Task has been reopened",
-      });
+    if (completed && showCompletedTasks) {
+  fetchCompletedTasks();
+}
+toast({
+  title: completed ? "Task completed" : "Task reopened",
+  description: completed ? "Great job!" : "Task has been reopened",
+});
     } catch (error) {
       setTasks((prevTasks) => {
         if (completed && removedTask) {
@@ -1338,10 +1367,10 @@ useEffect(() => {
                       if (!result.success) {
                         throw new Error(result.error || "Failed to update task");
                       }
-                      toast({
-                        title: completed ? "Task completed" : "Task reopened",
-                        description: completed ? "Great job!" : "Task has been reopened",
-                      });
+toast({
+  title: completed ? "Task completed" : "Task reopened",
+  description: completed ? "Great job!" : "Task has been reopened",
+});
                       fetchData();
                     } catch (error) {
                       setTasks((prevTasks) =>
