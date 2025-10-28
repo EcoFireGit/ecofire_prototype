@@ -236,7 +236,7 @@ export class TaskService {
   async updateTask(
     id: string,
     userId: string,
-    updateData: Partial<TaskInterface>
+    updateData: Partial<TaskInterface> & { assignedUserId?: string }
   ): Promise<TaskInterface | null> {
     try {
       await dbConnect();
