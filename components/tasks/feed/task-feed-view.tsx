@@ -93,6 +93,8 @@ export default function TaskFeedView() {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 const [completedTasks, setCompletedTasks] = useState<any[]>([]);
 const [loadingCompleted, setLoadingCompleted] = useState(false);
+  const [completedTasksStartDate, setCompletedTasksStartDate] = useState("");
+const [completedTasksEndDate, setCompletedTasksEndDate] = useState("");
   const showTasksTabRef = useRef<HTMLButtonElement>(null);
   const showMyDayTabRef = useRef<HTMLButtonElement>(null);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -1277,52 +1279,43 @@ toast({
                     setDuplicateDialogOpen(true);
                   }}
                 />
-                {/* Completed Tasks Section */}
-                    <div className="mt-8 border-t pt-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-700">Completed Tasks</h3>
-                        <button
-                          onClick={() => {
-                            setShowCompletedTasks(!showCompletedTasks);
-                            if (!showCompletedTasks && completedTasks.length === 0) {
-                              fetchCompletedTasks();
-                            }
-                          }}
-                          className="text-sm text-orange-600 hover:text-orange-700 font-medium"
-                        >
-                          {showCompletedTasks ? "Hide" : "Show"}
-                        </button>
-                      </div>
+               // Function to fetch completed tasks
+const fetchCompletedTasks = async () => {
+  setLoadingCompleted(true);
+  try {
+    // Use custom dates if provided, otherwise default to last 30 days
+    let startDate = completedTasksStartDate;
+    let endDate = completedTasksEndDate;
+    
+    if (!startDate) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      startDate = thirtyDaysAgo.toISOString().split('T')[0];
+    }
+    
+    if (!endDate) {
+      endDate = new Date().toISOString().split('T')[0];
+    }
+    
+    const response = await fetch(
+      `/api/tasks/completed?startDate=${startDate}&endDate=${endDate}&sort=desc&limit=100`
+    );
+    const result = await response.json();
 
-                      {showCompletedTasks && (
-                        <div className="space-y-3">
-                          {loadingCompleted ? (
-                            <div className="text-center py-8 text-gray-500">Loading completed tasks...</div>
-                          ) : completedTasks.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500">No completed tasks found</div>
-                          ) : (
-                            <NextTasks
-                              tasks={completedTasks}
-                              jobs={jobs}
-                              onComplete={handleCompleteTask}
-                              onViewTask={handleViewTask}
-                              onAddToCalendar={handleAddToCalendar}
-                              ownerMap={ownerMap}
-                              businessFunctionMap={businessFunctionMap}
-                              loading={false}
-                              onEditTask={handleEditTask}
-                              onDeleteTask={handleDeleteTask}
-                              isNextTask={isNextTask}
-                              onToggleMyDay={handleToggleMyDay}
-                              onDuplicate={(task) => {
-                                setTaskToDuplicate({ ...task, id: task.id || task._id });
-                                setDuplicateDialogOpen(true);
-                              }}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
+    if (result.success && Array.isArray(result.data)) {
+      setCompletedTasks(result.data);
+    }
+  } catch (error) {
+    console.error("Error fetching completed tasks:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load completed tasks",
+      variant: "destructive",
+    });
+  } finally {
+    setLoadingCompleted(false);
+  }
+};
               </div>
             )}
             {mainMinimized && !myDayMinimized && (
@@ -1508,52 +1501,43 @@ toast({
                         setDuplicateDialogOpen(true);
                       }}
                     />
-                    {/* Completed Tasks Section */}
-<div className="mt-8 border-t pt-6">
-  <div className="flex items-center justify-between mb-4">
-    <h3 className="text-lg font-semibold text-gray-700">Completed Tasks</h3>
-    <button
-      onClick={() => {
-        setShowCompletedTasks(!showCompletedTasks);
-        if (!showCompletedTasks && completedTasks.length === 0) {
-          fetchCompletedTasks();
-        }
-      }}
-      className="text-sm text-orange-600 hover:text-orange-700 font-medium"
-    >
-      {showCompletedTasks ? "Hide" : "Show"}
-    </button>
-  </div>
-  
-  {showCompletedTasks && (
-    <div className="space-y-3">
-      {loadingCompleted ? (
-        <div className="text-center py-8 text-gray-500">Loading completed tasks...</div>
-      ) : completedTasks.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">No completed tasks found</div>
-      ) : (
-        <NextTasks
-          tasks={completedTasks}
-          jobs={jobs}
-          onComplete={handleCompleteTask}
-          onViewTask={handleViewTask}
-          onAddToCalendar={handleAddToCalendar}
-          ownerMap={ownerMap}
-          businessFunctionMap={businessFunctionMap}
-          loading={false}
-          onEditTask={handleEditTask}
-          onDeleteTask={handleDeleteTask}
-          isNextTask={isNextTask}
-          onToggleMyDay={handleToggleMyDay}
-          onDuplicate={(task) => {
-            setTaskToDuplicate({ ...task, id: task.id || task._id });
-            setDuplicateDialogOpen(true);
-          }}
-        />
-      )}
-    </div>
-  )}
-</div>
+// Function to fetch completed tasks
+const fetchCompletedTasks = async () => {
+  setLoadingCompleted(true);
+  try {
+    // Use custom dates if provided, otherwise default to last 30 days
+    let startDate = completedTasksStartDate;
+    let endDate = completedTasksEndDate;
+    
+    if (!startDate) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      startDate = thirtyDaysAgo.toISOString().split('T')[0];
+    }
+    
+    if (!endDate) {
+      endDate = new Date().toISOString().split('T')[0];
+    }
+    
+    const response = await fetch(
+      `/api/tasks/completed?startDate=${startDate}&endDate=${endDate}&sort=desc&limit=100`
+    );
+    const result = await response.json();
+
+    if (result.success && Array.isArray(result.data)) {
+      setCompletedTasks(result.data);
+    }
+  } catch (error) {
+    console.error("Error fetching completed tasks:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load completed tasks",
+      variant: "destructive",
+    });
+  } finally {
+    setLoadingCompleted(false);
+  }
+};
                   </div>
                 )}
               </div>
