@@ -67,6 +67,7 @@ export function TaskCard({
     };
 
     const getBorderClasses = () => {
+        if (task.isNextTask) return "border-l-4 border-l-orange-500 border border-gray-200 bg-white";
         if (task.completed) return "border border-gray-200 bg-gray-50";
         return "border border-gray-200 bg-white";
     };
@@ -139,16 +140,8 @@ export function TaskCard({
                             <h3 className="text-sm sm:text-base font-semibold flex flex-wrap items-center gap-1 sm:gap-2">
                                 <span className="break-words">{task.title}</span>
                                 {task.isNextTask && (
-                                    <span
-                                        className="inline-flex items-center gap-1 cursor-pointer"
-                                        title="Next Task"
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            if (onOpenTaskDetails) onOpenTaskDetails(task);
-                                        }}
-                                    >
-                                        <Target className="h-3 w-3 text-orange-600" />
-                                        <span className="text-[10px] text-orange-700">Next</span>
+                                    <span className="inline-flex items-center gap-1 text-orange-700 text-xs">
+                                        <span>Next</span>
                                     </span>
                                 )}
                                 {task.isRecurring && task.recurrenceInterval && (
