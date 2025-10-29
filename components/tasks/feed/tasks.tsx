@@ -172,9 +172,9 @@ export function NextTasks({
         return (
           <Card
             key={taskId}
-       className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
-              task.completed ? "bg-gray-100 text-gray-400 opacity-60" : "bg-white"
-            }`}
+            className={`overflow-hidden hover:shadow-md transition-shadow w-full cursor-pointer ${
+              taskIsNext ? "border-orange-500 border-2" : ""
+            } ${task.completed ? "bg-gray-100 text-gray-400 opacity-60" : "bg-white"}`}
             onClick={() => {
               onViewTask({
                 id: task.id || task._id,
