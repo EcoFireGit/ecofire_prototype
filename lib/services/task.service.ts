@@ -151,18 +151,18 @@ export class TaskService {
 
   async getTasksByJobId(
     jobId: string,
-    userId: string
+    organizationId: string
   ): Promise<TaskInterface[]> {
     try {
       
       await dbConnect();
      
-      await this.migrateTasksWithOrganizationId(userId);
-      await this.migrateTasksForTimeTracking(userId);
+      await this.migrateTasksWithOrganizationId(organizationId);
+      await this.migrateTasksForTimeTracking(organizationId);
     
       const tasks = await Task.find({
         jobId,
-        organizationId: userId, // Use organizationId for organization-level queries
+        organizationId, // Use organizationId for organization-level queries
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       // Ensure active tasks never have an endDate or timeElapsed
@@ -179,14 +179,14 @@ export class TaskService {
     }
   }
 
-  async getTaskById(id: string, userId: string): Promise<TaskInterface | null> {
+  async getTaskById(id: string, organizationId: string): Promise<TaskInterface | null> {
     try {
       await dbConnect();
-    //  await this.migrateTaskForFilteringByUnassgined(userId);
+    //  await this.migrateTaskForFilteringByUnassgined(organizationId);
 
       const task = await Task.findOne({
         _id: id,
-        organizationId: userId, // Use organizationId for organization-level queries
+        organizationId, // Use organizationId for organization-level queries
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       return task ? JSON.parse(JSON.stringify(task)) : null;
@@ -197,7 +197,7 @@ export class TaskService {
 
   async createTask(
     taskData: Partial<TaskInterface>,
-    userId: string
+    organizationId: string
   ): Promise<TaskInterface> {
     try {
       await dbConnect();
@@ -222,8 +222,8 @@ export class TaskService {
       
       const task = new Task({
         ...taskData,
-        userId, // This will be the assigned user ID
-        organizationId: userId, // Set organization for new tasks
+        userId: taskData.userId || organizationId, // Use provided userId or default to organizationId
+        organizationId, // Set organization for new tasks
         createdDate: new Date(),
       });
       const savedTask = await task.save();
@@ -235,7 +235,7 @@ export class TaskService {
 
   async updateTask(
     id: string,
-    userId: string,
+    organizationId: string,
     updateData: Partial<TaskInterface> & { assignedUserId?: string }
   ): Promise<TaskInterface | null> {
     try {
@@ -251,7 +251,7 @@ export class TaskService {
       
       // Find and update the task using organizationId for permission check
       const updatedTask = await Task.findOneAndUpdate(
-        { _id: id, organizationId: userId }, // Use organizationId for organization-level access
+        { _id: id, organizationId }, // Use organizationId for organization-level access
         { $set: updateData },
         { new: true, runValidators: true }
       ).lean();
@@ -262,11 +262,11 @@ export class TaskService {
     }
   }
 
-  async deleteTask(id: string, userId: string): Promise<TaskInterface> {
+  async deleteTask(id: string, organizationId: string): Promise<TaskInterface> {
     try {
       await dbConnect();
       const result = await Task.findOneAndUpdate(
-        { _id: id, organizationId: userId },
+        { _id: id, organizationId },
         { $set: { isDeleted: true } },
         { new: true, runValidators: true }
       );
@@ -276,11 +276,11 @@ export class TaskService {
     }
   }
 
-  async deleteTasksByJobId(jobId: string, userId: string): Promise<boolean> {
+  async deleteTasksByJobId(jobId: string, organizationId: string): Promise<boolean> {
     try {
       await dbConnect();
       const result = await Task.updateMany(
-        { jobId: jobId, organizationId: userId }, // Criteria for finding tasks
+        { jobId: jobId, organizationId }, // Criteria for finding tasks
         {
           $set: { isDeleted: true }, // Fields to update
         },
@@ -294,7 +294,7 @@ export class TaskService {
 
   async markCompleted(
     id: string,
-    userId: string,
+    organizationId: string,
     isCompleted: boolean
   ): Promise<TaskInterface | null> {
     try {
@@ -306,7 +306,7 @@ export class TaskService {
       if (isCompleted) {
         const now = new Date();
         updateData.endDate = now;
-        const existingTask = await this.getTaskById(id, userId);
+        const existingTask = await this.getTaskById(id, organizationId);
         if (existingTask?.createdDate) {
           try {
             let startDate: Date;
@@ -405,7 +405,7 @@ export class TaskService {
                     isRecurring: newTaskData.isRecurring,
                     recurrenceInterval: newTaskData.recurrenceInterval
                   });
-                  const newTask = await this.createTask(newTaskData, userId);
+                  const newTask = await this.createTask(newTaskData, organizationId);
                   console.log(`Successfully created new recurring task for interval: ${existingTask.recurrenceInterval}`);
                   
                   // Add the new task to the job's tasks array
@@ -443,7 +443,7 @@ export class TaskService {
         updateData.endDate = null;
         updateData.timeElapsed = null;
       }
-      const result = await this.updateTask(id, userId, updateData);
+      const result = await this.updateTask(id, organizationId, updateData);
       return result;
     } catch (error) {
       console.error("=== markCompleted ERROR ===");
@@ -455,14 +455,14 @@ export class TaskService {
     }
   }
 
-  async getNextTasks(userId: string): Promise<TaskInterface[]> {
+  async getNextTasks(organizationId: string): Promise<TaskInterface[]> {
     try {
       await dbConnect();
-      // Find all tasks for this user that are marked as next tasks
-      await this.migrateTaskForFilteringByUnassgined(userId);
+      // Find all tasks for this organization that are marked as next tasks
+      await this.migrateTaskForFilteringByUnassgined(organizationId);
 
       const tasks = await Task.find({
-        organizationId: userId,
+        organizationId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       }).lean();
       return JSON.parse(JSON.stringify(tasks));
@@ -484,16 +484,16 @@ export class TaskService {
   //method to update the tasks order in a job
   async updateTasksOrder(
     jobId: string,
-    userId: string,
+    organizationId: string,
     taskIds: string[]
   ): Promise<boolean> {
     try {
       await dbConnect();
       
-      // Find the job
+      // Find the job - Note: Jobs still use userId field, this should match the organization context
       const job = await Job.findOne({
         _id: jobId,
-        userId,
+        userId: organizationId,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
       });
       
@@ -512,24 +512,38 @@ export class TaskService {
     }
   }
 
-  async getMyDayTasks(userId: string): Promise<TaskInterface[]> {
+  async getMyDayTasks(userId: string, organizationId?: string): Promise<TaskInterface[]> {
     try {
       await dbConnect();
-      const tasks = await Task.find({
+      const query: any = {
         userId,
         myDay: true,
         $or: [{ isDeleted: { $eq: false } }, { isDeleted: { $exists: false } }],
-      }).lean();
+      };
+      
+      // If organizationId is provided, filter by it to only show tasks from current organization
+      if (organizationId) {
+        query.organizationId = organizationId;
+      }
+      
+      const tasks = await Task.find(query).lean();
       return JSON.parse(JSON.stringify(tasks));
     } catch (error) {
       throw new Error("Error fetching My Day tasks from database");
     }
   }
 
-  async resetMyDayForUser(userId: string): Promise<number> {
+  async resetMyDayForUser(userId: string, organizationId?: string): Promise<number> {
     await dbConnect();
+    const query: any = { userId, myDay: true };
+    
+    // If organizationId is provided, filter by it to only reset tasks from current organization
+    if (organizationId) {
+      query.organizationId = organizationId;
+    }
+    
     const result = await Task.updateMany(
-      { userId, myDay: true },
+      query,
       { $set: { myDay: false, myDayDate: null } }
     );
     return result.modifiedCount || 0;
