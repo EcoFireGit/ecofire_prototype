@@ -1,5 +1,4 @@
-"use client";
-
+  "use client";
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { NextTasks } from "@/components/tasks/feed/tasks";
 import { useToast } from "@/hooks/use-toast";
@@ -91,6 +90,11 @@ export default function TaskFeedView() {
   const [splitSizes, setSplitSizes] = useState([50, 50]);
   const [showTabs, setShowTabs] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+const [completedTasks, setCompletedTasks] = useState<any[]>([]);
+const [loadingCompleted, setLoadingCompleted] = useState(false);
+  const [completedTasksStartDate, setCompletedTasksStartDate] = useState("");
+const [completedTasksEndDate, setCompletedTasksEndDate] = useState("");
   const showTasksTabRef = useRef<HTMLButtonElement>(null);
   const showMyDayTabRef = useRef<HTMLButtonElement>(null);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -399,7 +403,43 @@ export default function TaskFeedView() {
       console.error("Error fetching tags:", error);
     }
   };
+  // Function to fetch completed tasks
+  const fetchCompletedTasks = async () => {
+    setLoadingCompleted(true);
+    try {
+      // Use custom dates if provided, otherwise default to last 30 days
+      let startDate = completedTasksStartDate;
+      let endDate = completedTasksEndDate;
+      
+      if (!startDate) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        startDate = thirtyDaysAgo.toISOString().split('T')[0];
+      }
+      
+      if (!endDate) {
+        endDate = new Date().toISOString().split('T')[0];
+      }
+      
+      const response = await fetch(
+        `/api/tasks/completed?startDate=${startDate}&endDate=${endDate}&sort=desc&limit=100`
+      );
+      const result = await response.json();
 
+      if (result.success && Array.isArray(result.data)) {
+        setCompletedTasks(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching completed tasks:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load completed tasks",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCompleted(false);
+    }
+  };
   // Handler for filter changes
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
@@ -542,7 +582,12 @@ export default function TaskFeedView() {
       setShowTabs(false);
     }
   }, [isMobile]);
-
+// Fetch completed tasks when toggle is enabled
+useEffect(() => {
+  if (showCompletedTasks && completedTasks.length === 0) {
+    fetchCompletedTasks();
+  }
+}, [showCompletedTasks]);
   // Fetch all necessary data when component mounts
   useEffect(() => {
     fetchData();
@@ -624,10 +669,13 @@ export default function TaskFeedView() {
       if (!result.success) {
         throw new Error(result.error || "Failed to update task");
       }
-      toast({
-        title: completed ? "Task completed" : "Task reopened",
-        description: completed ? "Great job!" : "Task has been reopened",
-      });
+    if (completed && showCompletedTasks) {
+  fetchCompletedTasks();
+}
+toast({
+  title: completed ? "Task completed" : "Task reopened",
+  description: completed ? "Great job!" : "Task has been reopened",
+});
     } catch (error) {
       setTasks((prevTasks) => {
         if (completed && removedTask) {
@@ -1241,8 +1289,88 @@ export default function TaskFeedView() {
                     setDuplicateDialogOpen(true);
                   }}
                 />
-              </div>
+                {/* Completed Tasks Section */}
+<div className="mt-8 border-t pt-6">
+  <div className="flex flex-col gap-4 mb-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold text-gray-700">Completed Tasks</h3>
+      <button
+        onClick={() => {
+          setShowCompletedTasks(!showCompletedTasks);
+          if (!showCompletedTasks && completedTasks.length === 0) {
+            fetchCompletedTasks();
+          }
+        }}
+        className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+      >
+        {showCompletedTasks ? "Hide" : "Show"}
+      </button>
+    </div>
+    
+    {showCompletedTasks && (
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-2 flex-1">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">From Date</label>
+            <input
+              type="date"
+              value={completedTasksStartDate}
+              onChange={(e) => setCompletedTasksStartDate(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">To Date</label>
+            <input
+              type="date"
+              value={completedTasksEndDate}
+              onChange={(e) => setCompletedTasksEndDate(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm"
+            />
+          </div>
+        </div>
+        <button
+          onClick={() => fetchCompletedTasks()}
+          className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 mt-auto"
+        >
+          Apply Filter
+        </button>
+      </div>
+    )}
+  </div>
+  
+  {showCompletedTasks && (
+    <div className="space-y-3">
+      {loadingCompleted ? (
+        <div className="text-center py-8 text-gray-500">Loading completed tasks...</div>
+      ) : completedTasks.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">No completed tasks found</div>
+      ) : (
+        <NextTasks
+          tasks={completedTasks}
+          jobs={jobs}
+          onComplete={handleCompleteTask}
+          onViewTask={handleViewTask}
+          onAddToCalendar={handleAddToCalendar}
+          ownerMap={ownerMap}
+          businessFunctionMap={businessFunctionMap}
+          loading={false}
+          onEditTask={handleEditTask}
+          onDeleteTask={handleDeleteTask}
+          isNextTask={isNextTask}
+          onToggleMyDay={handleToggleMyDay}
+          onDuplicate={(task) => {
+            setTaskToDuplicate({ ...task, id: task.id || task._id });
+            setDuplicateDialogOpen(true);
+          }}
+        />
+      )}
+    </div>
+  )}
+</div>
+            </div>
             )}
+          
             {mainMinimized && !myDayMinimized && (
               <div className="p-4 h-full">
                 <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -1284,10 +1412,10 @@ export default function TaskFeedView() {
                       if (!result.success) {
                         throw new Error(result.error || "Failed to update task");
                       }
-                      toast({
-                        title: completed ? "Task completed" : "Task reopened",
-                        description: completed ? "Great job!" : "Task has been reopened",
-                      });
+toast({
+  title: completed ? "Task completed" : "Task reopened",
+  description: completed ? "Great job!" : "Task has been reopened",
+});
                       fetchData();
                     } catch (error) {
                       setTasks((prevTasks) =>
@@ -1426,6 +1554,85 @@ export default function TaskFeedView() {
                         setDuplicateDialogOpen(true);
                       }}
                     />
+                    {/* Completed Tasks Section */}
+<div className="mt-8 border-t pt-6">
+  <div className="flex flex-col gap-4 mb-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold text-gray-700">Completed Tasks</h3>
+      <button
+        onClick={() => {
+          setShowCompletedTasks(!showCompletedTasks);
+          if (!showCompletedTasks && completedTasks.length === 0) {
+            fetchCompletedTasks();
+          }
+        }}
+        className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+      >
+        {showCompletedTasks ? "Hide" : "Show"}
+      </button>
+    </div>
+    
+    {showCompletedTasks && (
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-2 flex-1">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">From Date</label>
+            <input
+              type="date"
+              value={completedTasksStartDate}
+              onChange={(e) => setCompletedTasksStartDate(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">To Date</label>
+            <input
+              type="date"
+              value={completedTasksEndDate}
+              onChange={(e) => setCompletedTasksEndDate(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm"
+            />
+          </div>
+        </div>
+        <button
+          onClick={() => fetchCompletedTasks()}
+          className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 mt-auto"
+        >
+          Apply Filter
+        </button>
+      </div>
+    )}
+  </div>
+  
+  {showCompletedTasks && (
+    <div className="space-y-3">
+      {loadingCompleted ? (
+        <div className="text-center py-8 text-gray-500">Loading completed tasks...</div>
+      ) : completedTasks.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">No completed tasks found</div>
+      ) : (
+        <NextTasks
+          tasks={completedTasks}
+          jobs={jobs}
+          onComplete={handleCompleteTask}
+          onViewTask={handleViewTask}
+          onAddToCalendar={handleAddToCalendar}
+          ownerMap={ownerMap}
+          businessFunctionMap={businessFunctionMap}
+          loading={false}
+          onEditTask={handleEditTask}
+          onDeleteTask={handleDeleteTask}
+          isNextTask={isNextTask}
+          onToggleMyDay={handleToggleMyDay}
+          onDuplicate={(task) => {
+            setTaskToDuplicate({ ...task, id: task.id || task._id });
+            setDuplicateDialogOpen(true);
+          }}
+        />
+      )}
+    </div>
+  )}
+</div>
                   </div>
                 )}
               </div>
