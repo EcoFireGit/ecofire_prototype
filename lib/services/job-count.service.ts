@@ -6,17 +6,20 @@ export class JobCountService {
     try {
       await dbConnect();
       
-      // Aggregate to count jobs by businessFunctionId
       const jobCounts = await Job.aggregate([
-        { $match: { userId } },
+        { 
+          $match: { 
+            userId,
+            isDone: { $ne: true },
+            isDeleted: { $ne: true }
+          } 
+        },
         { $group: { _id: "$businessFunctionId", count: { $sum: 1 } } }
       ]);
       
-      // Convert to a more usable format: { businessFunctionId: count }
       const countMap: Record<string, number> = {};
       
       jobCounts.forEach((item) => {
-        // Handle null or undefined businessFunctionId
         const businessFunctionId = item._id || 'uncategorized';
         countMap[businessFunctionId] = item.count;
       });

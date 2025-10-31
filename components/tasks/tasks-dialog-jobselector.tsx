@@ -64,6 +64,11 @@ interface TaskDialogProps {
   initialData?: Task;
   jobs?: any; // Add jobs prop
   jobId?: string; // Allow direct jobId prop
+  prefilledData?: {
+    title?: string;
+    notes?: string;
+    suggestedJobTitle?: string;
+  };
 }
 
 export function TaskDialog({
@@ -74,6 +79,7 @@ export function TaskDialog({
   initialData,
   jobs,
   jobId: propJobId,
+  prefilledData,
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState<string | undefined>(undefined);
@@ -138,13 +144,13 @@ export function TaskDialog({
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (mode === "create") {
-        setTitle("");
+        setTitle(prefilledData?.title || "");
         setOwner("none");
         setDate("");
         setRequiredHours(0);
         setFocusLevel(FocusLevel.None);
         setJoyLevel(JoyLevel.None);
-        setNotes(undefined);
+        setNotes(prefilledData?.notes || undefined);
         setTags([]);
         setIsRecurring(false);
         setRecurrenceInterval(undefined);
@@ -152,6 +158,15 @@ export function TaskDialog({
         setJobComboboxOpen(false);
         if (propJobId) {
           setJobId(propJobId);
+        } else if (prefilledData?.suggestedJobTitle && jobs) {
+          // Find matching job by title
+          console.log("Looking for job:", prefilledData.suggestedJobTitle);
+          console.log("Available jobs:", Object.values(jobs).map((j: any) => j.title));
+          const matchingJob = Object.entries(jobs).find(([id, job]: [string, any]) => 
+            job.title === prefilledData.suggestedJobTitle
+          );
+          console.log("Matching job found:", matchingJob);
+          setJobId(matchingJob ? matchingJob[0] : undefined);
         } else {
           setJobId(undefined);
         }
@@ -176,7 +191,7 @@ export function TaskDialog({
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [mode, initialData, open, propJobId]);
+  }, [mode, initialData, open, propJobId, prefilledData, jobs]);
 
   const [jobsList, setJobsList] = useState<Record<string, any>>(jobs || {});
 
@@ -187,9 +202,8 @@ export function TaskDialog({
     }
   }, [jobs]);
 
-  // Filter jobs based on search term
-  const filteredJobs = Object.entries(jobsList)
-    .filter(([id, job]: [string, any]) => !job.isDone);
+  // Filter jobs based on search term - show all jobs (completed and incomplete)
+  const filteredJobs = Object.entries(jobsList);
 
   // Get the selected job title for display
   const selectedJobTitle = jobId ? jobsList[jobId]?.title : "";
@@ -438,8 +452,8 @@ export function TaskDialog({
                                 <CommandItem
                                   key={id}
                                   value={job.title}
-                                  onSelect={(currentValue) => {
-                                    setJobId(currentValue === jobId ? undefined : id);
+                                  onSelect={() => {
+                                    setJobId(jobId === id ? undefined : id);
                                     setJobComboboxOpen(false);
                                   }}
                                 >
