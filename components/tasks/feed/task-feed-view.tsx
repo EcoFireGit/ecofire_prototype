@@ -95,6 +95,9 @@ const [completedTasks, setCompletedTasks] = useState<any[]>([]);
 const [loadingCompleted, setLoadingCompleted] = useState(false);
   const [completedTasksStartDate, setCompletedTasksStartDate] = useState("");
 const [completedTasksEndDate, setCompletedTasksEndDate] = useState("");
+  const [completedTasksPage, setCompletedTasksPage] = useState(1);
+const [completedTasksPerPage] = useState(10);
+const [totalCompletedTasks, setTotalCompletedTasks] = useState(0);
   const showTasksTabRef = useRef<HTMLButtonElement>(null);
   const showMyDayTabRef = useRef<HTMLButtonElement>(null);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -403,43 +406,66 @@ const [completedTasksEndDate, setCompletedTasksEndDate] = useState("");
       console.error("Error fetching tags:", error);
     }
   };
-  // Function to fetch completed tasks
-  const fetchCompletedTasks = async () => {
-    setLoadingCompleted(true);
-    try {
-      // Use custom dates if provided, otherwise default to last 30 days
-      let startDate = completedTasksStartDate;
-      let endDate = completedTasksEndDate;
-      
-      if (!startDate) {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        startDate = thirtyDaysAgo.toISOString().split('T')[0];
-      }
-      
-      if (!endDate) {
-        endDate = new Date().toISOString().split('T')[0];
-      }
-      
-      const response = await fetch(
-        `/api/tasks/completed?startDate=${startDate}&endDate=${endDate}&sort=desc&limit=100`
-      );
-      const result = await response.json();
-
-      if (result.success && Array.isArray(result.data)) {
-        setCompletedTasks(result.data);
-      }
-    } catch (error) {
-      console.error("Error fetching completed tasks:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load completed tasks",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingCompleted(false);
+ // Function to fetch completed tasks
+const fetchCompletedTasks = async (page: number = 1) => {
+  setLoadingCompleted(true);
+  try {
+    // Use custom dates if provided, otherwise default to last 30 days
+    let startDate = completedTasksStartDate;
+    let endDate = completedTasksEndDate;
+    
+    if (!startDate) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      startDate = thirtyDaysAgo.toISOString().split('T')[0];
     }
-  };
+    
+    if (!endDate) {
+      endDate = new Date().toISOString().split('T')[0];
+    }
+    
+    // Calculate offset for pagination
+    const offset = (page - 1) * completedTasksPerPage;
+    
+    const response = await fetch(
+      `/api/tasks/completed?startDate=${startDate}&endDate=${endDate}&sort=desc&limit=${completedTasksPerPage + 1}&offset=${offset}`
+    );
+    const result = await response.json();
+
+    if (result.success && Array.isArray(result.data)) {
+      // Check if there are more tasks (we fetched limit + 1)
+      const hasMore = result.data.length > completedTasksPerPage;
+      const tasksToShow = hasMore ? result.data.slice(0, completedTasksPerPage) : result.data;
+      
+      setCompletedTasks(tasksToShow);
+      setTotalCompletedTasks(result.count || result.data.length);
+      setCompletedTasksPage(page);
+    }
+  } catch (error) {
+    console.error("Error fetching completed tasks:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load completed tasks",
+      variant: "destructive",
+    });
+  } finally {
+    setLoadingCompleted(false);
+  }
+};
+  const handleNextPage = () => {
+  fetchCompletedTasks(completedTasksPage + 1);
+};
+
+const handlePrevPage = () => {
+  if (completedTasksPage > 1) {
+    fetchCompletedTasks(completedTasksPage - 1);
+  }
+};
+
+const handleResetPagination = () => {
+  setCompletedTasksPage(1);
+  fetchCompletedTasks(1);
+};
   // Handler for filter changes
   const handleFilterChange = (filters: Record<string, any>) => {
     setActiveFilters(filters);
@@ -1289,7 +1315,7 @@ toast({
                     setDuplicateDialogOpen(true);
                   }}
                 />
-                {/* Completed Tasks Section */}
+              {/* Completed Tasks Section */}
 <div className="mt-8 border-t pt-6">
   <div className="flex flex-col gap-4 mb-4">
     <div className="flex items-center justify-between">
@@ -1298,7 +1324,7 @@ toast({
         onClick={() => {
           setShowCompletedTasks(!showCompletedTasks);
           if (!showCompletedTasks && completedTasks.length === 0) {
-            fetchCompletedTasks();
+            fetchCompletedTasks(1);
           }
         }}
         className="text-sm text-orange-600 hover:text-orange-700 font-medium"
@@ -1330,7 +1356,7 @@ toast({
           </div>
         </div>
         <button
-          onClick={() => fetchCompletedTasks()}
+          onClick={handleResetPagination}
           className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 mt-auto"
         >
           Apply Filter
@@ -1346,31 +1372,62 @@ toast({
       ) : completedTasks.length === 0 ? (
         <div className="text-center py-8 text-gray-500">No completed tasks found</div>
       ) : (
-        <NextTasks
-          tasks={completedTasks}
-          jobs={jobs}
-          onComplete={handleCompleteTask}
-          onViewTask={handleViewTask}
-          onAddToCalendar={handleAddToCalendar}
-          ownerMap={ownerMap}
-          businessFunctionMap={businessFunctionMap}
-          loading={false}
-          onEditTask={handleEditTask}
-          onDeleteTask={handleDeleteTask}
-          isNextTask={isNextTask}
-          onToggleMyDay={handleToggleMyDay}
-          onDuplicate={(task) => {
-            setTaskToDuplicate({ ...task, id: task.id || task._id });
-            setDuplicateDialogOpen(true);
-          }}
-        />
+        <>
+          <NextTasks
+            tasks={completedTasks}
+            jobs={jobs}
+            onComplete={handleCompleteTask}
+            onViewTask={handleViewTask}
+            onAddToCalendar={handleAddToCalendar}
+            ownerMap={ownerMap}
+            businessFunctionMap={businessFunctionMap}
+            loading={false}
+            onEditTask={handleEditTask}
+            onDeleteTask={handleDeleteTask}
+            isNextTask={isNextTask}
+            onToggleMyDay={handleToggleMyDay}
+            onDuplicate={(task) => {
+              setTaskToDuplicate({ ...task, id: task.id || task._id });
+              setDuplicateDialogOpen(true);
+            }}
+          />
+          
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <button
+              onClick={handlePrevPage}
+              disabled={completedTasksPage === 1}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                completedTasksPage === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-orange-600 text-white hover:bg-orange-700'
+              }`}
+            >
+              Previous
+            </button>
+            
+            <span className="text-sm text-gray-600">
+              Page {completedTasksPage} • Showing {completedTasks.length} tasks
+            </span>
+            
+            <button
+              onClick={handleNextPage}
+              disabled={completedTasks.length < completedTasksPerPage}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                completedTasks.length < completedTasksPerPage
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-orange-600 text-white hover:bg-orange-700'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </>
       )}
     </div>
   )}
 </div>
-            </div>
-            )}
-          
+      
             {mainMinimized && !myDayMinimized && (
               <div className="p-4 h-full">
                 <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -1554,7 +1611,7 @@ toast({
                         setDuplicateDialogOpen(true);
                       }}
                     />
-                    {/* Completed Tasks Section */}
+{/* Completed Tasks Section */}
 <div className="mt-8 border-t pt-6">
   <div className="flex flex-col gap-4 mb-4">
     <div className="flex items-center justify-between">
@@ -1563,7 +1620,7 @@ toast({
         onClick={() => {
           setShowCompletedTasks(!showCompletedTasks);
           if (!showCompletedTasks && completedTasks.length === 0) {
-            fetchCompletedTasks();
+            fetchCompletedTasks(1);
           }
         }}
         className="text-sm text-orange-600 hover:text-orange-700 font-medium"
@@ -1595,7 +1652,7 @@ toast({
           </div>
         </div>
         <button
-          onClick={() => fetchCompletedTasks()}
+          onClick={handleResetPagination}
           className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 mt-auto"
         >
           Apply Filter
@@ -1611,31 +1668,61 @@ toast({
       ) : completedTasks.length === 0 ? (
         <div className="text-center py-8 text-gray-500">No completed tasks found</div>
       ) : (
-        <NextTasks
-          tasks={completedTasks}
-          jobs={jobs}
-          onComplete={handleCompleteTask}
-          onViewTask={handleViewTask}
-          onAddToCalendar={handleAddToCalendar}
-          ownerMap={ownerMap}
-          businessFunctionMap={businessFunctionMap}
-          loading={false}
-          onEditTask={handleEditTask}
-          onDeleteTask={handleDeleteTask}
-          isNextTask={isNextTask}
-          onToggleMyDay={handleToggleMyDay}
-          onDuplicate={(task) => {
-            setTaskToDuplicate({ ...task, id: task.id || task._id });
-            setDuplicateDialogOpen(true);
-          }}
-        />
+        <>
+          <NextTasks
+            tasks={completedTasks}
+            jobs={jobs}
+            onComplete={handleCompleteTask}
+            onViewTask={handleViewTask}
+            onAddToCalendar={handleAddToCalendar}
+            ownerMap={ownerMap}
+            businessFunctionMap={businessFunctionMap}
+            loading={false}
+            onEditTask={handleEditTask}
+            onDeleteTask={handleDeleteTask}
+            isNextTask={isNextTask}
+            onToggleMyDay={handleToggleMyDay}
+            onDuplicate={(task) => {
+              setTaskToDuplicate({ ...task, id: task.id || task._id });
+              setDuplicateDialogOpen(true);
+            }}
+          />
+          
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <button
+              onClick={handlePrevPage}
+              disabled={completedTasksPage === 1}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                completedTasksPage === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-orange-600 text-white hover:bg-orange-700'
+              }`}
+            >
+              Previous
+            </button>
+            
+            <span className="text-sm text-gray-600">
+              Page {completedTasksPage} • Showing {completedTasks.length} tasks
+            </span>
+            
+            <button
+              onClick={handleNextPage}
+              disabled={completedTasks.length < completedTasksPerPage}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                completedTasks.length < completedTasksPerPage
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-orange-600 text-white hover:bg-orange-700'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </>
       )}
     </div>
   )}
 </div>
-                  </div>
-                )}
-              </div>
               <div className={`${myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"} h-full overflow-auto relative`}>
                 {!myDayMinimized && (
                   <div className="p-4">
