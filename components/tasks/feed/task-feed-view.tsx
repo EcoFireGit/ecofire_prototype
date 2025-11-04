@@ -1315,119 +1315,8 @@ toast({
                     setDuplicateDialogOpen(true);
                   }}
                 />
-              {/* Completed Tasks Section */}
-<div className="mt-8 border-t pt-6">
-  <div className="flex flex-col gap-4 mb-4">
-    <div className="flex items-center justify-between">
-      <h3 className="text-lg font-semibold text-gray-700">Completed Tasks</h3>
-      <button
-        onClick={() => {
-          setShowCompletedTasks(!showCompletedTasks);
-          if (!showCompletedTasks && completedTasks.length === 0) {
-            fetchCompletedTasks(1);
-          }
-        }}
-        className="text-sm text-orange-600 hover:text-orange-700 font-medium"
-      >
-        {showCompletedTasks ? "Hide" : "Show"}
-      </button>
-    </div>
-    
-    {showCompletedTasks && (
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="flex flex-col sm:flex-row gap-2 flex-1">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">From Date</label>
-            <input
-              type="date"
-              value={completedTasksStartDate}
-              onChange={(e) => setCompletedTasksStartDate(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">To Date</label>
-            <input
-              type="date"
-              value={completedTasksEndDate}
-              onChange={(e) => setCompletedTasksEndDate(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
-        </div>
-        <button
-          onClick={handleResetPagination}
-          className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 mt-auto"
-        >
-          Apply Filter
-        </button>
-      </div>
-    )}
-  </div>
-  
-  {showCompletedTasks && (
-    <div className="space-y-3">
-      {loadingCompleted ? (
-        <div className="text-center py-8 text-gray-500">Loading completed tasks...</div>
-      ) : completedTasks.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">No completed tasks found</div>
-      ) : (
-        <>
-          <NextTasks
-            tasks={completedTasks}
-            jobs={jobs}
-            onComplete={handleCompleteTask}
-            onViewTask={handleViewTask}
-            onAddToCalendar={handleAddToCalendar}
-            ownerMap={ownerMap}
-            businessFunctionMap={businessFunctionMap}
-            loading={false}
-            onEditTask={handleEditTask}
-            onDeleteTask={handleDeleteTask}
-            isNextTask={isNextTask}
-            onToggleMyDay={handleToggleMyDay}
-            onDuplicate={(task) => {
-              setTaskToDuplicate({ ...task, id: task.id || task._id });
-              setDuplicateDialogOpen(true);
-            }}
-          />
-          
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between pt-4 border-t">
-            <button
-              onClick={handlePrevPage}
-              disabled={completedTasksPage === 1}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                completedTasksPage === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-orange-600 text-white hover:bg-orange-700'
-              }`}
-            >
-              Previous
-            </button>
-            
-            <span className="text-sm text-gray-600">
-              Page {completedTasksPage} • Showing {completedTasks.length} tasks
-            </span>
-            
-            <button
-              onClick={handleNextPage}
-              disabled={completedTasks.length < completedTasksPerPage}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                completedTasks.length < completedTasksPerPage
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-orange-600 text-white hover:bg-orange-700'
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  )}
-</div>
-      
+              </div>
+            )}
             {mainMinimized && !myDayMinimized && (
               <div className="p-4 h-full">
                 <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -1723,6 +1612,9 @@ toast({
     </div>
   )}
 </div>
+                  </div>
+                )}
+              </div>
               <div className={`${myDayMinimized ? "w-0 overflow-hidden transition-all duration-300" : "w-full min-w-0 transition-all duration-300"} h-full overflow-auto relative`}>
                 {!myDayMinimized && (
                   <div className="p-4">
