@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import {
   ClerkProvider,
   SignInButton,
+  SignUpButton,
   SignedIn,
   SignedOut,
 } from "@clerk/nextjs";
@@ -11,7 +12,7 @@ import Navbar from "@/components/landing_page/navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { TaskProvider } from "@/hooks/task-context";
 import { ViewProvider } from "@/lib/contexts/view-context";
-
+import { useSearchParams } from 'next/navigation';
 // Simple hash function for demonstration
 function simpleHash(str: string): string {
   let hash = 0,
@@ -37,21 +38,28 @@ if (typeof window !== "undefined" && !localStorage.getItem(PASSWORD_HASH_KEY)) {
   localStorage.setItem(PASSWORD_HASH_KEY, simpleHash(REQUIRED_PASSWORD!));
 }
 
+
 function PasswordGate({ children }: { children: React.ReactNode }) {
   const [input, setInput] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const searchParams = useSearchParams(); // Use this to get the query parameters
+  const orgId = searchParams.get('orgId');
+  const token = searchParams.get('__clerk_ticket');
+
+const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const storedHash = localStorage.getItem(PASSWORD_HASH_KEY);
-    if (simpleHash(input) === storedHash) {
-      setUnlocked(true);
-      setError("");
-    } else {
-      setError("Incorrect password");
-      setInput("");
-    }
+    // const storedHash = localStorage.getItem(PASSWORD_HASH_KEY);
+    // if (simpleHash(input) === storedHash) {
+    //   setUnlocked(true);
+    //   setError("");
+    // } else {
+    //   setError("Incorrect password");
+    //   setInput("");
+    // }
+          setUnlocked(true);
+
   };
 
   if (!unlocked) {
@@ -144,17 +152,18 @@ export default function RootLayout({
                 {/* Right sign-in side with password gate */}
                 <section className="split-right">
                   <PasswordGate>
-                    <div className="signin-box">
-                      <h2>Sign in</h2>
-                      <p className="signin-subtitle">
-                        Login to access your Jobs
-                      </p>
-                      <SignInButton>
-                        <button className="sign-in-btn">
-                          Sign in to the app
-                        </button>
-                      </SignInButton>
-                    </div>
+                      <div className="signin-box">
+                        <h2>Sign in</h2>
+                        <p className="signin-subtitle">
+                          Login to access your Jobs
+                        </p>
+                        <SignInButton>
+                          <button className="sign-in-btn">
+                            Sign in to the app
+                          </button>
+                        </SignInButton>
+                      </div>
+                    
                   </PasswordGate>
                 </section>
               </main>
